@@ -7,3 +7,50 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/*
+ * Custom "liquid" cursor — a glowing dot with a soft trailing tail.
+ * Only enabled on fine-pointer devices (see resources/js/cursor.js), which
+ * adds/removes the `has-custom-cursor` class on <body>.
+ */
+body.has-custom-cursor,
+body.has-custom-cursor * {
+    cursor: none;
+}
+
+.cursor-dot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgba(219, 234, 254, 0.95) 0%, rgba(147, 197, 253, 0.6) 45%, rgba(147, 197, 253, 0) 75%);
+    mix-blend-mode: screen;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    will-change: transform, opacity;
+}
+
+/*
+ * Modal fade + scale transition (used by the "add sonho"/"add projeto"/
+ * "add curso" modals). JS toggles `hidden` for actual visibility and
+ * `is-open` for the animation.
+ */
+.board-modal {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.board-modal.is-open {
+    opacity: 1;
+}
+
+.board-modal .modal-panel {
+    transform: scale(0.96);
+    transition: transform 0.15s ease;
+}
+
+.board-modal.is-open .modal-panel {
+    transform: scale(1);
+}

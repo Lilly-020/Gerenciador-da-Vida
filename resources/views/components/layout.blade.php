@@ -1,6 +1,6 @@
-@props(['title' => null])
+@props(['title' => null, 'align' => 'center'])
 
-<x-shell :title="$title">
+<x-shell :title="$title" :align="$align">
     <x-slot:header>
         <header class="relative flex justify-center px-6 pt-10">
             @php
@@ -22,7 +22,7 @@
                 @foreach ($navItems as $item)
                     @php $isActive = request()->routeIs($item['route']); @endphp
                     <a
-                        href="{{ route($item['route']) }}"
+                        href="{{ route($item['route'], absolute: false) }}"
                         data-nav-link
                         @if ($isActive) aria-current="page" @endif
                         class="relative z-10 rounded-full px-5 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors duration-200 {{ $isActive ? 'text-indigo-100' : 'text-slate-300 hover:text-white' }}"
@@ -33,7 +33,7 @@
             </nav>
 
             @auth
-                <form method="POST" action="{{ route('logout') }}" class="absolute top-10 right-6">
+                <form method="POST" action="{{ route('logout', absolute: false) }}" class="absolute top-10 right-6">
                     @csrf
                     <button
                         type="submit"
@@ -47,4 +47,8 @@
     </x-slot:header>
 
     {{ $slot }}
+
+    <x-slot:modals>
+        {{ $modals ?? '' }}
+    </x-slot:modals>
 </x-shell>

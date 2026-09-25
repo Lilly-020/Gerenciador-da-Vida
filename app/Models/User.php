@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -28,5 +29,37 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * @return HasMany<Sonho, $this>
+     */
+    public function sonhos(): HasMany
+    {
+        return $this->hasMany(Sonho::class);
+    }
+
+    /**
+     * @return HasMany<Projeto, $this>
+     */
+    public function projetos(): HasMany
+    {
+        return $this->hasMany(Projeto::class);
+    }
+
+    /**
+     * @return HasMany<Curso, $this>
+     */
+    public function cursos(): HasMany
+    {
+        return $this->hasMany(Curso::class);
+    }
+
+    /**
+     * @return HasMany<Tarefa, $this>
+     */
+    public function tarefas(): HasMany
+    {
+        return $this->hasMany(Tarefa::class);
     }
 }

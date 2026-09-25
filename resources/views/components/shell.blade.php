@@ -1,10 +1,11 @@
-@props(['title' => null])
+@props(['title' => null, 'align' => 'center'])
 
 <!DOCTYPE html>
 <html lang="pt-BR">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ $title ? $title . ' — ' : '' }}{{ config('app.name', 'Gerenciador da Vida') }}</title>
 
@@ -20,9 +21,11 @@
         <div class="relative flex min-h-screen flex-col">
             {{ $header ?? '' }}
 
-            <main class="flex flex-1 items-center justify-center px-6 py-24">
+            <main class="flex flex-1 justify-center px-6 pb-24 {{ $align === 'start' ? 'items-start pt-16' : 'items-center py-24' }}">
                 {{ $slot }}
             </main>
         </div>
+
+        {{ $modals ?? '' }}
     </body>
 </html>

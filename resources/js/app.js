@@ -1,3 +1,9 @@
+import { setupCursorTrail } from './cursor';
+import { setupCursos } from './cursos';
+import { setupProjetos } from './projetos';
+import { setupSonhos } from './sonhos';
+import { setupTarefas } from './tarefas';
+
 /**
  * Animated "liquid" indicator for the top navigation.
  *
@@ -99,8 +105,17 @@ function setupNavIndicator() {
     });
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupNavIndicator);
-} else {
+function init() {
     setupNavIndicator();
+    setupCursorTrail();
+    setupSonhos();
+    setupProjetos();
+    setupCursos();
+    setupTarefas();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
 }
