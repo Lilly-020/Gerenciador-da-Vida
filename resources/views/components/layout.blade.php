@@ -8,7 +8,7 @@
                     ['route' => 'sonhos', 'label' => 'Sonhos'],
                     ['route' => 'projetos', 'label' => 'Projetos'],
                     ['route' => 'cursos', 'label' => 'Cursos'],
-                    ['route' => 'financeiro', 'label' => 'Financeiro'],
+                    ['route' => 'financeiro', 'label' => 'Financeiro', 'match' => 'financeiro*'],
                     ['route' => 'tarefas', 'label' => 'Tarefas'],
                 ];
             @endphp
@@ -20,7 +20,7 @@
                 ></span>
 
                 @foreach ($navItems as $item)
-                    @php $isActive = request()->routeIs($item['route']); @endphp
+                    @php $isActive = request()->routeIs($item['match'] ?? $item['route']); @endphp
                     <a
                         href="{{ route($item['route'], absolute: false) }}"
                         data-nav-link

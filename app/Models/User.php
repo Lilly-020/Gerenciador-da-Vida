@@ -62,4 +62,28 @@ class User extends Authenticatable
     {
         return $this->hasMany(Tarefa::class);
     }
+
+    /**
+     * @return HasMany<Lancamento, $this>
+     */
+    public function lancamentos(): HasMany
+    {
+        return $this->hasMany(Lancamento::class);
+    }
+
+    /**
+     * @return HasMany<CustoFixo, $this>
+     */
+    public function custoFixos(): HasMany
+    {
+        return $this->hasMany(CustoFixo::class);
+    }
+
+    /**
+     * @return HasMany<Investimento, $this>
+     */
+    public function investimentos(): HasMany
+    {
+        return $this->hasMany(Investimento::class);
+    }
 }

@@ -1,5 +1,6 @@
 import { setupCursorTrail } from './cursor';
 import { setupCursos } from './cursos';
+import { setupCustosFixos, setupInvestimentos, setupLancamentos } from './financeiro';
 import { setupProjetos } from './projetos';
 import { setupSonhos } from './sonhos';
 import { setupTarefas } from './tarefas';
@@ -112,6 +113,9 @@ function init() {
     setupProjetos();
     setupCursos();
     setupTarefas();
+    setupLancamentos();
+    setupCustosFixos();
+    setupInvestimentos();
 }
 
 if (document.readyState === 'loading') {
