@@ -107,6 +107,49 @@ class ProjetoTest extends TestCase
         $response->assertSessionHasErrors('due_at');
     }
 
+    public function test_user_can_update_their_projeto(): void
+    {
+        $user = User::factory()->create();
+        $projeto = Projeto::factory()->for($user)->create(['title' => 'Título antigo']);
+
+        $response = $this->actingAs($user)->putJson("/projetos/{$projeto->id}", [
+            'title' => 'Título novo',
+            'description' => 'Novo objetivo',
+            'starts_at' => '2026-10-01',
+            'due_at' => '2026-11-01',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('projetos', [
+            'id' => $projeto->id,
+            'title' => 'Título novo',
+            'description' => 'Novo objetivo',
+        ]);
+    }
+
+    public function test_updating_a_projeto_requires_a_title(): void
+    {
+        $user = User::factory()->create();
+        $projeto = Projeto::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->put("/projetos/{$projeto->id}", ['title' => '']);
+
+        $response->assertSessionHasErrors('title');
+    }
+
+    public function test_a_user_cannot_update_another_users_projeto(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $projeto = Projeto::factory()->for($owner)->create(['title' => 'Título original']);
+
+        $response = $this->actingAs($intruder)
+            ->putJson("/projetos/{$projeto->id}", ['title' => 'Título malicioso']);
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('projetos', ['id' => $projeto->id, 'title' => 'Título original']);
+    }
+
     public function test_user_can_add_a_task_to_their_projeto(): void
     {
         $user = User::factory()->create();

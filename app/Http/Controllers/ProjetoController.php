@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProjetoRequest;
+use App\Http\Requests\UpdateProjetoRequest;
 use App\Models\Projeto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +31,16 @@ class ProjetoController extends Controller
     public function store(StoreProjetoRequest $request): RedirectResponse|JsonResponse
     {
         $projeto = $request->user()->projetos()->create($request->validated());
+
+        return $this->respondWith($request, $projeto);
+    }
+
+    /**
+     * Update a project's own details (title, objective, and dates).
+     */
+    public function update(UpdateProjetoRequest $request, Projeto $projeto): RedirectResponse|JsonResponse
+    {
+        $projeto->update($request->validated());
 
         return $this->respondWith($request, $projeto);
     }

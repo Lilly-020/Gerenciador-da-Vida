@@ -1,7 +1,7 @@
-import { setupBoard, setupTaskListToggle } from './board';
+import { setupBoard, setupCardEditModal, setupTaskListToggle } from './board';
 
 export function setupProjetos() {
-    setupBoard({
+    const { applyUpdate } = setupBoard({
         gridId: 'projetos-grid',
         statsId: 'projetos-stats',
         modalId: 'new-projeto-modal',
@@ -10,4 +10,12 @@ export function setupProjetos() {
     });
 
     setupTaskListToggle('projetos-grid');
+
+    setupCardEditModal({
+        gridId: 'projetos-grid',
+        modalId: 'edit-projeto-modal',
+        formId: 'edit-projeto-form',
+        urlFor: (card) => `/projetos/${card.dataset.projetoId}`,
+        applyUpdate,
+    });
 }

@@ -84,6 +84,41 @@ class SonhoTest extends TestCase
         $this->assertStringContainsString('Total de sonhos', $response->json('stats'));
     }
 
+    public function test_user_can_rename_their_sonho(): void
+    {
+        $user = User::factory()->create();
+        $sonho = Sonho::factory()->for($user)->create(['title' => 'Título antigo']);
+
+        $response = $this->actingAs($user)
+            ->putJson("/sonhos/{$sonho->id}", ['title' => 'Título novo']);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('sonhos', ['id' => $sonho->id, 'title' => 'Título novo']);
+    }
+
+    public function test_updating_a_sonho_requires_a_title(): void
+    {
+        $user = User::factory()->create();
+        $sonho = Sonho::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->put("/sonhos/{$sonho->id}", ['title' => '']);
+
+        $response->assertSessionHasErrors('title');
+    }
+
+    public function test_a_user_cannot_rename_another_users_sonho(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $sonho = Sonho::factory()->for($owner)->create(['title' => 'Título original']);
+
+        $response = $this->actingAs($intruder)
+            ->putJson("/sonhos/{$sonho->id}", ['title' => 'Título malicioso']);
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('sonhos', ['id' => $sonho->id, 'title' => 'Título original']);
+    }
+
     public function test_user_can_add_a_task_to_their_sonho(): void
     {
         $user = User::factory()->create();

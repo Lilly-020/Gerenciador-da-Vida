@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSonhoRequest;
+use App\Http\Requests\UpdateSonhoRequest;
 use App\Models\Sonho;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +31,16 @@ class SonhoController extends Controller
     public function store(StoreSonhoRequest $request): RedirectResponse|JsonResponse
     {
         $sonho = $request->user()->sonhos()->create($request->validated());
+
+        return $this->respondWith($request, $sonho);
+    }
+
+    /**
+     * Update a dream's own details (its title).
+     */
+    public function update(UpdateSonhoRequest $request, Sonho $sonho): RedirectResponse|JsonResponse
+    {
+        $sonho->update($request->validated());
 
         return $this->respondWith($request, $sonho);
     }

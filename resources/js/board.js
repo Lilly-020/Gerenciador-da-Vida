@@ -401,6 +401,103 @@ export function setupCreateModal({ modalId, openButtonId, formId, applyUpdate })
     });
 }
 
+function toCamelCase(snakeCase) {
+    return snakeCase.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+/**
+ * Generic "edit the whole card" modal: a pencil on the card opens a modal
+ * pre-filled from the card's own data-* attributes (one per form field,
+ * e.g. name="starts_at" reads card.dataset.startsAt), PUTs the given url
+ * on submit, and applies the {card, stats} response the same way every
+ * other board mutation does. Used by Sonhos and Projetos.
+ *
+ * @param {object} options
+ * @param {string} options.gridId - id of the grid the cards (and pencil triggers) live in.
+ * @param {string} options.modalId
+ * @param {string} options.formId
+ * @param {(card: HTMLElement) => string} options.urlFor - builds the PUT url from the triggering card.
+ * @param {(data: object) => void} options.applyUpdate
+ */
+export function setupCardEditModal({ gridId, modalId, formId, urlFor, applyUpdate }) {
+    const grid = document.getElementById(gridId);
+    const modal = document.getElementById(modalId);
+    const form = document.getElementById(formId);
+
+    if (!grid || !modal || !form) {
+        return;
+    }
+
+    const fields = Array.from(form.elements).filter((el) => el.name);
+    let activeCard = null;
+
+    const open = (card) => {
+        activeCard = card;
+
+        fields.forEach((field) => {
+            field.value = card.dataset[toCamelCase(field.name)] ?? '';
+        });
+
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => modal.classList.add('is-open'));
+        fields[0]?.focus();
+    };
+
+    const close = () => {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        setTimeout(() => modal.classList.add('hidden'), 150);
+        activeCard = null;
+    };
+
+    grid.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-edit-trigger]');
+        const card = trigger?.closest('[data-board-card]');
+
+        if (card) {
+            open(card);
+        }
+    });
+
+    modal.querySelectorAll('[data-modal-close]').forEach((button) => {
+        button.addEventListener('click', close);
+    });
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            close();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+            close();
+        }
+    });
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (!activeCard || !form.reportValidity()) {
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+
+        try {
+            const data = await postJson(urlFor(activeCard), 'PUT', Object.fromEntries(new FormData(form)));
+            applyUpdate(data);
+            close();
+        } catch (error) {
+            alertDialog(error.message);
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+}
+
 /**
  * Collapses a card's task list beyond a threshold behind a "Ver mais" toggle.
  * Purely client-side (no request), scoped by event delegation on the grid so

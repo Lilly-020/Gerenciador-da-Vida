@@ -31,5 +31,6 @@
 
     <x-slot:modals>
         <x-projeto-create-modal />
+        <x-projeto-edit-modal />
     </x-slot:modals>
 </x-layout>

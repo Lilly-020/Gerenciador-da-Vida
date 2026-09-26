@@ -31,5 +31,6 @@
 
     <x-slot:modals>
         <x-sonho-create-modal />
+        <x-sonho-edit-modal />
     </x-slot:modals>
 </x-layout>
