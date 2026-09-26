@@ -22,7 +22,8 @@ class UpdateProjetoTaskRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'completed' => ['required', 'boolean'],
+            'completed' => ['sometimes', 'required', 'boolean'],
+            'title' => ['sometimes', 'required', 'string', 'max:255'],
         ];
     }
 
@@ -34,6 +35,7 @@ class UpdateProjetoTaskRequest extends FormRequest
         return [
             'completed.required' => 'Informe se a tarefa está concluída.',
             'completed.boolean' => 'Valor inválido para o estado da tarefa.',
+            'title.required' => 'Informe o nome da tarefa.',
         ];
     }
 }

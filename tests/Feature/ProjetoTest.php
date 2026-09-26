@@ -172,6 +172,19 @@ class ProjetoTest extends TestCase
         $this->assertDatabaseHas('projeto_tasks', ['id' => $task->id, 'completed' => false]);
     }
 
+    public function test_user_can_rename_a_task(): void
+    {
+        $user = User::factory()->create();
+        $projeto = Projeto::factory()->for($user)->create();
+        $task = ProjetoTask::factory()->for($projeto)->create(['title' => 'Título original']);
+
+        $response = $this->actingAs($user)
+            ->patchJson("/projetos/{$projeto->id}/tarefas/{$task->id}", ['title' => 'Título novo']);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('projeto_tasks', ['id' => $task->id, 'title' => 'Título novo']);
+    }
+
     public function test_user_can_delete_a_task_from_their_projeto(): void
     {
         $user = User::factory()->create();

@@ -1,4 +1,5 @@
 import { htmlToElement, postForm, postJson, setupCreateModal } from './board';
+import { alertDialog, confirmDialog } from './dialog';
 
 /**
  * Kanban board for Cursos: drag a card between columns, or use the status
@@ -52,7 +53,7 @@ export function setupCursos() {
                 previousParent.appendChild(card);
             }
 
-            alert(error.message);
+            alertDialog(error.message);
         } finally {
             updateColumnCounts();
         }
@@ -148,7 +149,7 @@ export function setupCursos() {
             const data = await postForm(input.dataset.uploadUrl, formData);
             replaceCard(card, data.card);
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         } finally {
             input.value = '';
         }
@@ -162,7 +163,9 @@ export function setupCursos() {
             return;
         }
 
-        if (!confirm('Remover este anexo?')) {
+        const confirmed = await confirmDialog('Remover este anexo?', { confirmLabel: 'Remover', danger: true });
+
+        if (!confirmed) {
             return;
         }
 
@@ -172,7 +175,7 @@ export function setupCursos() {
             const data = await postJson(removeButton.dataset.removeFileUrl, 'DELETE');
             replaceCard(card, data.card);
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         }
     });
 
@@ -184,7 +187,12 @@ export function setupCursos() {
             return;
         }
 
-        if (!confirm('Excluir este curso? Essa ação não pode ser desfeita.')) {
+        const confirmed = await confirmDialog('Excluir este curso? Essa ação não pode ser desfeita.', {
+            confirmLabel: 'Excluir',
+            danger: true,
+        });
+
+        if (!confirmed) {
             return;
         }
 
@@ -195,7 +203,7 @@ export function setupCursos() {
             card.remove();
             updateColumnCounts();
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         }
     });
 
@@ -305,7 +313,7 @@ function setupEditModal(board, replaceCard) {
             replaceCard(activeCard, data.card);
             close();
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         } finally {
             submitButton.disabled = false;
         }

@@ -6,6 +6,8 @@
  * single source of truth (no duplicated logic in JS).
  */
 
+import { alertDialog, confirmDialog } from './dialog';
+
 function csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 }
@@ -119,11 +121,11 @@ function setupGrid(gridId, applyUpdate) {
         } catch (error) {
             checkbox.checked = !checkbox.checked;
             checkbox.disabled = false;
-            alert(error.message);
+            alertDialog(error.message);
         }
     });
 
-    grid.addEventListener('click', (event) => {
+    grid.addEventListener('click', async (event) => {
         const trigger = event.target.closest('[data-add-task-trigger]');
 
         if (trigger) {
@@ -148,18 +150,24 @@ function setupGrid(gridId, applyUpdate) {
         const deleteTask = event.target.closest('[data-task-delete-url]');
 
         if (deleteTask) {
-            if (!confirm(deleteTask.dataset.confirmMessage || 'Excluir esta tarefa?')) {
+            const confirmed = await confirmDialog(deleteTask.dataset.confirmMessage || 'Excluir esta tarefa?', {
+                confirmLabel: 'Excluir',
+                danger: true,
+            });
+
+            if (!confirmed) {
                 return;
             }
 
             deleteTask.disabled = true;
 
-            postJson(deleteTask.dataset.taskDeleteUrl, 'DELETE')
-                .then((data) => applyUpdate(data))
-                .catch((error) => {
-                    deleteTask.disabled = false;
-                    alert(error.message);
-                });
+            try {
+                const data = await postJson(deleteTask.dataset.taskDeleteUrl, 'DELETE');
+                applyUpdate(data);
+            } catch (error) {
+                deleteTask.disabled = false;
+                alertDialog(error.message);
+            }
 
             return;
         }
@@ -167,18 +175,24 @@ function setupGrid(gridId, applyUpdate) {
         const deleteCard = event.target.closest('[data-delete-card-url]');
 
         if (deleteCard) {
-            if (!confirm(deleteCard.dataset.confirmMessage || 'Excluir? Essa ação não pode ser desfeita.')) {
+            const confirmed = await confirmDialog(
+                deleteCard.dataset.confirmMessage || 'Excluir? Essa ação não pode ser desfeita.',
+                { confirmLabel: 'Excluir', danger: true },
+            );
+
+            if (!confirmed) {
                 return;
             }
 
             deleteCard.disabled = true;
 
-            postJson(deleteCard.dataset.deleteCardUrl, 'DELETE')
-                .then((data) => applyUpdate(data))
-                .catch((error) => {
-                    deleteCard.disabled = false;
-                    alert(error.message);
-                });
+            try {
+                const data = await postJson(deleteCard.dataset.deleteCardUrl, 'DELETE');
+                applyUpdate(data);
+            } catch (error) {
+                deleteCard.disabled = false;
+                alertDialog(error.message);
+            }
         }
     });
 
@@ -205,10 +219,114 @@ function setupGrid(gridId, applyUpdate) {
             const data = await postJson(form.action, 'POST', { title });
             applyUpdate(data);
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         } finally {
             submitButton.disabled = false;
         }
+    });
+
+    setupInlineTaskEdit(grid, applyUpdate);
+}
+
+/**
+ * Inline "click pencil, edit text, Enter/blur to save" editing for a task
+ * row's title — shared by the Sonhos/Projetos board and the Tarefas day
+ * list. Expects each row to be marked [data-task-row], wrapping a
+ * [data-task-title] element and an edit-trigger button carrying
+ * [data-task-edit-url] (the same PATCH endpoint the checkbox toggles).
+ *
+ * @param {HTMLElement | null} container
+ * @param {(data: object) => void} applyUpdate
+ */
+export function setupInlineTaskEdit(container, applyUpdate) {
+    if (!container) {
+        return;
+    }
+
+    const startEdit = (trigger) => {
+        const row = trigger.closest('[data-task-row]');
+        const titleEl = row?.querySelector('[data-task-title]');
+
+        if (!row || !titleEl) {
+            return;
+        }
+
+        const original = titleEl.textContent.trim();
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = original;
+        input.maxLength = 255;
+        input.dataset.taskEditInput = '';
+        input.dataset.taskEditUrl = trigger.dataset.taskEditUrl;
+        input.dataset.originalTitle = original;
+        input.className =
+            'min-w-0 flex-1 rounded-md border border-indigo-400/50 bg-slate-950/80 px-2 py-1 text-sm text-white outline-none focus:ring-2 focus:ring-indigo-400/20';
+
+        titleEl.replaceWith(input);
+        input.focus();
+        input.select();
+    };
+
+    const finishEdit = async (input, { save }) => {
+        const original = input.dataset.originalTitle ?? '';
+        const value = input.value.trim();
+
+        const span = document.createElement('span');
+        span.dataset.taskTitle = '';
+        span.className = 'wrap-break-word';
+
+        if (!save || !value || value === original) {
+            span.textContent = original;
+            input.replaceWith(span);
+
+            return;
+        }
+
+        span.textContent = value;
+        input.replaceWith(span);
+
+        try {
+            const data = await postJson(input.dataset.taskEditUrl, 'PATCH', { title: value });
+            applyUpdate(data);
+        } catch (error) {
+            span.textContent = original;
+            alertDialog(error.message);
+        }
+    };
+
+    container.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-task-edit-trigger]');
+
+        if (trigger) {
+            startEdit(trigger);
+        }
+    });
+
+    container.addEventListener('keydown', (event) => {
+        const input = event.target.closest('[data-task-edit-input]');
+
+        if (!input) {
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            input.blur();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            input.dataset.cancelled = '1';
+            input.blur();
+        }
+    });
+
+    container.addEventListener('focusout', (event) => {
+        const input = event.target.closest('[data-task-edit-input]');
+
+        if (!input) {
+            return;
+        }
+
+        finishEdit(input, { save: input.dataset.cancelled !== '1' });
     });
 }
 
@@ -258,11 +376,13 @@ export function setupCreateModal({ modalId, openButtonId, formId, applyUpdate })
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        const titleField = form.querySelector('[name="title"]');
-
-        if (!titleField.value.trim()) {
-            titleField.focus();
-
+        // Let the browser's native validation (required, min, type=date, ...)
+        // handle whatever fields this particular form has — this used to
+        // hardcode a check for a [name="title"] field, which crashed with a
+        // TypeError (and silently did nothing) on any form that doesn't have
+        // one, like the Financeiro "nova entrada/saída" and "novo custo
+        // fixo" forms.
+        if (!form.reportValidity()) {
             return;
         }
 
@@ -274,7 +394,7 @@ export function setupCreateModal({ modalId, openButtonId, formId, applyUpdate })
             applyUpdate(data);
             close();
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         } finally {
             submitButton.disabled = false;
         }

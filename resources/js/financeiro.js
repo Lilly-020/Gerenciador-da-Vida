@@ -1,4 +1,5 @@
 import { htmlToElement, postJson, setupCreateModal } from './board';
+import { alertDialog, confirmDialog } from './dialog';
 
 /**
  * Entradas / Saídas page: create via modal, toggle previsto↔realizado,
@@ -39,7 +40,7 @@ export function setupLancamentos() {
         } catch (error) {
             checkbox.checked = !checkbox.checked;
             checkbox.disabled = false;
-            alert(error.message);
+            alertDialog(error.message);
         }
     });
 
@@ -50,11 +51,17 @@ export function setupLancamentos() {
             return;
         }
 
+        const confirmed = await confirmDialog('Excluir este lançamento?', { confirmLabel: 'Excluir', danger: true });
+
+        if (!confirmed) {
+            return;
+        }
+
         try {
             const data = await postJson(deleteButton.dataset.lancamentoDeleteUrl, 'DELETE');
             applyUpdate(data);
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         }
     });
 
@@ -114,7 +121,7 @@ export function setupCustosFixos() {
                 applyUpdate(data);
             } catch (error) {
                 payButton.disabled = false;
-                alert(error.message);
+                alertDialog(error.message);
             }
 
             return;
@@ -123,7 +130,12 @@ export function setupCustosFixos() {
         const deleteButton = event.target.closest('[data-custo-fixo-delete-url]');
 
         if (deleteButton) {
-            if (!confirm('Excluir este custo fixo? Os pagamentos já registrados continuam no histórico de saídas.')) {
+            const confirmed = await confirmDialog(
+                'Excluir este custo fixo? Os pagamentos já registrados continuam no histórico de saídas.',
+                { confirmLabel: 'Excluir', danger: true },
+            );
+
+            if (!confirmed) {
                 return;
             }
 
@@ -131,7 +143,7 @@ export function setupCustosFixos() {
                 const data = await postJson(deleteButton.dataset.custoFixoDeleteUrl, 'DELETE');
                 applyUpdate(data);
             } catch (error) {
-                alert(error.message);
+                alertDialog(error.message);
             }
         }
     });

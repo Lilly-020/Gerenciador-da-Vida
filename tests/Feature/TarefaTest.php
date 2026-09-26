@@ -265,6 +265,18 @@ class TarefaTest extends TestCase
         $this->assertDatabaseMissing('tarefas', ['id' => $tarefa->id]);
     }
 
+    public function test_user_can_rename_a_task(): void
+    {
+        $user = User::factory()->create();
+        $tarefa = Tarefa::factory()->for($user)->create(['title' => 'Título original']);
+
+        $response = $this->actingAs($user)
+            ->patchJson("/tarefas/{$tarefa->id}", ['title' => 'Título novo']);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tarefas', ['id' => $tarefa->id, 'title' => 'Título novo']);
+    }
+
     public function test_a_user_cannot_see_another_users_tasks(): void
     {
         $owner = User::factory()->create();

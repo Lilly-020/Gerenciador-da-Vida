@@ -149,6 +149,19 @@ class SonhoTest extends TestCase
         $this->assertDatabaseHas('sonho_tasks', ['id' => $task->id, 'completed' => false]);
     }
 
+    public function test_user_can_rename_a_task(): void
+    {
+        $user = User::factory()->create();
+        $sonho = Sonho::factory()->for($user)->create();
+        $task = SonhoTask::factory()->for($sonho)->create(['title' => 'Título original']);
+
+        $response = $this->actingAs($user)
+            ->patchJson("/sonhos/{$sonho->id}/tarefas/{$task->id}", ['title' => 'Título novo']);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('sonho_tasks', ['id' => $task->id, 'title' => 'Título novo']);
+    }
+
     public function test_user_can_delete_a_task_from_their_sonho(): void
     {
         $user = User::factory()->create();

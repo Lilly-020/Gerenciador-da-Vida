@@ -1,4 +1,5 @@
-import { htmlToElement, postJson } from './board';
+import { htmlToElement, postJson, setupInlineTaskEdit } from './board';
+import { alertDialog, confirmDialog } from './dialog';
 
 const RING_BASE_CLASSES = ['ring-1', 'ring-inset'];
 const SELECTED_CLASSES = ['bg-indigo-500/25', 'text-indigo-100', 'ring-indigo-400/40'];
@@ -139,7 +140,7 @@ export function setupTarefas() {
             page.dataset.selectedDate = date;
             window.history.pushState({}, '', `?date=${date}`);
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         }
     });
 
@@ -158,7 +159,7 @@ export function setupTarefas() {
         } catch (error) {
             checkbox.checked = !checkbox.checked;
             checkbox.disabled = false;
-            alert(error.message);
+            alertDialog(error.message);
         }
     });
 
@@ -185,13 +186,21 @@ export function setupTarefas() {
             return;
         }
 
+        const confirmed = await confirmDialog('Excluir esta tarefa?', { confirmLabel: 'Excluir', danger: true });
+
+        if (!confirmed) {
+            return;
+        }
+
         try {
             const data = await postJson(deleteButton.dataset.deleteTaskUrl, 'DELETE');
             applyDayUpdate(data);
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         }
     });
+
+    setupInlineTaskEdit(page, applyDayUpdate);
 
     page.addEventListener('submit', async (event) => {
         const form = event.target.closest('[data-add-tarefa-form]');
@@ -216,7 +225,7 @@ export function setupTarefas() {
             const data = await postJson(form.action, 'POST', Object.fromEntries(new FormData(form)));
             applyDayUpdate(data);
         } catch (error) {
-            alert(error.message);
+            alertDialog(error.message);
         } finally {
             submitButton.disabled = false;
         }
