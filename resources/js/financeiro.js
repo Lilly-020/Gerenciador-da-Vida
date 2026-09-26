@@ -221,6 +221,98 @@ export function setupInvestimentos() {
     });
 
     setupInvestimentoEditModal();
+    setupInvestimentoSimulador();
+}
+
+/**
+ * "Quanto eu teria se investisse X a Y%" — a purely client-side, live
+ * calculator on the Investimentos page. Doesn't touch the server or any
+ * real investment: it's scratch paper next to the real numbers. Reuses
+ * the exact same daily-compound-interest formula as
+ * InvestimentoAporte::estimatedYield() on the backend (see that class),
+ * so a simulation and a real investment with the same numbers agree.
+ */
+function setupInvestimentoSimulador() {
+    const container = document.getElementById('investimento-simulador');
+
+    if (!container) {
+        return;
+    }
+
+    const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    const field = (name) => container.querySelector(`[data-sim-field="${name}"]`);
+    const output = (name) => container.querySelector(`[data-sim-output="${name}"]`);
+
+    const fields = {
+        valorInicial: field('valorInicial'),
+        aporteMensal: field('aporteMensal'),
+        taxa: field('taxa'),
+        periodo: field('periodo'),
+        prazo: field('prazo'),
+        prazoUnidade: field('prazoUnidade'),
+    };
+
+    const outputs = {
+        investido: output('investido'),
+        rendimento: output('rendimento'),
+        final: output('final'),
+        barInvestido: output('bar-investido'),
+        barRendimento: output('bar-rendimento'),
+    };
+
+    if (Object.values(fields).some((el) => !el) || Object.values(outputs).some((el) => !el)) {
+        return;
+    }
+
+    // Same conversion as the backend's dailyRate(): the configured
+    // annual/monthly rate turned into an equivalent constant daily rate.
+    const dailyRateFrom = (ratePercent, period) => {
+        const periodDays = period === 'mensal' ? 30 : 365;
+
+        return (1 + ratePercent / 100) ** (1 / periodDays) - 1;
+    };
+
+    const recalculate = () => {
+        const valorInicial = Math.max(0, parseFloat(fields.valorInicial.value) || 0);
+        const aporteMensal = Math.max(0, parseFloat(fields.aporteMensal.value) || 0);
+        const taxa = Math.max(0, parseFloat(fields.taxa.value) || 0);
+        const periodo = fields.periodo.value;
+        const prazoValue = Math.max(1, parseInt(fields.prazo.value, 10) || 0);
+        const durationMonths = Math.round(fields.prazoUnidade.value === 'anos' ? prazoValue * 12 : prazoValue);
+
+        const dailyRate = dailyRateFrom(taxa, periodo);
+        const fvInicial = valorInicial * (1 + dailyRate) ** (durationMonths * 30);
+
+        // Each monthly contribution compounds on its own, from the month
+        // it's made through the end of the simulated period — same model
+        // as how real aportes are treated (see aportesWithParentLoaded()).
+        let fvAportes = 0;
+        let totalAportesMensais = 0;
+
+        for (let mes = 1; mes <= durationMonths; mes++) {
+            const diasInvestidos = (durationMonths - mes) * 30;
+            fvAportes += aporteMensal * (1 + dailyRate) ** diasInvestidos;
+            totalAportesMensais += aporteMensal;
+        }
+
+        const investido = valorInicial + totalAportesMensais;
+        const valorFinal = fvInicial + fvAportes;
+        const rendimento = valorFinal - investido;
+
+        outputs.investido.textContent = currency.format(investido);
+        outputs.rendimento.textContent = currency.format(rendimento);
+        outputs.final.textContent = currency.format(valorFinal);
+
+        const investidoPct = valorFinal > 0 ? Math.max(0, Math.min(100, (investido / valorFinal) * 100)) : 100;
+        outputs.barInvestido.style.width = `${investidoPct}%`;
+        outputs.barRendimento.style.width = `${100 - investidoPct}%`;
+    };
+
+    container.addEventListener('input', recalculate);
+    container.addEventListener('change', recalculate);
+
+    recalculate();
 }
 
 /**

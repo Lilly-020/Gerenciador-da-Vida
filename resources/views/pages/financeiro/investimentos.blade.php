@@ -31,6 +31,8 @@
             </div>
         </div>
 
+        @include('partials.financeiro.investimento-simulador')
+
         <div class="space-y-4">
             @forelse ($investimentos as $investimento)
                 @include('partials.financeiro.investimento-card', ['investimento' => $investimento])
