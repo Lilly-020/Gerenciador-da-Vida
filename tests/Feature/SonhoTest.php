@@ -148,4 +148,57 @@ class SonhoTest extends TestCase
         $response->assertNotFound();
         $this->assertDatabaseHas('sonho_tasks', ['id' => $task->id, 'completed' => false]);
     }
+
+    public function test_user_can_delete_a_task_from_their_sonho(): void
+    {
+        $user = User::factory()->create();
+        $sonho = Sonho::factory()->for($user)->create();
+        $task = SonhoTask::factory()->for($sonho)->create();
+
+        $response = $this->actingAs($user)
+            ->deleteJson("/sonhos/{$sonho->id}/tarefas/{$task->id}");
+
+        $response->assertOk();
+        $this->assertDatabaseMissing('sonho_tasks', ['id' => $task->id]);
+    }
+
+    public function test_a_user_cannot_delete_another_users_task(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $sonho = Sonho::factory()->for($owner)->create();
+        $task = SonhoTask::factory()->for($sonho)->create();
+
+        $response = $this->actingAs($intruder)
+            ->deleteJson("/sonhos/{$sonho->id}/tarefas/{$task->id}");
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('sonho_tasks', ['id' => $task->id]);
+    }
+
+    public function test_user_can_delete_their_sonho_and_its_tasks(): void
+    {
+        $user = User::factory()->create();
+        $sonho = Sonho::factory()->for($user)->create();
+        $task = SonhoTask::factory()->for($sonho)->create();
+
+        $response = $this->actingAs($user)->deleteJson("/sonhos/{$sonho->id}");
+
+        $response->assertOk();
+        $response->assertJsonStructure(['removeCardId', 'stats']);
+        $this->assertDatabaseMissing('sonhos', ['id' => $sonho->id]);
+        $this->assertDatabaseMissing('sonho_tasks', ['id' => $task->id]);
+    }
+
+    public function test_a_user_cannot_delete_another_users_sonho(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $sonho = Sonho::factory()->for($owner)->create();
+
+        $response = $this->actingAs($intruder)->deleteJson("/sonhos/{$sonho->id}");
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('sonhos', ['id' => $sonho->id]);
+    }
 }

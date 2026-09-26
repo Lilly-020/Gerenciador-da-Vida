@@ -171,4 +171,57 @@ class ProjetoTest extends TestCase
         $response->assertNotFound();
         $this->assertDatabaseHas('projeto_tasks', ['id' => $task->id, 'completed' => false]);
     }
+
+    public function test_user_can_delete_a_task_from_their_projeto(): void
+    {
+        $user = User::factory()->create();
+        $projeto = Projeto::factory()->for($user)->create();
+        $task = ProjetoTask::factory()->for($projeto)->create();
+
+        $response = $this->actingAs($user)
+            ->deleteJson("/projetos/{$projeto->id}/tarefas/{$task->id}");
+
+        $response->assertOk();
+        $this->assertDatabaseMissing('projeto_tasks', ['id' => $task->id]);
+    }
+
+    public function test_a_user_cannot_delete_another_users_task(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $projeto = Projeto::factory()->for($owner)->create();
+        $task = ProjetoTask::factory()->for($projeto)->create();
+
+        $response = $this->actingAs($intruder)
+            ->deleteJson("/projetos/{$projeto->id}/tarefas/{$task->id}");
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('projeto_tasks', ['id' => $task->id]);
+    }
+
+    public function test_user_can_delete_their_projeto_and_its_tasks(): void
+    {
+        $user = User::factory()->create();
+        $projeto = Projeto::factory()->for($user)->create();
+        $task = ProjetoTask::factory()->for($projeto)->create();
+
+        $response = $this->actingAs($user)->deleteJson("/projetos/{$projeto->id}");
+
+        $response->assertOk();
+        $response->assertJsonStructure(['removeCardId', 'stats']);
+        $this->assertDatabaseMissing('projetos', ['id' => $projeto->id]);
+        $this->assertDatabaseMissing('projeto_tasks', ['id' => $task->id]);
+    }
+
+    public function test_a_user_cannot_delete_another_users_projeto(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $projeto = Projeto::factory()->for($owner)->create();
+
+        $response = $this->actingAs($intruder)->deleteJson("/projetos/{$projeto->id}");
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('projetos', ['id' => $projeto->id]);
+    }
 }

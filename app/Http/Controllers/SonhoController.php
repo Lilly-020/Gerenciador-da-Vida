@@ -35,6 +35,26 @@ class SonhoController extends Controller
     }
 
     /**
+     * Delete a dream and its checklist (tasks cascade-delete at the DB level).
+     */
+    public function destroy(Request $request, Sonho $sonho): RedirectResponse|JsonResponse
+    {
+        $sonhoId = $sonho->id;
+        $sonho->delete();
+
+        if (! $request->wantsJson()) {
+            return back();
+        }
+
+        $sonhos = $request->user()->sonhos()->with('tasks')->latest()->get();
+
+        return response()->json([
+            'removeCardId' => "sonho-card-{$sonhoId}",
+            'stats' => view('partials.sonho-stats', ['stats' => Sonho::summarize($sonhos)])->render(),
+        ]);
+    }
+
+    /**
      * Render the card + stats partials for a JSON (fetch) request, or fall
      * back to a plain redirect for a normal form submission.
      */

@@ -54,18 +54,30 @@
         @if ($projeto->tasks->isNotEmpty())
             <div class="space-y-2">
                 @foreach ($projeto->tasks as $index => $task)
-                    <label
-                        @class(['flex cursor-pointer items-center gap-2.5 text-sm text-slate-300', 'hidden' => $index >= $visibleTasksCount])
+                    <div
+                        @class(['flex items-center gap-2', 'hidden' => $index >= $visibleTasksCount])
                         @if ($index >= $visibleTasksCount) data-task-extra @endif
                     >
-                        <input
-                            type="checkbox"
-                            data-task-toggle-url="{{ route('projetos.tarefas.update', [$projeto, $task], absolute: false) }}"
-                            @checked($task->completed)
-                            class="h-4 w-4 shrink-0 rounded border-white/20 bg-slate-950/60 text-indigo-500 focus:ring-indigo-400/40"
+                        <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-sm text-slate-300">
+                            <input
+                                type="checkbox"
+                                data-task-toggle-url="{{ route('projetos.tarefas.update', [$projeto, $task], absolute: false) }}"
+                                @checked($task->completed)
+                                class="h-4 w-4 shrink-0 rounded border-white/20 bg-slate-950/60 text-indigo-500 focus:ring-indigo-400/40"
+                            >
+                            <span class="wrap-break-word">{{ $task->title }}</span>
+                        </label>
+                        <button
+                            type="button"
+                            data-task-delete-url="{{ route('projetos.tarefas.destroy', [$projeto, $task], absolute: false) }}"
+                            class="shrink-0 text-slate-500 transition hover:text-rose-400"
+                            aria-label="Excluir tarefa"
                         >
-                        <span class="wrap-break-word">{{ $task->title }}</span>
-                    </label>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414Z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
                 @endforeach
             </div>
 
@@ -119,5 +131,16 @@
                 </button>
             </div>
         </form>
+    </div>
+
+    <div class="mt-4 flex items-center justify-end border-t border-white/10 pt-3">
+        <button
+            type="button"
+            data-delete-card-url="{{ route('projetos.destroy', $projeto, absolute: false) }}"
+            data-confirm-message="Excluir este projeto e todas as suas tarefas? Essa ação não pode ser desfeita."
+            class="text-xs font-medium text-slate-400 transition hover:text-rose-400"
+        >
+            Excluir projeto
+        </button>
     </div>
 </div>

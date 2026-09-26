@@ -70,9 +70,13 @@ export function htmlToElement(html) {
  * @param {string} options.formId - id of the create form inside the modal.
  */
 export function setupBoard({ gridId, statsId, modalId, openButtonId, formId }) {
-    function applyUpdate({ card, stats } = {}) {
+    function applyUpdate({ card, stats, removeCardId } = {}) {
         if (stats) {
             document.getElementById(statsId)?.replaceWith(htmlToElement(stats));
+        }
+
+        if (removeCardId) {
+            document.getElementById(removeCardId)?.remove();
         }
 
         if (card) {
@@ -137,6 +141,44 @@ function setupGrid(gridId, applyUpdate) {
             const card = cancel.closest('[data-board-card]');
             card?.querySelector('[data-add-task-form]')?.classList.add('hidden');
             card?.querySelector('[data-add-task-trigger]')?.classList.remove('hidden');
+
+            return;
+        }
+
+        const deleteTask = event.target.closest('[data-task-delete-url]');
+
+        if (deleteTask) {
+            if (!confirm(deleteTask.dataset.confirmMessage || 'Excluir esta tarefa?')) {
+                return;
+            }
+
+            deleteTask.disabled = true;
+
+            postJson(deleteTask.dataset.taskDeleteUrl, 'DELETE')
+                .then((data) => applyUpdate(data))
+                .catch((error) => {
+                    deleteTask.disabled = false;
+                    alert(error.message);
+                });
+
+            return;
+        }
+
+        const deleteCard = event.target.closest('[data-delete-card-url]');
+
+        if (deleteCard) {
+            if (!confirm(deleteCard.dataset.confirmMessage || 'Excluir? Essa ação não pode ser desfeita.')) {
+                return;
+            }
+
+            deleteCard.disabled = true;
+
+            postJson(deleteCard.dataset.deleteCardUrl, 'DELETE')
+                .then((data) => applyUpdate(data))
+                .catch((error) => {
+                    deleteCard.disabled = false;
+                    alert(error.message);
+                });
         }
     });
 

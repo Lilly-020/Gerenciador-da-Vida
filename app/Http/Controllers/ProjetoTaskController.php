@@ -35,6 +35,18 @@ class ProjetoTaskController extends Controller
     }
 
     /**
+     * Remove a task from the given project's checklist.
+     */
+    public function destroy(Request $request, Projeto $projeto, ProjetoTask $tarefa): RedirectResponse|JsonResponse
+    {
+        abort_unless($tarefa->projeto_id === $projeto->id, 404);
+
+        $tarefa->delete();
+
+        return $this->respondWith($request, $projeto);
+    }
+
+    /**
      * Render the card + stats partials for a JSON (fetch) request, or fall
      * back to a plain redirect for a normal form submission.
      */

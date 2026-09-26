@@ -23,13 +23,17 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/', [SonhoController::class, 'index'])->name('sonhos');
     Route::post('/sonhos', [SonhoController::class, 'store'])->name('sonhos.store');
+    Route::delete('/sonhos/{sonho}', [SonhoController::class, 'destroy'])->name('sonhos.destroy');
     Route::post('/sonhos/{sonho}/tarefas', [SonhoTaskController::class, 'store'])->name('sonhos.tarefas.store');
     Route::patch('/sonhos/{sonho}/tarefas/{tarefa}', [SonhoTaskController::class, 'update'])->name('sonhos.tarefas.update');
+    Route::delete('/sonhos/{sonho}/tarefas/{tarefa}', [SonhoTaskController::class, 'destroy'])->name('sonhos.tarefas.destroy');
 
     Route::get('/projetos', [ProjetoController::class, 'index'])->name('projetos');
     Route::post('/projetos', [ProjetoController::class, 'store'])->name('projetos.store');
+    Route::delete('/projetos/{projeto}', [ProjetoController::class, 'destroy'])->name('projetos.destroy');
     Route::post('/projetos/{projeto}/tarefas', [ProjetoTaskController::class, 'store'])->name('projetos.tarefas.store');
     Route::patch('/projetos/{projeto}/tarefas/{tarefa}', [ProjetoTaskController::class, 'update'])->name('projetos.tarefas.update');
+    Route::delete('/projetos/{projeto}/tarefas/{tarefa}', [ProjetoTaskController::class, 'destroy'])->name('projetos.tarefas.destroy');
 
     Route::get('/cursos', [CursoController::class, 'index'])->name('cursos');
     Route::post('/cursos', [CursoController::class, 'store'])->name('cursos.store');

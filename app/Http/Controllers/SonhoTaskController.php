@@ -35,6 +35,18 @@ class SonhoTaskController extends Controller
     }
 
     /**
+     * Remove a task from the given dream's checklist.
+     */
+    public function destroy(Request $request, Sonho $sonho, SonhoTask $tarefa): RedirectResponse|JsonResponse
+    {
+        abort_unless($tarefa->sonho_id === $sonho->id, 404);
+
+        $tarefa->delete();
+
+        return $this->respondWith($request, $sonho);
+    }
+
+    /**
      * Render the card + stats partials for a JSON (fetch) request, or fall
      * back to a plain redirect for a normal form submission.
      */

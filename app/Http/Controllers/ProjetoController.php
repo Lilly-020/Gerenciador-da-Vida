@@ -35,6 +35,26 @@ class ProjetoController extends Controller
     }
 
     /**
+     * Delete a project and its checklist (tasks cascade-delete at the DB level).
+     */
+    public function destroy(Request $request, Projeto $projeto): RedirectResponse|JsonResponse
+    {
+        $projetoId = $projeto->id;
+        $projeto->delete();
+
+        if (! $request->wantsJson()) {
+            return back();
+        }
+
+        $projetos = $request->user()->projetos()->with('tasks')->latest()->get();
+
+        return response()->json([
+            'removeCardId' => "projeto-card-{$projetoId}",
+            'stats' => view('partials.projeto-stats', ['stats' => Projeto::summarize($projetos)])->render(),
+        ]);
+    }
+
+    /**
      * Render the card + stats partials for a JSON (fetch) request, or fall
      * back to a plain redirect for a normal form submission.
      */
