@@ -178,6 +178,83 @@ class CustoFixoTest extends TestCase
         $this->assertTrue($currentlyActive->isActiveIn(today()));
     }
 
+    public function test_is_due_in_only_matches_months_that_line_up_with_the_periodicity(): void
+    {
+        $user = User::factory()->create();
+        $trimestral = CustoFixo::factory()->for($user)->create([
+            'periodicity' => 'trimestral',
+            'starts_on' => today()->startOfMonth(),
+        ]);
+
+        $this->assertTrue($trimestral->isDueIn(today()));
+        $this->assertFalse($trimestral->isDueIn(today()->addMonth()));
+        $this->assertFalse($trimestral->isDueIn(today()->addMonths(2)));
+        $this->assertTrue($trimestral->isDueIn(today()->addMonths(3)));
+        $this->assertTrue($trimestral->isDueIn(today()->addMonths(6)));
+    }
+
+    public function test_next_due_month_finds_the_upcoming_charge(): void
+    {
+        $user = User::factory()->create();
+        $semestral = CustoFixo::factory()->for($user)->create([
+            'periodicity' => 'semestral',
+            'starts_on' => today()->startOfMonth(),
+        ]);
+
+        $next = $semestral->nextDueMonth(today()->addMonthNoOverflow());
+
+        $this->assertNotNull($next);
+        $this->assertTrue($next->isSameMonth(today()->addMonths(6)));
+    }
+
+    public function test_next_due_month_is_null_once_past_the_end_date(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create([
+            'periodicity' => 'anual',
+            'starts_on' => today()->subYear()->startOfMonth(),
+            'ends_on' => today()->addMonth()->endOfMonth(),
+        ]);
+
+        $this->assertNull($custoFixo->nextDueMonth(today()->addMonths(2)));
+    }
+
+    public function test_a_periodic_cost_not_due_this_month_is_excluded_from_the_total_and_has_no_pay_button(): void
+    {
+        $user = User::factory()->create();
+        CustoFixo::factory()->for($user)->create([
+            'name' => 'IPVA',
+            'amount' => 800,
+            'periodicity' => 'anual',
+            'starts_on' => today()->addMonth()->startOfMonth(),
+        ]);
+
+        $response = $this->actingAs($user)->get('/financeiro/custos-fixos');
+
+        $response->assertOk();
+        $response->assertViewHas('total', fn ($total): bool => (float) $total === 0.0);
+    }
+
+    public function test_user_cannot_pay_a_fixed_cost_outside_its_periodicity_window(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create([
+            'periodicity' => 'trimestral',
+            'starts_on' => today()->startOfMonth(),
+        ]);
+
+        // Due this month (0 months since start), but not next month.
+        $response = $this->actingAs($user)
+            ->postJson("/financeiro/custos-fixos/{$custoFixo->id}/pagar");
+        $response->assertOk();
+
+        $this->travelTo(today()->addMonthNoOverflow());
+
+        $response = $this->actingAs($user)
+            ->postJson("/financeiro/custos-fixos/{$custoFixo->id}/pagar");
+        $response->assertStatus(422);
+    }
+
     public function test_a_fixed_cost_that_has_not_started_yet_is_excluded_from_the_monthly_total(): void
     {
         $user = User::factory()->create();

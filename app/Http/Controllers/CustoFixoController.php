@@ -22,7 +22,7 @@ class CustoFixoController extends Controller
         $custoFixos = $request->user()->custoFixos()->with('lancamentos')->orderBy('due_day')->get();
         $today = Carbon::today();
         $dueThisMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
-            ->filter(fn (CustoFixo $c): bool => $c->isActiveIn($today));
+            ->filter(fn (CustoFixo $c): bool => $c->isDueIn($today));
 
         return view('pages.financeiro.custos-fixos', [
             'custoFixos' => $custoFixos,
@@ -58,7 +58,7 @@ class CustoFixoController extends Controller
     {
         $today = Carbon::today();
 
-        abort_unless($custoFixo->isActiveIn($today), 422, 'Este custo fixo não está no seu período de vigência neste mês.');
+        abort_unless($custoFixo->isDueIn($today), 422, 'Este custo fixo não vence neste mês.');
 
         if (! $custoFixo->isPaidFor($today)) {
             $custoFixo->markPaid($today);
@@ -86,7 +86,7 @@ class CustoFixoController extends Controller
         $custoFixos = $request->user()->custoFixos()->with('lancamentos')->orderBy('due_day')->get();
         $today = Carbon::today();
         $dueThisMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
-            ->filter(fn (CustoFixo $c): bool => $c->isActiveIn($today));
+            ->filter(fn (CustoFixo $c): bool => $c->isDueIn($today));
 
         return response()->json([
             'list' => view('partials.financeiro.custos-fixos-list', ['custoFixos' => $custoFixos])->render(),

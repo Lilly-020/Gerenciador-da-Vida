@@ -5,10 +5,12 @@
 <div id="custos-fixos-list" class="space-y-2">
     @forelse ($custoFixos as $custoFixo)
         @php
-            $isActiveThisMonth = $custoFixo->isActiveIn($today);
+            $isDueThisMonth = $custoFixo->isDueIn($today);
             $isPaid = $custoFixo->isPaidFor($today);
             $notStartedYet = $custoFixo->starts_on->gt($today);
             $hasEnded = $custoFixo->ends_on !== null && $custoFixo->ends_on->lt($today);
+            $notDueThisPeriod = ! $notStartedYet && ! $hasEnded && ! $isDueThisMonth;
+            $nextDue = $notDueThisPeriod ? $custoFixo->nextDueMonth($today->copy()->addMonthNoOverflow()) : null;
         @endphp
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3">
             <div class="min-w-0 flex-1">
@@ -30,6 +32,14 @@
                             <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
                             Encerrado em {{ $custoFixo->ends_on->format('d-m-Y') }}
                         </span>
+                    @elseif ($notDueThisPeriod)
+                        <span class="inline-flex items-center gap-1 text-slate-400">
+                            <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
+                            Não vence este mês
+                            @if ($nextDue)
+                                · próximo em {{ $nextDue->format('m/Y') }}
+                            @endif
+                        </span>
                     @else
                         <span class="inline-flex items-center gap-1 {{ $isPaid ? 'text-emerald-300' : 'text-amber-300' }}">
                             <span class="h-1.5 w-1.5 rounded-full {{ $isPaid ? 'bg-emerald-400' : 'bg-amber-400' }}"></span>
@@ -41,7 +51,7 @@
 
             <div class="flex shrink-0 items-center gap-3">
                 <span class="text-sm font-semibold text-white">@money($custoFixo->amount)</span>
-                @if ($isActiveThisMonth && ! $isPaid)
+                @if ($isDueThisMonth && ! $isPaid)
                     <button
                         type="button"
                         data-custo-fixo-pay-url="{{ route('financeiro.custos-fixos.pagar', $custoFixo, absolute: false) }}"

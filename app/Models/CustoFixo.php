@@ -28,6 +28,19 @@ class CustoFixo extends Model
     public const PERIODICITIES = ['mensal', 'bimestral', 'trimestral', 'semestral', 'anual'];
 
     /**
+     * How many months apart two consecutive charges of each periodicity are.
+     *
+     * @var array<string, int>
+     */
+    public const PERIODICITY_MONTHS = [
+        'mensal' => 1,
+        'bimestral' => 2,
+        'trimestral' => 3,
+        'semestral' => 6,
+        'anual' => 12,
+    ];
+
+    /**
      * @var array<int, string>
      */
     public const CATEGORIES = [
@@ -93,6 +106,52 @@ class CustoFixo extends Model
         }
 
         return true;
+    }
+
+    /**
+     * Whether this fixed cost is actually charged during the given month:
+     * within its start/end window (isActiveIn) AND lining up with its own
+     * periodicity — e.g. a "trimestral" cost that started in January is
+     * only due in January, April, July, October, not every month in
+     * between.
+     */
+    public function isDueIn(Carbon $month): bool
+    {
+        if (! $this->isActiveIn($month)) {
+            return false;
+        }
+
+        $monthsSinceStart = $this->starts_on->copy()->startOfMonth()
+            ->diffInMonths($month->copy()->startOfMonth());
+
+        return $monthsSinceStart % self::PERIODICITY_MONTHS[$this->periodicity] === 0;
+    }
+
+    /**
+     * The first month, at or after `$from`, this cost is next due — or null
+     * if that would fall after its end date (it won't be charged again).
+     */
+    public function nextDueMonth(Carbon $from): ?Carbon
+    {
+        $interval = self::PERIODICITY_MONTHS[$this->periodicity];
+        $startMonth = $this->starts_on->copy()->startOfMonth();
+        $cursor = $from->copy()->startOfMonth();
+
+        if ($cursor->lt($startMonth)) {
+            $cursor = $startMonth;
+        } else {
+            $remainder = $startMonth->diffInMonths($cursor) % $interval;
+
+            if ($remainder !== 0) {
+                $cursor = $cursor->addMonths($interval - $remainder);
+            }
+        }
+
+        if ($this->ends_on !== null && $cursor->gt($this->ends_on->copy()->endOfMonth())) {
+            return null;
+        }
+
+        return $cursor;
     }
 
     /**
