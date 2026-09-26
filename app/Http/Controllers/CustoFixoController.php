@@ -21,13 +21,13 @@ class CustoFixoController extends Controller
     {
         $custoFixos = $request->user()->custoFixos()->with('lancamentos')->orderBy('due_day')->get();
         $today = Carbon::today();
+        $dueThisMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
+            ->filter(fn (CustoFixo $c): bool => $c->isActiveIn($today));
 
         return view('pages.financeiro.custos-fixos', [
             'custoFixos' => $custoFixos,
-            'total' => $custoFixos->where('status', CustoFixo::STATUS_ATIVO)->sum('amount'),
-            'totalPago' => $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
-                ->filter(fn (CustoFixo $c): bool => $c->isPaidFor($today))
-                ->sum('amount'),
+            'total' => $dueThisMonth->sum('amount'),
+            'totalPago' => $dueThisMonth->filter(fn (CustoFixo $c): bool => $c->isPaidFor($today))->sum('amount'),
         ]);
     }
 
@@ -56,8 +56,12 @@ class CustoFixoController extends Controller
      */
     public function pagar(Request $request, CustoFixo $custoFixo): RedirectResponse|JsonResponse
     {
-        if (! $custoFixo->isPaidFor(Carbon::today())) {
-            $custoFixo->markPaid(Carbon::today());
+        $today = Carbon::today();
+
+        abort_unless($custoFixo->isActiveIn($today), 422, 'Este custo fixo não está no seu período de vigência neste mês.');
+
+        if (! $custoFixo->isPaidFor($today)) {
+            $custoFixo->markPaid($today);
         }
 
         return $this->respondWith($request);
@@ -81,14 +85,14 @@ class CustoFixoController extends Controller
 
         $custoFixos = $request->user()->custoFixos()->with('lancamentos')->orderBy('due_day')->get();
         $today = Carbon::today();
+        $dueThisMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
+            ->filter(fn (CustoFixo $c): bool => $c->isActiveIn($today));
 
         return response()->json([
             'list' => view('partials.financeiro.custos-fixos-list', ['custoFixos' => $custoFixos])->render(),
             'summary' => view('partials.financeiro.custos-fixos-summary', [
-                'total' => $custoFixos->where('status', CustoFixo::STATUS_ATIVO)->sum('amount'),
-                'totalPago' => $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
-                    ->filter(fn (CustoFixo $c): bool => $c->isPaidFor($today))
-                    ->sum('amount'),
+                'total' => $dueThisMonth->sum('amount'),
+                'totalPago' => $dueThisMonth->filter(fn (CustoFixo $c): bool => $c->isPaidFor($today))->sum('amount'),
             ])->render(),
         ]);
     }

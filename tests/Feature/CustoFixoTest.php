@@ -158,6 +158,74 @@ class CustoFixoTest extends TestCase
         $response->assertDontSee('Aluguel privado');
     }
 
+    public function test_is_active_in_respects_the_start_and_end_window(): void
+    {
+        $user = User::factory()->create();
+        $notStartedYet = CustoFixo::factory()->for($user)->create([
+            'starts_on' => today()->addMonths(2)->startOfMonth(),
+        ]);
+        $alreadyEnded = CustoFixo::factory()->for($user)->create([
+            'starts_on' => today()->subMonths(3)->startOfMonth(),
+            'ends_on' => today()->subMonth()->endOfMonth(),
+        ]);
+        $currentlyActive = CustoFixo::factory()->for($user)->create([
+            'starts_on' => today()->subMonth()->startOfMonth(),
+            'ends_on' => today()->addMonth()->endOfMonth(),
+        ]);
+
+        $this->assertFalse($notStartedYet->isActiveIn(today()));
+        $this->assertFalse($alreadyEnded->isActiveIn(today()));
+        $this->assertTrue($currentlyActive->isActiveIn(today()));
+    }
+
+    public function test_a_fixed_cost_that_has_not_started_yet_is_excluded_from_the_monthly_total(): void
+    {
+        $user = User::factory()->create();
+        CustoFixo::factory()->for($user)->create(['amount' => 1000, 'starts_on' => today()->startOfMonth()]);
+        CustoFixo::factory()->for($user)->create([
+            'amount' => 500,
+            'starts_on' => today()->addMonths(2)->startOfMonth(),
+        ]);
+
+        $response = $this->actingAs($user)->get('/financeiro/custos-fixos');
+
+        $response->assertOk();
+        // Still appears in the list (so it can be managed before it starts)...
+        $response->assertSee('Começa em');
+        // ...but only the started one counts toward "Total mensal".
+        $response->assertViewHas('total', fn ($total): bool => (float) $total === 1000.0);
+    }
+
+    public function test_a_fixed_cost_that_has_already_ended_is_excluded_from_the_monthly_total(): void
+    {
+        $user = User::factory()->create();
+        CustoFixo::factory()->for($user)->create([
+            'amount' => 500,
+            'starts_on' => today()->subMonths(3)->startOfMonth(),
+            'ends_on' => today()->subMonth()->endOfMonth(),
+        ]);
+
+        $response = $this->actingAs($user)->get('/financeiro/custos-fixos');
+
+        $response->assertOk();
+        $response->assertSee('Encerrado em');
+        $response->assertDontSee('Marcar como pago');
+        $response->assertViewHas('total', fn ($total): bool => (float) $total === 0.0);
+    }
+
+    public function test_user_cannot_pay_a_fixed_cost_that_has_not_started_yet(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create([
+            'starts_on' => today()->addMonth()->startOfMonth(),
+        ]);
+
+        $response = $this->actingAs($user)->postJson("/financeiro/custos-fixos/{$custoFixo->id}/pagar");
+
+        $response->assertStatus(422);
+        $this->assertSame(0, $custoFixo->lancamentos()->count());
+    }
+
     public function test_a_user_cannot_pay_another_users_fixed_cost(): void
     {
         $owner = User::factory()->create();

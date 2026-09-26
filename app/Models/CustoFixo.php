@@ -77,6 +77,25 @@ class CustoFixo extends Model
     }
 
     /**
+     * Whether this fixed cost is within its own start/end window during the
+     * given month — i.e. it has already started (starts_on is on or before
+     * the month's end) and, if it has an end date, hasn't finished yet
+     * (ends_on is on or after the month's start).
+     */
+    public function isActiveIn(Carbon $month): bool
+    {
+        if ($this->starts_on->gt($month->copy()->endOfMonth())) {
+            return false;
+        }
+
+        if ($this->ends_on !== null && $this->ends_on->lt($month->copy()->startOfMonth())) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Whether a payment (a linked, realizado Saída) exists within the
      * given month.
      */

@@ -4,7 +4,12 @@
 
 <div id="custos-fixos-list" class="space-y-2">
     @forelse ($custoFixos as $custoFixo)
-        @php $isPaid = $custoFixo->isPaidFor($today); @endphp
+        @php
+            $isActiveThisMonth = $custoFixo->isActiveIn($today);
+            $isPaid = $custoFixo->isPaidFor($today);
+            $notStartedYet = $custoFixo->starts_on->gt($today);
+            $hasEnded = $custoFixo->ends_on !== null && $custoFixo->ends_on->lt($today);
+        @endphp
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3">
             <div class="min-w-0 flex-1">
                 <p class="wrap-break-word text-sm font-medium text-white">{{ $custoFixo->name }}</p>
@@ -15,16 +20,28 @@
                     <span class="h-1 w-1 rounded-full bg-slate-600"></span>
                     <span class="capitalize">{{ $custoFixo->periodicity }}</span>
                     <span class="h-1 w-1 rounded-full bg-slate-600"></span>
-                    <span class="inline-flex items-center gap-1 {{ $isPaid ? 'text-emerald-300' : 'text-amber-300' }}">
-                        <span class="h-1.5 w-1.5 rounded-full {{ $isPaid ? 'bg-emerald-400' : 'bg-amber-400' }}"></span>
-                        {{ $isPaid ? 'Pago este mês' : 'Pendente' }}
-                    </span>
+                    @if ($notStartedYet)
+                        <span class="inline-flex items-center gap-1 text-slate-400">
+                            <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
+                            Começa em {{ $custoFixo->starts_on->format('d-m-Y') }}
+                        </span>
+                    @elseif ($hasEnded)
+                        <span class="inline-flex items-center gap-1 text-slate-400">
+                            <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
+                            Encerrado em {{ $custoFixo->ends_on->format('d-m-Y') }}
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1 {{ $isPaid ? 'text-emerald-300' : 'text-amber-300' }}">
+                            <span class="h-1.5 w-1.5 rounded-full {{ $isPaid ? 'bg-emerald-400' : 'bg-amber-400' }}"></span>
+                            {{ $isPaid ? 'Pago este mês' : 'Pendente' }}
+                        </span>
+                    @endif
                 </p>
             </div>
 
             <div class="flex shrink-0 items-center gap-3">
                 <span class="text-sm font-semibold text-white">@money($custoFixo->amount)</span>
-                @unless ($isPaid)
+                @if ($isActiveThisMonth && ! $isPaid)
                     <button
                         type="button"
                         data-custo-fixo-pay-url="{{ route('financeiro.custos-fixos.pagar', $custoFixo, absolute: false) }}"
@@ -32,7 +49,7 @@
                     >
                         Marcar como pago
                     </button>
-                @endunless
+                @endif
                 <button
                     type="button"
                     data-custo-fixo-edit-trigger
