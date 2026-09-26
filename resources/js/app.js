@@ -128,3 +128,12 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+
+// Registers the PWA service worker (public/sw.js) so the app is
+// installable on Android/iOS home screens. Registration failure is
+// non-fatal — the app works fine without it, just not "installable".
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+}

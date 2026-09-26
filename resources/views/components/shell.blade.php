@@ -9,6 +9,16 @@
 
         <title>{{ $title ? $title . ' — ' : '' }}{{ config('app.name', 'Gerenciador da Vida') }}</title>
 
+        <link rel="manifest" href="/manifest.webmanifest">
+        <link rel="icon" href="/favicon.ico" sizes="any">
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <meta name="theme-color" content="#020617">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="Gerenciador">
+        <meta name="mobile-web-app-capable" content="yes">
+
         @fonts
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
