@@ -44,6 +44,7 @@
                                 <option value="{{ $key }}">{{ $label }}</option>
                             @endforeach
                         </select>
+                        <p class="mt-1 text-[11px] text-slate-500">Só organizacional — não muda o cálculo.</p>
                     </div>
                     <div>
                         <label for="edit-investimento-institution" class="mb-1.5 block text-sm font-medium text-slate-300">Instituição</label>
@@ -55,7 +56,18 @@
                             placeholder="Opcional"
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                         >
+                        <p class="mt-1 text-[11px] text-slate-500">Banco ou corretora. Opcional, só pra você lembrar onde está.</p>
                     </div>
+                </div>
+
+                <div class="rounded-lg border border-indigo-400/20 bg-indigo-500/5 p-3">
+                    <p class="text-[11px] text-slate-400">
+                        <strong class="text-indigo-300">Taxa</strong> é o número que entra direto na conta de juros compostos.
+                        Se o seu investimento é anunciado como <strong class="text-slate-300">"110% do CDI"</strong>, não
+                        digite <strong class="text-slate-300">110</strong> — calcule o valor real primeiro
+                        (110% × CDI atual, ex: 110% × 11% ≈ 12,1) e coloque o resultado. O campo "Referência" abaixo é só
+                        pra anotar qual índice você usou, não entra no cálculo.
+                    </p>
                 </div>
 
                 <div class="grid grid-cols-3 gap-3">
@@ -70,6 +82,7 @@
                             required
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                         >
+                        <p class="mt-1 text-[11px] text-slate-500">A rentabilidade em número (ex: 12), não "% de um índice".</p>
                     </div>
                     <div>
                         <label for="edit-investimento-rate-period" class="mb-1.5 block text-sm font-medium text-slate-300">Período</label>
@@ -82,6 +95,7 @@
                             <option value="anual">Ao ano</option>
                             <option value="mensal">Ao mês</option>
                         </select>
+                        <p class="mt-1 text-[11px] text-slate-500">Se a taxa é por ano ou mês. CDI/Selic/poupança: quase sempre "ao ano".</p>
                     </div>
                     <div>
                         <label for="edit-investimento-rate-reference" class="mb-1.5 block text-sm font-medium text-slate-300">Referência</label>
@@ -93,6 +107,7 @@
                             placeholder="Ex: CDI"
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                         >
+                        <p class="mt-1 text-[11px] text-slate-500">Só anotação (ex: CDI, IPCA+, prefixado) — não entra na conta.</p>
                     </div>
                 </div>
 
@@ -107,6 +122,7 @@
                             placeholder="Ex: Diária"
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                         >
+                        <p class="mt-1 text-[11px] text-slate-500">Quando dá pra resgatar (ex: Diária, No vencimento). Só anotação.</p>
                     </div>
                     <div>
                         <label for="edit-investimento-maturity" class="mb-1.5 block text-sm font-medium text-slate-300">Vencimento</label>
@@ -116,6 +132,7 @@
                             name="maturity_date"
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20 scheme-dark"
                         >
+                        <p class="mt-1 text-[11px] text-slate-500">Data de vencimento do papel, se houver. Opcional.</p>
                     </div>
                 </div>
 
