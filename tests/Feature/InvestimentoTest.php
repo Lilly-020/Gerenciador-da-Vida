@@ -179,6 +179,45 @@ class InvestimentoTest extends TestCase
         $this->assertDatabaseMissing('investimento_aportes', ['id' => $aporte->id]);
     }
 
+    public function test_index_explains_why_a_brand_new_contribution_shows_zero_yield(): void
+    {
+        $user = User::factory()->create();
+        $investimento = Investimento::factory()->for($user)->create(['name' => 'CDB Recente']);
+        InvestimentoAporte::factory()->for($investimento)->onDate(today()->toDateString())->create();
+
+        $response = $this->actingAs($user)->get('/financeiro/investimentos');
+
+        $response->assertOk();
+        $response->assertSee('só começa a contar a partir do dia seguinte');
+    }
+
+    public function test_index_does_not_show_the_zero_yield_note_once_a_contribution_has_accrued_something(): void
+    {
+        $user = User::factory()->create();
+        $investimento = Investimento::factory()->for($user)->create(['name' => 'CDB Antigo']);
+        InvestimentoAporte::factory()->for($investimento)->onDate(today()->subYear()->toDateString())->create();
+
+        $response = $this->actingAs($user)->get('/financeiro/investimentos');
+
+        $response->assertOk();
+        $response->assertDontSee('só começa a contar a partir do dia seguinte');
+    }
+
+    public function test_index_shows_a_one_year_projection_for_each_investment(): void
+    {
+        $user = User::factory()->create();
+        $investimento = Investimento::factory()->for($user)->create(['rate' => 12, 'rate_period' => 'anual']);
+        InvestimentoAporte::factory()->for($investimento)->onDate(today()->subYear()->toDateString())->create(['amount' => 1000]);
+
+        $response = $this->actingAs($user)->get('/financeiro/investimentos');
+
+        $response->assertOk();
+        $response->assertSee('em 1 ano');
+
+        $expected = $investimento->fresh('aportes')->patrimonioEstimado(today()->addYear());
+        $this->assertGreaterThan(1000.0, $expected);
+    }
+
     public function test_a_user_cannot_see_another_users_investments(): void
     {
         $owner = User::factory()->create();

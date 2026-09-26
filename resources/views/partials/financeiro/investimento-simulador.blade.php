@@ -26,6 +26,7 @@
                         value="1000"
                         class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                     >
+                    <p class="mt-1 text-[11px] text-slate-500">Quanto você colocaria de uma vez, hoje.</p>
                 </div>
                 <div>
                     <label for="sim-aporte-mensal" class="mb-1.5 block text-xs font-medium text-slate-300">Aporte mensal</label>
@@ -40,6 +41,7 @@
                         placeholder="Opcional"
                         class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                     >
+                    <p class="mt-1 text-[11px] text-slate-500">Se você for guardar mais todo mês, além do valor inicial. Deixe 0 se não.</p>
                 </div>
                 <div>
                     <label for="sim-taxa" class="mb-1.5 block text-xs font-medium text-slate-300">Taxa (%)</label>
@@ -53,6 +55,9 @@
                         value="12"
                         class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                     >
+                    <p class="mt-1 text-[11px] text-slate-500">
+                        O quanto o investimento rende. Não sabe? Referências comuns: poupança ≈ 6%, Tesouro Selic ≈ 11%, CDB comum ≈ 12% — todas "ao ano". Confira o valor exato no app do seu banco/corretora.
+                    </p>
                 </div>
                 <div>
                     <label for="sim-periodo" class="mb-1.5 block text-xs font-medium text-slate-300">Período da taxa</label>
@@ -65,6 +70,7 @@
                         <option value="anual">Ao ano</option>
                         <option value="mensal">Ao mês</option>
                     </select>
+                    <p class="mt-1 text-[11px] text-slate-500">Se a taxa acima é por ano ou por mês. Na dúvida, é "ao ano" — é como a maioria dos bancos informa.</p>
                 </div>
                 <div class="col-span-2">
                     <label for="sim-prazo" class="mb-1.5 block text-xs font-medium text-slate-300">Prazo</label>
@@ -89,6 +95,7 @@
                             <option value="anos">Anos</option>
                         </select>
                     </div>
+                    <p class="mt-1 text-[11px] text-slate-500">Por quanto tempo o dinheiro ficaria aplicado, sem mexer.</p>
                 </div>
             </div>
 

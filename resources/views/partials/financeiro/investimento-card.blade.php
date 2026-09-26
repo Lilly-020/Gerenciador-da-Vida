@@ -5,6 +5,13 @@
     $aportadoPct = $patrimonio > 0 ? (int) round($totalAportado / $patrimonio * 100) : 100;
     $rendimentoPct = 100 - $aportadoPct;
     $rateDisplay = rtrim(rtrim(number_format((float) $investimento->rate, 2, ',', '.'), '0'), ',');
+
+    // Yield accrues per contribution, from the day it was made — so a very
+    // recent (or future-dated) contribution genuinely shows R$ 0,00 until
+    // some time passes. That's correct, but looks broken with no context,
+    // so explain it and show where it's headed instead of a bare zero.
+    $temAporteAindaSemRendimento = $investimento->aportes->contains(fn ($aporte) => $aporte->daysInvested() <= 0);
+    $patrimonioEm1Ano = $investimento->patrimonioEstimado(now()->addYear());
 @endphp
 
 <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-lg shadow-black/20 sm:p-5">
@@ -90,6 +97,18 @@
             Rendimento (estimativa)
         </span>
     </div>
+
+    @if ($temAporteAindaSemRendimento)
+        <p class="mt-2 text-[11px] text-slate-500">
+            O rendimento de um aporte só começa a contar a partir do dia seguinte à data dele — por isso um aporte de hoje (ou com data futura) ainda mostra R$ 0,00.
+        </p>
+    @endif
+
+    @if ($patrimonio > 0)
+        <p class="mt-2 text-[11px] text-slate-400">
+            Mantendo esse ritmo, em 1 ano: <span class="font-semibold text-emerald-300">@money($patrimonioEm1Ano)</span> <span class="text-slate-500">(estimativa)</span>
+        </p>
+    @endif
 
     <details class="group mt-4">
         <summary class="cursor-pointer list-none text-xs font-medium text-indigo-300 transition hover:text-indigo-200">
