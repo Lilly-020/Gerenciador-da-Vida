@@ -10,12 +10,12 @@
     ];
 @endphp
 
-<nav class="mb-8 inline-flex flex-wrap items-center gap-1 rounded-full border border-white/10 bg-slate-900/70 p-1.5 shadow-xl shadow-black/30 backdrop-blur">
+<nav class="mb-8 flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-slate-900/70 p-1.5 shadow-xl shadow-black/30 backdrop-blur scrollbar-none">
     @foreach ($items as $item)
         @php $isActive = $active === $item['route']; @endphp
         <a
             href="{{ route($item['route'], absolute: false) }}"
-            class="rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition {{ $isActive ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:text-white' }}"
+            class="shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition {{ $isActive ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:text-white' }}"
         >
             {{ $item['label'] }}
         </a>

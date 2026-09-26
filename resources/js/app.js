@@ -27,7 +27,12 @@ function setupNavIndicator() {
         const navRect = nav.getBoundingClientRect();
         const linkRect = el.getBoundingClientRect();
 
-        return { left: linkRect.left - navRect.left, width: linkRect.width };
+        // nav can scroll horizontally now (mobile), and the indicator lives
+        // inside that scrolled content — so its `left` needs to be in
+        // content coordinates, not "distance from the container's visible
+        // edge". getBoundingClientRect() only gives the latter, so add back
+        // the current scroll offset to undo it.
+        return { left: linkRect.left - navRect.left + nav.scrollLeft, width: linkRect.width };
     };
 
     const shapeStyle = ({ left, width }) => ({
@@ -42,6 +47,10 @@ function setupNavIndicator() {
     if (current) {
         Object.assign(indicator.style, shapeStyle(current));
         indicator.style.opacity = '1';
+
+        // On narrow screens the nav scrolls horizontally instead of
+        // wrapping — make sure the active tab is actually visible on load.
+        activeLink()?.scrollIntoView({ inline: 'center', block: 'nearest' });
     }
 
     let busy = false;
@@ -68,25 +77,21 @@ function setupNavIndicator() {
 
             current = to;
 
-            // Phase 1: pull the drop taut between the two tabs.
-            const pull = indicator.animate(
-                [shapeStyle(from), { ...shapeStyle(stretched), opacity: 0.85 }],
-                { duration: 180, easing: 'cubic-bezier(0.3, 0, 0.6, 1)', fill: 'forwards' },
+            // One continuous animation (not two chained ones — awaiting a
+            // `.finished` promise between them left a tiny gap where a
+            // frame could be dropped). Per-keyframe easing keeps the same
+            // two-part feel: pull the drop taut, then let go with a light
+            // bounce into place.
+            const animation = indicator.animate(
+                [
+                    { ...shapeStyle(from), offset: 0 },
+                    { ...shapeStyle(stretched), opacity: 0.85, offset: 180 / 440, easing: 'cubic-bezier(0.3, 0, 0.6, 1)' },
+                    { ...shapeStyle(to), opacity: 1, offset: 1, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' },
+                ],
+                { duration: 440, fill: 'forwards' },
             );
 
-            pull.finished
-                .then(() => {
-                    // Phase 2: let go — the drop snaps into the new tab with a light bounce.
-                    const settle = indicator.animate(
-                        [
-                            { ...shapeStyle(stretched), opacity: 0.85 },
-                            { ...shapeStyle(to), opacity: 1 },
-                        ],
-                        { duration: 260, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)', fill: 'forwards' },
-                    );
-
-                    return settle.finished;
-                })
+            animation.finished
                 .catch(() => {})
                 .finally(() => {
                     window.location.href = link.href;
