@@ -81,6 +81,60 @@ class CustoFixoTest extends TestCase
         $this->assertSame(1, $custoFixo->lancamentos()->count());
     }
 
+    public function test_user_can_edit_a_fixed_costs_details(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create(['name' => 'Aluguel', 'amount' => 1500]);
+
+        $response = $this->actingAs($user)->putJson("/financeiro/custos-fixos/{$custoFixo->id}", [
+            'name' => 'Aluguel do apê',
+            'category' => 'Aluguel',
+            'amount' => 1650,
+            'due_day' => 5,
+            'periodicity' => 'mensal',
+            'starts_on' => '2026-09-01',
+            'status' => 'ativo',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('custo_fixos', [
+            'id' => $custoFixo->id,
+            'name' => 'Aluguel do apê',
+            'amount' => 1650,
+            'due_day' => 5,
+        ]);
+    }
+
+    public function test_editing_a_fixed_cost_requires_core_fields(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->putJson("/financeiro/custos-fixos/{$custoFixo->id}", []);
+
+        $response->assertJsonValidationErrors(['name', 'category', 'amount', 'due_day', 'periodicity', 'starts_on', 'status']);
+    }
+
+    public function test_a_user_cannot_edit_another_users_fixed_cost(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($owner)->create(['name' => 'Original']);
+
+        $response = $this->actingAs($intruder)->putJson("/financeiro/custos-fixos/{$custoFixo->id}", [
+            'name' => 'Hackeado',
+            'category' => 'Outros',
+            'amount' => 1,
+            'due_day' => 1,
+            'periodicity' => 'mensal',
+            'starts_on' => '2026-09-01',
+            'status' => 'ativo',
+        ]);
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('custo_fixos', ['id' => $custoFixo->id, 'name' => 'Original']);
+    }
+
     public function test_user_can_delete_a_fixed_cost(): void
     {
         $user = User::factory()->create();

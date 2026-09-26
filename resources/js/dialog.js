@@ -78,10 +78,6 @@ const DANGER_BUTTON = 'rounded-full bg-rose-500/90 px-5 py-2 text-sm font-semibo
 function open(message, buttons) {
     const dialogRoot = ensureRoot();
 
-    // If a dialog is already open (shouldn't normally happen), resolve it
-    // as "cancelled" before replacing it with the new one.
-    resolveWith(false);
-
     dialogRoot.querySelector('[data-dialog-message]').textContent = message;
 
     const actions = dialogRoot.querySelector('[data-dialog-actions]');
@@ -108,6 +104,9 @@ export function confirmDialog(message, { confirmLabel = 'Confirmar', cancelLabel
         cancelButton.addEventListener('click', () => resolveWith(false));
         confirmButton.addEventListener('click', () => resolveWith(true));
 
+        // If a dialog is already open (shouldn't normally happen), resolve it
+        // as "cancelled" before replacing it with this new one.
+        resolveWith(false);
         settle = resolve;
         open(message, [cancelButton, confirmButton]);
         confirmButton.focus();
@@ -126,6 +125,9 @@ export function alertDialog(message, { okLabel = 'OK' } = {}) {
 
         okButton.addEventListener('click', () => resolveWith(true));
 
+        // If a dialog is already open (shouldn't normally happen), resolve it
+        // as "cancelled" before replacing it with this new one.
+        resolveWith(false);
         settle = resolve;
         open(message, [okButton]);
         okButton.focus();

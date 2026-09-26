@@ -1,4 +1,4 @@
-import { htmlToElement, postJson, setupCreateModal } from './board';
+import { htmlToElement, postJson, setupCreateModal, setupRowEditModal, toCamelCase } from './board';
 import { alertDialog, confirmDialog } from './dialog';
 
 /**
@@ -73,6 +73,16 @@ export function setupLancamentos() {
     });
 
     setupRecurringToggle();
+
+    setupRowEditModal({
+        containerId: 'lancamentos-page',
+        triggerSelector: '[data-lancamento-edit-trigger]',
+        modalId: 'edit-lancamento-modal',
+        formId: 'edit-lancamento-form',
+        urlDataKey: 'lancamentoEditUrl',
+        method: 'PATCH',
+        applyUpdate,
+    });
 }
 
 function setupRecurringToggle() {
@@ -154,6 +164,16 @@ export function setupCustosFixos() {
         formId: 'new-custo-fixo-form',
         applyUpdate,
     });
+
+    setupRowEditModal({
+        containerId: 'custos-fixos-page',
+        triggerSelector: '[data-custo-fixo-edit-trigger]',
+        modalId: 'edit-custo-fixo-modal',
+        formId: 'edit-custo-fixo-form',
+        urlDataKey: 'custoFixoEditUrl',
+        method: 'PUT',
+        applyUpdate,
+    });
 }
 
 /**
@@ -183,6 +203,72 @@ export function setupInvestimentos() {
     };
 
     openButton.addEventListener('click', open);
+
+    modal.querySelectorAll('[data-modal-close]').forEach((button) => {
+        button.addEventListener('click', close);
+    });
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            close();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+            close();
+        }
+    });
+
+    setupInvestimentoEditModal();
+}
+
+/**
+ * Investimento edit modal: like the create modal, it's a plain form that
+ * submits normally (full page reload via method-spoofed PUT) rather than
+ * fetch — consistent with the rest of this page. The trigger button on
+ * each card carries the submit url and every prefill value directly on its
+ * own dataset, so opening it is just copying those into the shared form.
+ */
+function setupInvestimentoEditModal() {
+    const modal = document.getElementById('edit-investimento-modal');
+    const form = document.getElementById('edit-investimento-form');
+
+    if (!modal || !form) {
+        return;
+    }
+
+    // Excludes the @csrf/@method hidden inputs (name="_token"/"_method")
+    // this form needs for a real, method-spoofed POST — unlike the other
+    // Financeiro edit modals, which submit via fetch and have no such
+    // fields to accidentally blank out.
+    const fields = Array.from(form.elements).filter((el) => el.name && !el.name.startsWith('_'));
+
+    const open = (trigger) => {
+        form.action = trigger.dataset.investimentoEditUrl;
+
+        fields.forEach((field) => {
+            field.value = trigger.dataset[toCamelCase(field.name)] ?? '';
+        });
+
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => modal.classList.add('is-open'));
+    };
+
+    const close = () => {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        setTimeout(() => modal.classList.add('hidden'), 150);
+    };
+
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-investimento-edit-trigger]');
+
+        if (trigger) {
+            open(trigger);
+        }
+    });
 
     modal.querySelectorAll('[data-modal-close]').forEach((button) => {
         button.addEventListener('click', close);

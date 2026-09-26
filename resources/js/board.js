@@ -401,7 +401,7 @@ export function setupCreateModal({ modalId, openButtonId, formId, applyUpdate })
     });
 }
 
-function toCamelCase(snakeCase) {
+export function toCamelCase(snakeCase) {
     return snakeCase.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 }
 
@@ -488,6 +488,103 @@ export function setupCardEditModal({ gridId, modalId, formId, urlFor, applyUpdat
 
         try {
             const data = await postJson(urlFor(activeCard), 'PUT', Object.fromEntries(new FormData(form)));
+            applyUpdate(data);
+            close();
+        } catch (error) {
+            alertDialog(error.message);
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+}
+
+/**
+ * "Edit modal" variant for flat list rows (Financeiro's Entradas/Saídas and
+ * Custos Fixos) rather than board cards. Unlike setupCardEditModal, the
+ * prefill data and the submit url live directly on the trigger button's own
+ * dataset (no `[data-board-card]` ancestor to look up), and the click
+ * listener is bound to a container the caller promises is stable — e.g. the
+ * page wrapper, not the list element itself, since those lists get replaced
+ * wholesale via `applyUpdate` and would silently drop a listener bound
+ * straight to them.
+ *
+ * @param {object} options
+ * @param {string} options.containerId - stable element the trigger buttons live inside.
+ * @param {string} options.triggerSelector - e.g. '[data-lancamento-edit-trigger]'.
+ * @param {string} options.modalId
+ * @param {string} options.formId
+ * @param {string} options.urlDataKey - camelCase dataset key on the trigger holding the submit url.
+ * @param {string} [options.method] - HTTP method for the submit request.
+ * @param {(data: object) => void} options.applyUpdate
+ */
+export function setupRowEditModal({ containerId, triggerSelector, modalId, formId, urlDataKey, method = 'PUT', applyUpdate }) {
+    const container = document.getElementById(containerId);
+    const modal = document.getElementById(modalId);
+    const form = document.getElementById(formId);
+
+    if (!container || !modal || !form) {
+        return;
+    }
+
+    const fields = Array.from(form.elements).filter((el) => el.name);
+    let activeUrl = null;
+
+    const open = (trigger) => {
+        activeUrl = trigger.dataset[urlDataKey];
+
+        fields.forEach((field) => {
+            field.value = trigger.dataset[toCamelCase(field.name)] ?? '';
+        });
+
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => modal.classList.add('is-open'));
+        fields[0]?.focus();
+    };
+
+    const close = () => {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        setTimeout(() => modal.classList.add('hidden'), 150);
+        activeUrl = null;
+    };
+
+    container.addEventListener('click', (event) => {
+        const trigger = event.target.closest(triggerSelector);
+
+        if (trigger) {
+            open(trigger);
+        }
+    });
+
+    modal.querySelectorAll('[data-modal-close]').forEach((button) => {
+        button.addEventListener('click', close);
+    });
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            close();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+            close();
+        }
+    });
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (!activeUrl || !form.reportValidity()) {
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+
+        try {
+            const data = await postJson(activeUrl, method, Object.fromEntries(new FormData(form)));
             applyUpdate(data);
             close();
         } catch (error) {

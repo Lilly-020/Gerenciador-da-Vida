@@ -109,6 +109,53 @@ class InvestimentoTest extends TestCase
         $this->assertSame(0.0, $investimento->rendimentoEstimado());
     }
 
+    public function test_user_can_edit_an_investments_details(): void
+    {
+        $user = User::factory()->create();
+        $investimento = Investimento::factory()->for($user)->create(['name' => 'CDB XP', 'rate' => 12]);
+
+        $response = $this->actingAs($user)->put("/financeiro/investimentos/{$investimento->id}", [
+            'name' => 'CDB XP Investimentos',
+            'type' => 'cdb',
+            'rate' => 13.5,
+            'rate_period' => 'anual',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('investimentos', [
+            'id' => $investimento->id,
+            'name' => 'CDB XP Investimentos',
+            'rate' => 13.5,
+        ]);
+    }
+
+    public function test_editing_an_investment_requires_core_fields(): void
+    {
+        $user = User::factory()->create();
+        $investimento = Investimento::factory()->for($user)->create();
+
+        $response = $this->actingAs($user)->put("/financeiro/investimentos/{$investimento->id}", []);
+
+        $response->assertSessionHasErrors(['name', 'type', 'rate', 'rate_period']);
+    }
+
+    public function test_a_user_cannot_edit_another_users_investment(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $investimento = Investimento::factory()->for($owner)->create(['name' => 'Original']);
+
+        $response = $this->actingAs($intruder)->put("/financeiro/investimentos/{$investimento->id}", [
+            'name' => 'Hackeado',
+            'type' => 'cdb',
+            'rate' => 1,
+            'rate_period' => 'anual',
+        ]);
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('investimentos', ['id' => $investimento->id, 'name' => 'Original']);
+    }
+
     public function test_user_can_delete_an_investment(): void
     {
         $user = User::factory()->create();

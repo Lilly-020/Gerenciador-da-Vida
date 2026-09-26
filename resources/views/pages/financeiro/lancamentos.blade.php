@@ -30,5 +30,6 @@
 
     <x-slot:modals>
         <x-lancamento-create-modal :type="$type" :categories="$categories" />
+        <x-lancamento-edit-modal :type="$type" :categories="$categories" />
     </x-slot:modals>
 </x-layout>

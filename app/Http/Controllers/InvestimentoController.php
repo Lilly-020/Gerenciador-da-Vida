@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreInvestimentoRequest;
+use App\Http\Requests\UpdateInvestimentoRequest;
 use App\Models\Investimento;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -32,6 +33,16 @@ class InvestimentoController extends Controller
     public function store(StoreInvestimentoRequest $request): RedirectResponse|JsonResponse
     {
         $request->user()->investimentos()->create($request->validated());
+
+        return back();
+    }
+
+    /**
+     * Update an investment's own details (not its contributions).
+     */
+    public function update(UpdateInvestimentoRequest $request, Investimento $investimento): RedirectResponse
+    {
+        $investimento->update($request->validated());
 
         return back();
     }

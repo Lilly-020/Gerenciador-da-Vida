@@ -23,5 +23,6 @@
 
     <x-slot:modals>
         <x-custo-fixo-create-modal />
+        <x-custo-fixo-edit-modal />
     </x-slot:modals>
 </x-layout>

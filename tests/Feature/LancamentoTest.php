@@ -131,6 +131,54 @@ class LancamentoTest extends TestCase
         $this->assertDatabaseHas('lancamentos', ['id' => $lancamento->id, 'status' => 'realizado']);
     }
 
+    public function test_user_can_edit_a_lancamentos_details(): void
+    {
+        $user = User::factory()->create();
+        $lancamento = Lancamento::factory()->for($user)->saida()->create([
+            'description' => 'Supermercado',
+            'amount' => 100,
+        ]);
+
+        $response = $this->actingAs($user)->patchJson("/financeiro/lancamentos/{$lancamento->id}", [
+            'description' => 'Supermercado do mês',
+            'amount' => 250.5,
+            'date' => '2026-09-20',
+            'category' => 'Alimentação',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('lancamentos', [
+            'id' => $lancamento->id,
+            'description' => 'Supermercado do mês',
+            'amount' => 250.5,
+        ]);
+    }
+
+    public function test_editing_a_lancamento_does_not_require_every_field(): void
+    {
+        $user = User::factory()->create();
+        $lancamento = Lancamento::factory()->for($user)->saida()->create(['description' => 'Supermercado']);
+
+        $response = $this->actingAs($user)
+            ->patchJson("/financeiro/lancamentos/{$lancamento->id}", ['description' => 'Supermercado atualizado']);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('lancamentos', ['id' => $lancamento->id, 'description' => 'Supermercado atualizado']);
+    }
+
+    public function test_a_user_cannot_edit_another_users_lancamento(): void
+    {
+        $owner = User::factory()->create();
+        $intruder = User::factory()->create();
+        $lancamento = Lancamento::factory()->for($owner)->create(['description' => 'Original']);
+
+        $response = $this->actingAs($intruder)
+            ->patchJson("/financeiro/lancamentos/{$lancamento->id}", ['description' => 'Hackeado']);
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('lancamentos', ['id' => $lancamento->id, 'description' => 'Original']);
+    }
+
     public function test_user_can_delete_a_lancamento(): void
     {
         $user = User::factory()->create();

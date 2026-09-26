@@ -44,5 +44,6 @@
 
     <x-slot:modals>
         <x-investimento-create-modal />
+        <x-investimento-edit-modal />
     </x-slot:modals>
 </x-layout>
