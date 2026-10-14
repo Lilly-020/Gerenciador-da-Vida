@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProjetoRequest;
 use App\Http\Requests\UpdateProjetoRequest;
 use App\Models\Projeto;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class ProjetoController extends Controller
      */
     public function index(Request $request): View
     {
-        $projetos = $request->user()->projetos()->with('tasks')->latest()->get();
+        $projetos = $this->visibleProjetos();
 
         return view('pages.projetos', [
             'projetos' => $projetos,
@@ -40,6 +41,8 @@ class ProjetoController extends Controller
      */
     public function update(UpdateProjetoRequest $request, Projeto $projeto): RedirectResponse|JsonResponse
     {
+        abort_unless($projeto->canBeEditedBy($request->user()), 403, 'Você só pode visualizar este projeto.');
+
         $projeto->update($request->validated());
 
         return $this->respondWith($request, $projeto);
@@ -50,6 +53,8 @@ class ProjetoController extends Controller
      */
     public function destroy(Request $request, Projeto $projeto): RedirectResponse|JsonResponse
     {
+        abort_unless($projeto->isOwnedBy($request->user()), 403, 'Só quem criou o projeto pode excluí-lo.');
+
         $projetoId = $projeto->id;
         $projeto->delete();
 
@@ -57,7 +62,7 @@ class ProjetoController extends Controller
             return back();
         }
 
-        $projetos = $request->user()->projetos()->with('tasks')->latest()->get();
+        $projetos = $this->visibleProjetos();
 
         return response()->json([
             'removeCardId' => "projeto-card-{$projetoId}",
@@ -75,11 +80,22 @@ class ProjetoController extends Controller
             return back();
         }
 
-        $projetos = $request->user()->projetos()->with('tasks')->latest()->get();
+        $projetos = $this->visibleProjetos();
 
         return response()->json([
-            'card' => view('partials.projeto-card', ['projeto' => $projeto->load('tasks')])->render(),
+            'card' => view('partials.projeto-card', ['projeto' => $projeto->load(Projeto::CARD_RELATIONS)])->render(),
             'stats' => view('partials.projeto-stats', ['stats' => Projeto::summarize($projetos)])->render(),
         ]);
+    }
+
+    /**
+     * Every project the user can see — their own and the ones shared with
+     * them (the model's global scope decides which).
+     *
+     * @return Collection<int, Projeto>
+     */
+    private function visibleProjetos(): Collection
+    {
+        return Projeto::with(Projeto::CARD_RELATIONS)->latest()->get();
     }
 }

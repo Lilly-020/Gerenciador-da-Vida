@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'apelido'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -29,6 +30,55 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user): void {
+            $user->apelido_key = $user->apelido === null ? null : Str::lower($user->apelido);
+        });
+    }
+
+    /**
+     * Find a user by apelido, ignoring case and an optional leading "@".
+     */
+    public static function findByApelido(string $apelido): ?self
+    {
+        return self::where('apelido_key', Str::lower(ltrim(trim($apelido), '@')))->first();
+    }
+
+    /**
+     * How this user is shown to others: "@apelido", or their name while
+     * they haven't picked one.
+     */
+    public function handle(): string
+    {
+        return $this->apelido ? '@'.$this->apelido : $this->name;
+    }
+
+    /**
+     * Invitations this user sent.
+     *
+     * @return HasMany<Participacao, $this>
+     */
+    public function participacoesEnviadas(): HasMany
+    {
+        return $this->hasMany(Participacao::class, 'owner_id');
+    }
+
+    /**
+     * Invitations this user received.
+     *
+     * @return HasMany<Participacao, $this>
+     */
+    public function participacoesRecebidas(): HasMany
+    {
+        return $this->hasMany(Participacao::class, 'participant_id');
+    }
+
+    public function pendingInvitesCount(): int
+    {
+        return $this->participacoesRecebidas()->where('status', Participacao::STATUS_PENDENTE)->count();
     }
 
     /**

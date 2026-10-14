@@ -40,6 +40,16 @@
 
             <div class="flex flex-1 justify-end">
                 @auth
+                    @php $pendingInvites = auth()->user()->pendingInvitesCount(); @endphp
+                    <a
+                        href="{{ route('perfil', $pendingInvites ? ['aba' => 'notificacoes'] : [], absolute: false) }}"
+                        class="relative mr-2 shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold transition hover:text-white {{ request()->routeIs('perfil') ? 'text-indigo-100' : 'text-slate-300' }}"
+                    >
+                        Perfil
+                        @if ($pendingInvites)
+                            <span class="absolute -top-1.5 -right-1.5 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] leading-none font-bold text-white" title="Convites pendentes">{{ $pendingInvites }}</span>
+                        @endif
+                    </a>
                     <form method="POST" action="{{ route('logout', absolute: false) }}">
                         @csrf
                         <button
@@ -52,6 +62,23 @@
                 @endauth
             </div>
         </header>
+
+        @if (session('status') || $errors->any())
+            <div class="mx-auto mt-6 w-full max-w-2xl space-y-2 px-6" data-notice>
+                @if (session('status'))
+                    <div class="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">
+                        {{ session('status') }}
+                    </div>
+                @endif
+                @if ($errors->any())
+                    <div class="rounded-lg border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
+                        @foreach ($errors->all() as $message)
+                            <p>{{ $message }}</p>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @endif
     </x-slot:header>
 
     {{ $slot }}

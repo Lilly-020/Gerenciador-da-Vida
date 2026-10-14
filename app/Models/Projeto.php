@@ -20,6 +20,13 @@ class Projeto extends Model
     use HasFactory;
 
     /**
+     * What the project card needs loaded.
+     *
+     * @var array<int, string>
+     */
+    public const CARD_RELATIONS = ['tasks', 'user', 'participacoes.participant'];
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -37,9 +44,18 @@ class Projeto extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('owner', function (Builder $builder): void {
-            if (Auth::check()) {
-                $builder->where('user_id', Auth::id());
+            if (! Auth::check()) {
+                return;
             }
+
+            // Own projects, plus the ones the user accepted an invitation to.
+            $builder->where(fn (Builder $query) => $query
+                ->where('projetos.user_id', Auth::id())
+                ->orWhereIn('projetos.id', Participacao::query()
+                    ->select('projeto_id')
+                    ->where('tipo', Participacao::TIPO_PROJETO)
+                    ->where('participant_id', Auth::id())
+                    ->where('status', Participacao::STATUS_ACEITO)));
         });
 
         static::creating(function (Projeto $projeto): void {
@@ -66,6 +82,32 @@ class Projeto extends Model
     /**
      * Percentage of tasks completed, from 0 to 100.
      */
+    /**
+     * @return HasMany<Participacao, $this>
+     */
+    public function participacoes(): HasMany
+    {
+        return $this->hasMany(Participacao::class);
+    }
+
+    public function isOwnedBy(User $user): bool
+    {
+        return (int) $this->user_id === (int) $user->id;
+    }
+
+    /**
+     * The owner, or a participant who accepted an invitation that lets
+     * them edit.
+     */
+    public function canBeEditedBy(User $user): bool
+    {
+        return $this->isOwnedBy($user) || $this->participacoes->contains(
+            fn (Participacao $p): bool => (int) $p->participant_id === (int) $user->id
+                && $p->status === Participacao::STATUS_ACEITO
+                && $p->canEdit(),
+        );
+    }
+
     protected function progress(): Attribute
     {
         return Attribute::make(

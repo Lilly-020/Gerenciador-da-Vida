@@ -8,6 +8,8 @@ use App\Http\Controllers\FinanceiroDashboardController;
 use App\Http\Controllers\InvestimentoAporteController;
 use App\Http\Controllers\InvestimentoController;
 use App\Http\Controllers\LancamentoController;
+use App\Http\Controllers\ParticipacaoController;
+use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ProjetoController;
 use App\Http\Controllers\ProjetoTaskController;
 use App\Http\Controllers\SonhoController;
@@ -72,6 +74,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/tarefas', [TarefaController::class, 'store'])->name('tarefas.store');
     Route::patch('/tarefas/{tarefa}', [TarefaController::class, 'update'])->name('tarefas.update');
     Route::delete('/tarefas/{tarefa}', [TarefaController::class, 'destroy'])->name('tarefas.destroy');
+
+    Route::get('/perfil', [PerfilController::class, 'show'])->name('perfil');
+    Route::put('/perfil', [PerfilController::class, 'update'])->name('perfil.update');
+    Route::put('/perfil/senha', [PerfilController::class, 'updatePassword'])->name('perfil.senha');
+    Route::get('/usuarios/buscar', [PerfilController::class, 'buscar'])->name('usuarios.buscar');
+
+    Route::post('/participacoes', [ParticipacaoController::class, 'store'])->name('participacoes.store');
+    Route::post('/participacoes/{participacao}/aceitar', [ParticipacaoController::class, 'aceitar'])->name('participacoes.aceitar');
+    Route::post('/participacoes/{participacao}/recusar', [ParticipacaoController::class, 'recusar'])->name('participacoes.recusar');
+    Route::delete('/participacoes/{participacao}', [ParticipacaoController::class, 'destroy'])->name('participacoes.destroy');
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });

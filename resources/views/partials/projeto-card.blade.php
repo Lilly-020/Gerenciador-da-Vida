@@ -1,6 +1,9 @@
 @php
     $meta = $projeto->statusMeta();
     $visibleTasksCount = 3;
+    $isOwner = $projeto->isOwnedBy(auth()->user());
+    $canEdit = $projeto->canBeEditedBy(auth()->user());
+    $participacoes = $projeto->participacoes->where('status', '!=', \App\Models\Participacao::STATUS_RECUSADO);
 @endphp
 
 <div
@@ -16,17 +19,19 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2">
             <h2 class="wrap-break-word text-base font-semibold text-white sm:text-lg">{{ $projeto->title }}</h2>
-            <button
-                type="button"
-                data-edit-trigger
-                class="shrink-0 text-slate-500 transition hover:text-indigo-300"
-                aria-label="Editar projeto"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
-                    <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
-                    <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
-                </svg>
-            </button>
+            @if ($canEdit)
+                <button
+                    type="button"
+                    data-edit-trigger
+                    class="shrink-0 text-slate-500 transition hover:text-indigo-300"
+                    aria-label="Editar projeto"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+                        <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
+                        <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
+                    </svg>
+                </button>
+            @endif
         </div>
 
         <div class="flex shrink-0 items-center gap-4">
@@ -86,10 +91,12 @@
                                 type="checkbox"
                                 data-task-toggle-url="{{ route('projetos.tarefas.update', [$projeto, $task], absolute: false) }}"
                                 @checked($task->completed)
+                                @disabled(! $canEdit)
                                 class="h-4 w-4 shrink-0 rounded border-white/20 bg-slate-950/60 text-indigo-500 focus:ring-indigo-400/40"
                             >
                             <span class="wrap-break-word" data-task-title>{{ $task->title }}</span>
                         </label>
+                        @if ($canEdit)
                         <button
                             type="button"
                             data-task-edit-trigger
@@ -112,6 +119,7 @@
                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414Z" clip-rule="evenodd" />
                             </svg>
                         </button>
+                        @endif
                     </div>
                 @endforeach
             </div>
@@ -132,6 +140,7 @@
         @endif
     </div>
 
+    @if ($canEdit)
     <div class="mt-4">
         <button
             type="button"
@@ -167,7 +176,79 @@
             </div>
         </form>
     </div>
+    @endif
 
+    @if ($isOwner || $participacoes->isNotEmpty())
+        <div class="mt-4 border-t border-white/10 pt-3">
+            <p class="mb-1.5 text-xs font-medium tracking-wide text-slate-400 uppercase">Participantes</p>
+
+            @unless ($isOwner)
+                <p class="text-sm text-slate-300">
+                    Projeto de <span class="font-semibold text-white">{{ $projeto->user->handle() }}</span>
+                    <span class="text-xs text-slate-400">· {{ $canEdit ? 'você pode editar' : 'você só visualiza' }}</span>
+                </p>
+            @endunless
+
+            @if ($participacoes->isNotEmpty())
+                <ul class="space-y-1.5">
+                    @foreach ($participacoes as $participacao)
+                        <li class="flex items-center justify-between gap-2 text-sm text-slate-300">
+                            <span class="wrap-break-word min-w-0">
+                                {{ $participacao->participant->handle() }}
+                                <span class="text-xs text-slate-400">
+                                    · {{ \App\Models\Participacao::PERMISSIONS[$participacao->permission] }}
+                                    @if ($participacao->status === \App\Models\Participacao::STATUS_PENDENTE)
+                                        · <span class="text-amber-300">aguardando aceitar</span>
+                                    @endif
+                                </span>
+                            </span>
+                            @if ($isOwner)
+                                <form method="POST" action="{{ route('participacoes.destroy', $participacao, absolute: false) }}">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="shrink-0 text-xs text-slate-500 transition hover:text-rose-400" aria-label="Remover participante">Remover</button>
+                                </form>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+
+            @if ($isOwner)
+                <form method="POST" action="{{ route('participacoes.store', absolute: false) }}" class="mt-2 flex flex-wrap items-center gap-2">
+                    @csrf
+                    <input type="hidden" name="tipo" value="projeto">
+                    <input type="hidden" name="projeto_id" value="{{ $projeto->id }}">
+                    <input
+                        type="text"
+                        name="apelido"
+                        required
+                        maxlength="31"
+                        autocapitalize="none"
+                        autocomplete="off"
+                        list="apelido-sugestoes"
+                        data-apelido-search
+                        placeholder="Apelido de quem convidar"
+                        class="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
+                    >
+                    <select
+                        name="permission"
+                        aria-label="Permissão"
+                        class="rounded-lg border border-white/10 bg-slate-950/60 px-2 py-2 text-sm text-white outline-none focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
+                    >
+                        @foreach (\App\Models\Participacao::PERMISSIONS as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="shrink-0 rounded-lg bg-indigo-500/90 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500">
+                        Convidar
+                    </button>
+                </form>
+            @endif
+        </div>
+    @endif
+
+    @if ($isOwner)
     <div class="mt-4 flex items-center justify-end border-t border-white/10 pt-3">
         <button
             type="button"
@@ -178,4 +259,5 @@
             Excluir projeto
         </button>
     </div>
+    @endif
 </div>

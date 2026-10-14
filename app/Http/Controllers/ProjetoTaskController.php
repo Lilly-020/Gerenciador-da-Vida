@@ -17,6 +17,8 @@ class ProjetoTaskController extends Controller
      */
     public function store(StoreProjetoTaskRequest $request, Projeto $projeto): RedirectResponse|JsonResponse
     {
+        abort_unless($projeto->canBeEditedBy($request->user()), 403, 'Você só pode visualizar este projeto.');
+
         $projeto->tasks()->create($request->validated());
 
         return $this->respondWith($request, $projeto);
@@ -29,6 +31,8 @@ class ProjetoTaskController extends Controller
     {
         abort_unless($tarefa->projeto_id === $projeto->id, 404);
 
+        abort_unless($projeto->canBeEditedBy($request->user()), 403, 'Você só pode visualizar este projeto.');
+
         $tarefa->update($request->validated());
 
         return $this->respondWith($request, $projeto);
@@ -40,6 +44,8 @@ class ProjetoTaskController extends Controller
     public function destroy(Request $request, Projeto $projeto, ProjetoTask $tarefa): RedirectResponse|JsonResponse
     {
         abort_unless($tarefa->projeto_id === $projeto->id, 404);
+
+        abort_unless($projeto->canBeEditedBy($request->user()), 403, 'Você só pode visualizar este projeto.');
 
         $tarefa->delete();
 
@@ -56,10 +62,10 @@ class ProjetoTaskController extends Controller
             return back();
         }
 
-        $projetos = $request->user()->projetos()->with('tasks')->latest()->get();
+        $projetos = Projeto::with('tasks')->latest()->get();
 
         return response()->json([
-            'card' => view('partials.projeto-card', ['projeto' => $projeto->fresh('tasks')])->render(),
+            'card' => view('partials.projeto-card', ['projeto' => $projeto->fresh(Projeto::CARD_RELATIONS)])->render(),
             'stats' => view('partials.projeto-stats', ['stats' => Projeto::summarize($projetos)])->render(),
         ]);
     }
