@@ -26,7 +26,7 @@ function ensureRoot() {
         <div class="flex min-h-full items-center justify-center px-4 py-8">
             <div class="modal-panel w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900/95 p-6 shadow-2xl shadow-black/40">
                 <p data-dialog-message class="wrap-break-word text-sm leading-relaxed text-slate-200"></p>
-                <div data-dialog-actions class="mt-5 flex justify-end gap-2"></div>
+                <div data-dialog-actions class="mt-5 flex flex-wrap justify-end gap-2"></div>
             </div>
         </div>
     `;
@@ -110,6 +110,34 @@ export function confirmDialog(message, { confirmLabel = 'Confirmar', cancelLabel
         settle = resolve;
         open(message, [cancelButton, confirmButton]);
         confirmButton.focus();
+    });
+}
+
+/**
+ * Like confirmDialog, but with several ways to go ahead. Resolves to the
+ * chosen option's `value`, or null when cancelled.
+ *
+ * @param {string} message
+ * @param {Array<{label: string, value: string, danger?: boolean}>} options
+ * @param {{cancelLabel?: string}} [settings]
+ */
+export function choiceDialog(message, options, { cancelLabel = 'Cancelar' } = {}) {
+    return new Promise((resolve) => {
+        const cancelButton = button(cancelLabel, SECONDARY_BUTTON);
+        const optionButtons = options.map(({ label, value, danger = false }) => {
+            const optionButton = button(label, danger ? DANGER_BUTTON : PRIMARY_BUTTON);
+
+            optionButton.addEventListener('click', () => resolveWith(value));
+
+            return optionButton;
+        });
+
+        cancelButton.addEventListener('click', () => resolveWith(false));
+
+        resolveWith(false);
+        settle = (value) => resolve(value === false ? null : value);
+        open(message, [cancelButton, ...optionButtons]);
+        optionButtons[0]?.focus();
     });
 }
 

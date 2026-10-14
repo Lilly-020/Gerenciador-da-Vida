@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 
-#[Fillable(['title', 'date', 'completed'])]
+#[Fillable(['title', 'date', 'completed', 'series_id'])]
 class Tarefa extends Model
 {
     /** @use HasFactory<TarefaFactory> */
@@ -21,6 +21,19 @@ class Tarefa extends Model
         'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
     ];
+
+    /**
+     * How far ahead a repetition may be created, in days.
+     */
+    public const MAX_REPEAT_DAYS = 366;
+
+    /**
+     * Weekday chips in the order the calendar shows them (Monday first),
+     * keyed by Carbon's dayOfWeek (0 = Sunday).
+     *
+     * @var array<int, string>
+     */
+    public const WEEKDAY_CHIPS = [1 => 'Seg', 2 => 'Ter', 3 => 'Qua', 4 => 'Qui', 5 => 'Sex', 6 => 'Sáb', 0 => 'Dom'];
 
     private const WEEKDAYS = [
         'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado',

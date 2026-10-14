@@ -1,5 +1,5 @@
 import { htmlToElement, postJson, setupInlineTaskEdit } from './board';
-import { alertDialog, confirmDialog } from './dialog';
+import { alertDialog, choiceDialog, confirmDialog } from './dialog';
 
 const RING_BASE_CLASSES = ['ring-1', 'ring-inset'];
 const SELECTED_CLASSES = ['bg-indigo-500/25', 'text-indigo-100', 'ring-indigo-400/40'];
@@ -186,18 +186,48 @@ export function setupTarefas() {
             return;
         }
 
-        const confirmed = await confirmDialog('Excluir esta tarefa?', { confirmLabel: 'Excluir', danger: true });
+        // A repeated task can go alone or take the rest of its repetition
+        // with it; that touches other days' calendar dots, so reload.
+        const isSeries = 'taskSeries' in deleteButton.dataset;
+        const scope = isSeries
+            ? await choiceDialog('Esta tarefa se repete. O que você quer excluir?', [
+                  { label: 'Só esta', value: 'one', danger: true },
+                  { label: 'Esta e as próximas', value: 'series', danger: true },
+              ])
+            : (await confirmDialog('Excluir esta tarefa?', { confirmLabel: 'Excluir', danger: true })) && 'one';
 
-        if (!confirmed) {
+        if (!scope) {
             return;
         }
 
         try {
-            const data = await postJson(deleteButton.dataset.deleteTaskUrl, 'DELETE');
+            const url = deleteButton.dataset.deleteTaskUrl;
+            const data = await postJson(scope === 'series' ? `${url}?scope=series` : url, 'DELETE');
+
+            if (scope === 'series') {
+                window.location.reload();
+
+                return;
+            }
+
             applyDayUpdate(data);
         } catch (error) {
             alertDialog(error.message);
         }
+    });
+
+    page.addEventListener('click', (event) => {
+        const preset = event.target.closest('[data-repeat-preset]');
+
+        if (!preset) {
+            return;
+        }
+
+        const weekdays = preset.dataset.repeatPreset.split(',');
+
+        preset.closest('[data-repeat]').querySelectorAll('input[name="weekdays[]"]').forEach((checkbox) => {
+            checkbox.checked = weekdays.includes(checkbox.value);
+        });
     });
 
     setupInlineTaskEdit(page, applyDayUpdate);
@@ -222,7 +252,29 @@ export function setupTarefas() {
         submitButton.disabled = true;
 
         try {
-            const data = await postJson(form.action, 'POST', Object.fromEntries(new FormData(form)));
+            const formData = new FormData(form);
+            const repeats = form.querySelector('[data-repeat]')?.open;
+            const payload = { title, date: formData.get('date') };
+
+            if (repeats) {
+                payload.weekdays = formData.getAll('weekdays[]');
+                payload.repeat_until = formData.get('repeat_until');
+
+                if (payload.weekdays.length === 0) {
+                    throw new Error('Escolha pelo menos um dia da semana para repetir.');
+                }
+            }
+
+            const data = await postJson(form.action, 'POST', payload);
+
+            // A repetition adds tasks to other days too, whose calendar
+            // dots only a full render refreshes.
+            if (repeats) {
+                window.location.reload();
+
+                return;
+            }
+
             applyDayUpdate(data);
         } catch (error) {
             alertDialog(error.message);

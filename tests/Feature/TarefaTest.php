@@ -216,6 +216,76 @@ class TarefaTest extends TestCase
         $this->assertFalse($tarefa->completed);
     }
 
+    public function test_a_task_can_repeat_on_chosen_weekdays(): void
+    {
+        $user = User::factory()->create();
+
+        // 2026-10-12 is a Monday; repeat on Mondays and Wednesdays for two weeks.
+        $response = $this->actingAs($user)->postJson('/tarefas', [
+            'title' => 'Academia',
+            'date' => '2026-10-12',
+            'weekdays' => [1, 3],
+            'repeat_until' => '2026-10-25',
+        ]);
+
+        $response->assertOk();
+
+        $tarefas = Tarefa::where('title', 'Academia')->orderBy('date')->get();
+        $this->assertSame(
+            ['2026-10-12', '2026-10-14', '2026-10-19', '2026-10-21'],
+            $tarefas->map(fn (Tarefa $t): string => $t->date->toDateString())->all(),
+        );
+        $this->assertCount(1, $tarefas->pluck('series_id')->unique());
+        $this->assertNotNull($tarefas->first()->series_id);
+    }
+
+    public function test_a_task_can_repeat_every_day_of_the_week(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson('/tarefas', [
+            'title' => 'Ler', 'date' => '2026-10-12', 'weekdays' => [0, 1, 2, 3, 4, 5, 6], 'repeat_until' => '2026-10-18',
+        ])->assertOk();
+
+        $this->assertSame(7, Tarefa::where('title', 'Ler')->count());
+    }
+
+    public function test_a_repetition_needs_an_end_date_within_a_year_and_a_matching_day(): void
+    {
+        $user = User::factory()->create();
+        $base = ['title' => 'Ler', 'date' => '2026-10-12', 'weekdays' => [1]];
+
+        $this->actingAs($user)->postJson('/tarefas', $base)->assertJsonValidationErrors('repeat_until');
+        $this->actingAs($user)->postJson('/tarefas', [...$base, 'repeat_until' => '2028-01-01'])
+            ->assertJsonValidationErrors('repeat_until');
+        // Tuesday to Thursday contains no Monday.
+        $this->actingAs($user)->postJson('/tarefas', [...$base, 'date' => '2026-10-13', 'repeat_until' => '2026-10-15'])
+            ->assertJsonValidationErrors('weekdays');
+
+        $this->assertSame(0, Tarefa::count());
+    }
+
+    public function test_deleting_a_repeated_task_can_remove_it_alone_or_with_the_following_ones(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->postJson('/tarefas', [
+            'title' => 'Ler', 'date' => '2026-10-12', 'weekdays' => [0, 1, 2, 3, 4, 5, 6], 'repeat_until' => '2026-10-16',
+        ]);
+        $other = Tarefa::factory()->for($user)->create(['date' => '2026-10-16']);
+        $byDate = fn (string $date): Tarefa => Tarefa::where('title', 'Ler')->whereDate('date', $date)->firstOrFail();
+
+        $this->actingAs($user)->deleteJson('/tarefas/'.$byDate('2026-10-13')->id)->assertOk();
+        $this->assertSame(4, Tarefa::where('title', 'Ler')->count());
+
+        $this->actingAs($user)->deleteJson('/tarefas/'.$byDate('2026-10-15')->id.'?scope=series')->assertOk();
+
+        $this->assertSame(
+            ['2026-10-12', '2026-10-14'],
+            Tarefa::where('title', 'Ler')->orderBy('date')->get()->map(fn (Tarefa $t): string => $t->date->toDateString())->all(),
+        );
+        $this->assertModelExists($other);
+    }
+
     public function test_creating_a_task_requires_a_title_and_date(): void
     {
         $user = User::factory()->create();

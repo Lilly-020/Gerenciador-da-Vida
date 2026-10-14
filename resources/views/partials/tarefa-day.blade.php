@@ -32,6 +32,9 @@
                             {{ $task->title }}
                         </span>
                     </label>
+                    @if ($task->series_id)
+                        <span class="shrink-0 text-xs text-indigo-300" title="Tarefa repetida">↻</span>
+                    @endif
                     <button
                         type="button"
                         data-task-edit-trigger
@@ -47,6 +50,7 @@
                     <button
                         type="button"
                         data-delete-task-url="{{ route('tarefas.destroy', $task, absolute: false) }}"
+                        @if ($task->series_id) data-task-series @endif
                         class="shrink-0 text-slate-500 transition hover:text-rose-400"
                         aria-label="Excluir tarefa"
                     >
@@ -75,5 +79,51 @@
                 Adicionar
             </button>
         </div>
+
+        <details class="group mt-2" data-repeat>
+            <summary class="cursor-pointer list-none text-xs text-slate-400 transition hover:text-indigo-300 [&::-webkit-details-marker]:hidden">
+                <span class="inline-block transition group-open:rotate-90">›</span>
+                Repetir esta tarefa
+            </summary>
+
+            <div class="mt-2 space-y-3 rounded-lg border border-white/10 bg-slate-950/40 p-3">
+                <div>
+                    <p class="mb-1.5 text-xs font-medium text-slate-300">Dias da semana</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach (\App\Models\Tarefa::WEEKDAY_CHIPS as $weekday => $label)
+                            <label class="cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="weekdays[]"
+                                    value="{{ $weekday }}"
+                                    class="peer sr-only"
+                                >
+                                <span class="inline-block rounded-full border border-white/10 px-2.5 py-1 text-xs text-slate-400 transition peer-checked:border-indigo-400/50 peer-checked:bg-indigo-500/25 peer-checked:text-indigo-100 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-400/40">
+                                    {{ $label }}
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-3 text-xs text-indigo-300">
+                        <button type="button" data-repeat-preset="1,2,3,4,5,6,0" class="transition hover:text-indigo-200">Semana toda</button>
+                        <button type="button" data-repeat-preset="1,2,3,4,5" class="transition hover:text-indigo-200">Dias úteis</button>
+                        <button type="button" data-repeat-preset="6,0" class="transition hover:text-indigo-200">Fim de semana</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="tarefa-repeat-until" class="mb-1.5 block text-xs font-medium text-slate-300">Repetir até</label>
+                    <input
+                        id="tarefa-repeat-until"
+                        type="date"
+                        name="repeat_until"
+                        value="{{ $date->copy()->addWeeks(4)->toDateString() }}"
+                        min="{{ $date->toDateString() }}"
+                        max="{{ $date->copy()->addDays(\App\Models\Tarefa::MAX_REPEAT_DAYS)->toDateString() }}"
+                        class="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20 scheme-dark"
+                    >
+                </div>
+            </div>
+        </details>
     </form>
 </div>

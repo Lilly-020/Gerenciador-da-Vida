@@ -10,7 +10,10 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class TarefaController extends Controller
@@ -59,13 +62,39 @@ class TarefaController extends Controller
     }
 
     /**
-     * Add a new task for a given day.
+     * Add a new task for a given day — or, when weekdays are chosen, one
+     * task on each of those weekdays from that day through `repeat_until`.
      */
     public function store(StoreTarefaRequest $request): RedirectResponse|JsonResponse
     {
-        $tarefa = $request->user()->tarefas()->create($request->validated());
+        $data = $request->validated();
+        $date = Carbon::parse($data['date'])->startOfDay();
+        $weekdays = array_map(intval(...), $data['weekdays'] ?? []);
 
-        return $this->respondWith($request, $tarefa->date);
+        if ($weekdays === []) {
+            $request->user()->tarefas()->create(Arr::only($data, ['title', 'date']));
+
+            return $this->respondWith($request, $date);
+        }
+
+        $dates = collect($date->daysUntil(Carbon::parse($data['repeat_until'])->startOfDay()))
+            ->filter(fn (Carbon $day): bool => in_array($day->dayOfWeek, $weekdays, true));
+
+        if ($dates->isEmpty()) {
+            throw ValidationException::withMessages([
+                'weekdays' => 'Nenhum dos dias escolhidos cai dentro desse período.',
+            ]);
+        }
+
+        $seriesId = (string) Str::uuid();
+
+        $dates->each(fn (Carbon $day) => $request->user()->tarefas()->create([
+            'title' => $data['title'],
+            'date' => $day->toDateString(),
+            'series_id' => $seriesId,
+        ]));
+
+        return $this->respondWith($request, $date);
     }
 
     /**
@@ -79,12 +108,21 @@ class TarefaController extends Controller
     }
 
     /**
-     * Delete a task.
+     * Delete a task. With `?scope=series`, also deletes the later tasks of
+     * the same repetition (earlier ones are history and stay).
      */
     public function destroy(Request $request, Tarefa $tarefa): RedirectResponse|JsonResponse
     {
         $date = $tarefa->date->copy();
-        $tarefa->delete();
+
+        if ($request->query('scope') === 'series' && $tarefa->series_id) {
+            $request->user()->tarefas()
+                ->where('series_id', $tarefa->series_id)
+                ->where('date', '>=', $date->toDateString())
+                ->delete();
+        } else {
+            $tarefa->delete();
+        }
 
         return $this->respondWith($request, $date);
     }
