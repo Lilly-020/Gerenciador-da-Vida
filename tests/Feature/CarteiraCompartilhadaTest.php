@@ -213,6 +213,32 @@ class CarteiraCompartilhadaTest extends TestCase
         $this->assertSame(0, Lancamento::withoutGlobalScopes()->count());
     }
 
+    public function test_when_the_owner_sets_their_own_part_the_parts_must_add_up_to_the_total(): void
+    {
+        $this->share();
+        $payload = [
+            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10, 'periodicity' => 'mensal',
+            'starts_on' => today()->startOfMonth()->toDateString(),
+        ];
+
+        $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
+            ...$payload, "parte_u{$this->owner->id}" => 60, "parte_u{$this->guest->id}" => 60,
+        ])->assertJsonValidationErrors('partes');
+        $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
+            ...$payload, "parte_u{$this->owner->id}" => 30, "parte_u{$this->guest->id}" => 20,
+        ])->assertJsonValidationErrors('partes');
+
+        $response = $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
+            ...$payload, "parte_u{$this->owner->id}" => 30, "parte_u{$this->guest->id}" => 30,
+        ]);
+
+        $response->assertOk();
+        $this->assertStringContainsString('Fica para @lilly', $response->json('list'));
+        // The edit form gets both parts back, the owner's included.
+        $this->assertStringContainsString("data-parte-u{$this->owner->id}=\"30\"", $response->json('list'));
+        $this->assertStringContainsString("data-parte-u{$this->guest->id}=\"30\"", $response->json('list'));
+    }
+
     public function test_what_is_not_given_to_a_participant_stays_with_the_owner(): void
     {
         $this->share();

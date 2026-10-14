@@ -102,9 +102,14 @@
                     data-starts-on="{{ $custoFixo->starts_on->toDateString() }}"
                     data-ends-on="{{ $custoFixo->ends_on?->toDateString() }}"
                     data-notes="{{ $values['notes'] }}"
-                    @foreach ($membros->skip(1) as $membro)
-                        data-parte-u{{ $membro->id }}="{{ $values['partes'][$membro->id] ?? '' }}"
-                    @endforeach
+                    @if ($values['partes'])
+                        {{-- The owner's part is whatever the others don't take. --}}
+                        @foreach ($membros as $membro)
+                            data-parte-u{{ $membro->id }}="{{ $loop->first
+                                ? round($values['amount'] - collect($values['partes'])->except($membro->id)->sum(), 2)
+                                : ($values['partes'][$membro->id] ?? '') }}"
+                        @endforeach
+                    @endif
                     data-status="{{ $custoFixo->status }}"
                     class="text-slate-500 transition hover:text-indigo-300"
                     aria-label="Editar"

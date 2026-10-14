@@ -82,9 +82,11 @@
                     data-subcategory="{{ $lancamento->subcategory }}"
                     data-payment-method="{{ $lancamento->payment_method }}"
                     data-notes="{{ $lancamento->notes }}"
-                    @foreach ($membros->skip(1) as $membro)
-                        data-parte-u{{ $membro->id }}="{{ $lancamento->partes->firstWhere('user_id', $membro->id)?->amount }}"
-                    @endforeach
+                    @if ($lancamento->partes->isNotEmpty())
+                        @foreach ($membros as $membro)
+                            data-parte-u{{ $membro->id }}="{{ $lancamento->shareOf($membro) ?: '' }}"
+                        @endforeach
+                    @endif
                     class="text-slate-500 transition hover:text-indigo-300"
                     aria-label="Editar"
                 >

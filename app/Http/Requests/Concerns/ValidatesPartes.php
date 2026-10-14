@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Concerns;
 
 use App\Support\Carteira;
+use Illuminate\Support\Number;
 use Illuminate\Validation\Validator;
 
 /**
@@ -62,8 +63,16 @@ trait ValidatesPartes
             return;
         }
 
-        if (array_sum($partes) - (float) $amount > 0.009) {
-            $validator->errors()->add('partes', 'A soma das partes não pode passar do valor total.');
+        $sum = array_sum($partes);
+        $total = (float) $amount;
+        $money = fn (float $value): string => Number::currency($value, 'BRL', 'pt_BR');
+
+        // With the owner's part spelled out nothing is left to be "the
+        // rest", so the parts have to account for the whole amount.
+        if (isset($partes[Carteira::ownerId()]) && abs($sum - $total) > 0.009) {
+            $validator->errors()->add('partes', "As partes somam {$money($sum)}, mas o valor total é {$money($total)}.");
+        } elseif ($sum - $total > 0.009) {
+            $validator->errors()->add('partes', "As partes somam {$money($sum)}, mais que o valor total de {$money($total)}.");
         }
     }
 }

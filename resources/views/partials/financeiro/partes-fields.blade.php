@@ -1,13 +1,14 @@
 {{--
     "Dividir com participantes" fields for a lançamento / custo fixo form:
-    one amount per participant of the carteira (its owner keeps the rest).
+    one amount per member of the carteira, adding up to the form's total
+    (the owner's may be left blank to mean "the rest").
     Posted flat as parte_u{userId} — see ValidatesPartes.
 --}}
 @if ($membros->count() > 1)
     <div>
         <p class="mb-1.5 block text-sm font-medium text-slate-300">Participantes (opcional)</p>
         <div class="grid grid-cols-2 gap-3">
-            @foreach ($membros->skip(1) as $membro)
+            @foreach ($membros as $membro)
                 <div>
                     <label for="{{ $prefix }}-parte-{{ $membro->id }}" class="mb-1 block text-xs text-slate-400">
                         Parte de {{ $membro->handle() }}
@@ -25,7 +26,8 @@
             @endforeach
         </div>
         <p class="mt-1.5 text-xs text-slate-500">
-            Quanto do valor {{ $isEntrada ? 'vai para' : 'é pago por' }} cada participante. O restante fica com {{ $membros->first()->handle() }}; deixe em branco para não dividir.
+            Quanto do valor acima {{ $isEntrada ? 'vai para' : 'é pago por' }} cada um — as partes somam o valor total.
+            Deixando a de {{ $membros->first()->handle() }} em branco, ela fica com o restante; deixe tudo em branco para não dividir.
         </p>
     </div>
 @endif
