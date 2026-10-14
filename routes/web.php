@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\CarteiraController;
 use App\Http\Controllers\CursoController;
 use App\Http\Controllers\CursoFileController;
 use App\Http\Controllers\CustoFixoController;
@@ -47,27 +48,37 @@ Route::middleware('auth')->group(function () {
     Route::post('/cursos/{curso}/arquivos', [CursoFileController::class, 'store'])->name('cursos.arquivos.store');
     Route::delete('/cursos/{curso}/arquivos/{arquivo}', [CursoFileController::class, 'destroy'])->name('cursos.arquivos.destroy');
 
-    Route::get('/financeiro', [FinanceiroDashboardController::class, 'index'])->name('financeiro');
+    Route::get('/financeiro', [FinanceiroDashboardController::class, 'index'])->name('financeiro')->middleware('carteira:dashboard');
 
     Route::prefix('financeiro')->name('financeiro.')->group(function () {
-        Route::get('/entradas', [LancamentoController::class, 'entradas'])->name('entradas');
-        Route::get('/saidas', [LancamentoController::class, 'saidas'])->name('saidas');
-        Route::post('/lancamentos', [LancamentoController::class, 'store'])->name('lancamentos.store');
-        Route::patch('/lancamentos/{lancamento}', [LancamentoController::class, 'update'])->name('lancamentos.update');
-        Route::delete('/lancamentos/{lancamento}', [LancamentoController::class, 'destroy'])->name('lancamentos.destroy');
+        Route::get('/participantes', [CarteiraController::class, 'participantes'])->name('participantes');
+        Route::post('/carteira', [CarteiraController::class, 'trocar'])->name('carteira');
 
-        Route::get('/custos-fixos', [CustoFixoController::class, 'index'])->name('custos-fixos');
-        Route::post('/custos-fixos', [CustoFixoController::class, 'store'])->name('custos-fixos.store');
-        Route::put('/custos-fixos/{custoFixo}', [CustoFixoController::class, 'update'])->name('custos-fixos.update');
-        Route::post('/custos-fixos/{custoFixo}/pagar', [CustoFixoController::class, 'pagar'])->name('custos-fixos.pagar');
-        Route::delete('/custos-fixos/{custoFixo}', [CustoFixoController::class, 'destroy'])->name('custos-fixos.destroy');
+        Route::get('/entradas', [LancamentoController::class, 'entradas'])->name('entradas')->middleware('carteira:entradas');
+        Route::get('/saidas', [LancamentoController::class, 'saidas'])->name('saidas')->middleware('carteira:saidas');
 
-        Route::get('/investimentos', [InvestimentoController::class, 'index'])->name('investimentos');
-        Route::post('/investimentos', [InvestimentoController::class, 'store'])->name('investimentos.store');
-        Route::put('/investimentos/{investimento}', [InvestimentoController::class, 'update'])->name('investimentos.update');
-        Route::delete('/investimentos/{investimento}', [InvestimentoController::class, 'destroy'])->name('investimentos.destroy');
-        Route::post('/investimentos/{investimento}/aportes', [InvestimentoAporteController::class, 'store'])->name('investimentos.aportes.store');
-        Route::delete('/investimentos/{investimento}/aportes/{aporte}', [InvestimentoAporteController::class, 'destroy'])->name('investimentos.aportes.destroy');
+        Route::middleware('carteira:lancamentos')->group(function () {
+            Route::post('/lancamentos', [LancamentoController::class, 'store'])->name('lancamentos.store');
+            Route::patch('/lancamentos/{lancamento}', [LancamentoController::class, 'update'])->name('lancamentos.update');
+            Route::delete('/lancamentos/{lancamento}', [LancamentoController::class, 'destroy'])->name('lancamentos.destroy');
+        });
+
+        Route::middleware('carteira:custos_fixos')->group(function () {
+            Route::get('/custos-fixos', [CustoFixoController::class, 'index'])->name('custos-fixos');
+            Route::post('/custos-fixos', [CustoFixoController::class, 'store'])->name('custos-fixos.store');
+            Route::put('/custos-fixos/{custoFixo}', [CustoFixoController::class, 'update'])->name('custos-fixos.update');
+            Route::post('/custos-fixos/{custoFixo}/pagar', [CustoFixoController::class, 'pagar'])->name('custos-fixos.pagar');
+            Route::delete('/custos-fixos/{custoFixo}', [CustoFixoController::class, 'destroy'])->name('custos-fixos.destroy');
+        });
+
+        Route::middleware('carteira:investimentos')->group(function () {
+            Route::get('/investimentos', [InvestimentoController::class, 'index'])->name('investimentos');
+            Route::post('/investimentos', [InvestimentoController::class, 'store'])->name('investimentos.store');
+            Route::put('/investimentos/{investimento}', [InvestimentoController::class, 'update'])->name('investimentos.update');
+            Route::delete('/investimentos/{investimento}', [InvestimentoController::class, 'destroy'])->name('investimentos.destroy');
+            Route::post('/investimentos/{investimento}/aportes', [InvestimentoAporteController::class, 'store'])->name('investimentos.aportes.store');
+            Route::delete('/investimentos/{investimento}/aportes/{aporte}', [InvestimentoAporteController::class, 'destroy'])->name('investimentos.aportes.destroy');
+        });
     });
 
     Route::get('/tarefas', [TarefaController::class, 'index'])->name('tarefas');

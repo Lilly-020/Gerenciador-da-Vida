@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreInvestimentoRequest;
 use App\Http\Requests\UpdateInvestimentoRequest;
 use App\Models\Investimento;
+use App\Support\Carteira;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ class InvestimentoController extends Controller
      */
     public function index(Request $request): View
     {
-        $investimentos = $request->user()->investimentos()->with('aportes')->orderByDesc('created_at')->get();
+        $investimentos = Carteira::owner()->investimentos()->with('aportes')->orderByDesc('created_at')->get();
 
         return view('pages.financeiro.investimentos', [
             'investimentos' => $investimentos,
@@ -32,7 +33,7 @@ class InvestimentoController extends Controller
      */
     public function store(StoreInvestimentoRequest $request): RedirectResponse|JsonResponse
     {
-        $request->user()->investimentos()->create($request->validated());
+        Carteira::owner()->investimentos()->create($request->validated());
 
         return back();
     }

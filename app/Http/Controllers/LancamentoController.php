@@ -6,11 +6,13 @@ use App\Http\Controllers\Concerns\ResolvesMonth;
 use App\Http\Requests\StoreLancamentoRequest;
 use App\Http\Requests\UpdateLancamentoRequest;
 use App\Models\Lancamento;
+use App\Support\Carteira;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\View\View;
 
 class LancamentoController extends Controller
@@ -39,11 +41,14 @@ class LancamentoController extends Controller
      */
     public function store(StoreLancamentoRequest $request): RedirectResponse|JsonResponse
     {
-        $data = $request->validated();
+        $data = Arr::except($request->validated(), 'partes');
         $data['is_recurring_template'] = $request->boolean('is_recurring_template');
         $data['status'] = Lancamento::STATUS_REALIZADO;
 
-        $lancamento = $request->user()->lancamentos()->create($data);
+        $this->ensureSectionShared($data['type']);
+
+        $lancamento = Carteira::owner()->lancamentos()->create($data);
+        $lancamento->syncPartes($request->input('partes', []));
 
         if ($lancamento->is_recurring_template) {
             $lancamento->generateUpcomingOccurrences();
@@ -57,7 +62,13 @@ class LancamentoController extends Controller
      */
     public function update(UpdateLancamentoRequest $request, Lancamento $lancamento): RedirectResponse|JsonResponse
     {
-        $lancamento->update($request->validated());
+        $this->ensureSectionShared($lancamento->type);
+
+        $lancamento->update(Arr::except($request->validated(), 'partes'));
+
+        if ($request->has('partes')) {
+            $lancamento->syncPartes($request->input('partes'));
+        }
 
         return $this->respondWith($request, $lancamento->type);
     }
@@ -68,9 +79,23 @@ class LancamentoController extends Controller
     public function destroy(Request $request, Lancamento $lancamento): RedirectResponse|JsonResponse
     {
         $type = $lancamento->type;
+        $this->ensureSectionShared($type);
         $lancamento->delete();
 
         return $this->respondWith($request, $type);
+    }
+
+    /**
+     * The write routes serve both types, so the route middleware can only
+     * check "Entradas or Saídas"; this pins it to the lançamento's own.
+     */
+    private function ensureSectionShared(string $type): void
+    {
+        abort_unless(
+            Carteira::canSee($type === Lancamento::TYPE_ENTRADA ? 'entradas' : 'saidas'),
+            403,
+            'Esta seção não foi compartilhada com você.',
+        );
     }
 
     private function list(Request $request, string $type): View
@@ -87,6 +112,7 @@ class LancamentoController extends Controller
             'month' => $month,
             'mes' => $this->monthParam($month),
             'meses' => $this->monthOptions($request, $type, $month),
+            'membros' => Carteira::members(),
         ]);
     }
 
@@ -105,6 +131,7 @@ class LancamentoController extends Controller
                 'lancamentos' => $lancamentos,
                 'month' => $month,
                 'mes' => $this->monthParam($month),
+                'membros' => Carteira::members(),
             ])->render(),
             'totals' => view('partials.financeiro.lancamentos-totals', [
                 'totalPrevisto' => $lancamentos->where('status', Lancamento::STATUS_PREVISTO)->sum('amount'),
@@ -118,7 +145,8 @@ class LancamentoController extends Controller
      */
     private function lancamentosFor(Request $request, string $type, ?Carbon $month): Collection
     {
-        return $request->user()->lancamentos()
+        return Carteira::owner()->lancamentos()
+            ->with('partes.user')
             ->where('type', $type)
             ->when($month, fn ($query) => $query->whereBetween(
                 'date',
@@ -138,7 +166,7 @@ class LancamentoController extends Controller
      */
     private function monthOptions(Request $request, string $type, ?Carbon $month): array
     {
-        $keys = $request->user()->lancamentos()
+        $keys = Carteira::owner()->lancamentos()
             ->where('type', $type)
             ->toBase()
             ->pluck('date')

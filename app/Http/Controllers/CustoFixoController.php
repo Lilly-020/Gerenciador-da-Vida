@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesMonth;
 use App\Http\Requests\StoreCustoFixoRequest;
 use App\Http\Requests\UpdateCustoFixoRequest;
 use App\Models\CustoFixo;
+use App\Support\Carteira;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -32,7 +33,7 @@ class CustoFixoController extends Controller
      */
     public function store(StoreCustoFixoRequest $request): RedirectResponse|JsonResponse
     {
-        $request->user()->custoFixos()->create($request->validated());
+        Carteira::owner()->custoFixos()->create($request->validated());
 
         return $this->respondWith($request);
     }
@@ -103,7 +104,7 @@ class CustoFixoController extends Controller
     private function viewData(Request $request): array
     {
         $month = $this->viewedMonth($request);
-        $custoFixos = $request->user()->custoFixos()->with(['lancamentos', 'ajustes'])->orderBy('due_day')->get();
+        $custoFixos = Carteira::owner()->custoFixos()->with(['lancamentos', 'ajustes'])->orderBy('due_day')->get();
         $dueInMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
             ->filter(fn (CustoFixo $c): bool => $c->isDueIn($month));
 

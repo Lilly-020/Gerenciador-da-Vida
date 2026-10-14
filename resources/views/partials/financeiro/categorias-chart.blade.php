@@ -4,7 +4,7 @@
 
 <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-lg shadow-black/20 sm:p-5">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 class="text-sm font-semibold text-white">Por categoria</h3>
+        <h3 class="text-sm font-semibold text-white">{{ $title ?? 'Por categoria' }}</h3>
         <div class="flex items-center gap-3 text-[11px] text-slate-400">
             <span class="inline-flex items-center gap-1">
                 <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>

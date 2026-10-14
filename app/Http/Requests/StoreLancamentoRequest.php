@@ -2,12 +2,16 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesPartes;
 use App\Models\Lancamento;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreLancamentoRequest extends FormRequest
 {
+    use ValidatesPartes;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -35,7 +39,16 @@ class StoreLancamentoRequest extends FormRequest
             'is_recurring_template' => ['nullable', 'boolean'],
             'recurrence_period' => ['required_if:is_recurring_template,1', 'nullable', Rule::in(Lancamento::RECURRENCE_PERIODS)],
             'recurrence_day' => ['required_if:is_recurring_template,1', 'nullable', 'integer', 'min:1', 'max:31'],
+            ...$this->partesRules(),
         ];
+    }
+
+    /**
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [fn (Validator $validator) => $this->validatePartes($validator, $this->input('amount'))];
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Carteira;
 use Carbon\Carbon;
 use Database\Factories\InvestimentoFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -61,12 +62,12 @@ class Investimento extends Model
     {
         static::addGlobalScope('owner', function (Builder $builder): void {
             if (Auth::check()) {
-                $builder->where('user_id', Auth::id());
+                $builder->where('user_id', Carteira::ownerId());
             }
         });
 
         static::creating(function (Investimento $investimento): void {
-            $investimento->user_id ??= Auth::id();
+            $investimento->user_id ??= Carteira::ownerId();
         });
     }
 

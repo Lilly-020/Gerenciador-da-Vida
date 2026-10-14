@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Investimento;
 use App\Models\Lancamento;
+use App\Support\Carteira;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -26,11 +27,12 @@ class FinanceiroDashboardController extends Controller
 
     public function index(Request $request): View
     {
-        $user = $request->user();
+        $user = Carteira::owner();
         $period = $request->query('period', 'mes_atual');
         [$start, $end] = $this->resolvePeriod($period, $request);
 
         $lancamentos = $user->lancamentos()
+            ->with('partes')
             ->where('status', Lancamento::STATUS_REALIZADO)
             ->whereBetween('date', Lancamento::dateRange($start, $end))
             ->get();
@@ -65,6 +67,11 @@ class FinanceiroDashboardController extends Controller
             'cards' => $cards,
             'despesasPorCategoria' => $this->despesasPorCategoria($lancamentos),
             'totaisPorCategoria' => $this->totaisPorCategoria($lancamentos),
+            // Only meaningful in a carteira with participants: the same
+            // chart again, counting just the logged-in user's share.
+            'minhaPartePorCategoria' => Carteira::members()->count() > 1
+                ? $this->totaisPorCategoria($lancamentos, fn (Lancamento $l): float => $l->shareOf($request->user()))
+                : null,
         ]);
     }
 
@@ -108,13 +115,17 @@ class FinanceiroDashboardController extends Controller
     /**
      * One bar per category for the period: entrada categories first, then
      * saída ones, each group from largest to smallest. A name used by both
-     * types (e.g. "Outros") yields two separate bars.
+     * types (e.g. "Outros") yields two separate bars. `$amountOf` lets a
+     * caller count only part of each lançamento (one participant's share).
      *
      * @param  Collection<int, Lancamento>  $lancamentos
+     * @param  (\Closure(Lancamento): float)|null  $amountOf
      * @return array<int, array{category: string, type: string, amount: float}>
      */
-    private function totaisPorCategoria(Collection $lancamentos): array
+    private function totaisPorCategoria(Collection $lancamentos, ?\Closure $amountOf = null): array
     {
+        $amountOf ??= fn (Lancamento $l): float => (float) $l->amount;
+
         return collect([Lancamento::TYPE_ENTRADA, Lancamento::TYPE_SAIDA])
             ->flatMap(fn (string $type) => $lancamentos
                 ->where('type', $type)
@@ -122,8 +133,9 @@ class FinanceiroDashboardController extends Controller
                 ->map(fn (Collection $group, string $category): array => [
                     'category' => $category,
                     'type' => $type,
-                    'amount' => (float) $group->sum('amount'),
+                    'amount' => (float) $group->sum($amountOf),
                 ])
+                ->filter(fn (array $item): bool => $item['amount'] > 0)
                 ->sortByDesc('amount')
                 ->values())
             ->all();

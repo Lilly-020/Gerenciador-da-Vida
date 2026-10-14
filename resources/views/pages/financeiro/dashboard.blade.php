@@ -86,8 +86,20 @@
         </div>
 
         <div class="mb-4">
-            @include('partials.financeiro.categorias-chart', ['totaisPorCategoria' => $totaisPorCategoria])
+            @include('partials.financeiro.categorias-chart', [
+                'totaisPorCategoria' => $totaisPorCategoria,
+                'title' => $minhaPartePorCategoria === null ? 'Por categoria' : 'Por categoria — todos os participantes',
+            ])
         </div>
+
+        @if ($minhaPartePorCategoria !== null)
+            <div class="mb-4">
+                @include('partials.financeiro.categorias-chart', [
+                    'totaisPorCategoria' => $minhaPartePorCategoria,
+                    'title' => 'Por categoria — minha parte',
+                ])
+            </div>
+        @endif
 
         @include('partials.financeiro.despesas-categoria', ['despesasPorCategoria' => $despesasPorCategoria])
     </div>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Carteira;
 use Carbon\Carbon;
 use Database\Factories\CustoFixoFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -73,12 +74,12 @@ class CustoFixo extends Model
     {
         static::addGlobalScope('owner', function (Builder $builder): void {
             if (Auth::check()) {
-                $builder->where('user_id', Auth::id());
+                $builder->where('user_id', Carteira::ownerId());
             }
         });
 
         static::creating(function (CustoFixo $custoFixo): void {
-            $custoFixo->user_id ??= Auth::id();
+            $custoFixo->user_id ??= Carteira::ownerId();
         });
     }
 

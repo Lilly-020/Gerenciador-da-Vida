@@ -2,12 +2,16 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesPartes;
 use App\Models\Lancamento;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateLancamentoRequest extends FormRequest
 {
+    use ValidatesPartes;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -39,7 +43,19 @@ class UpdateLancamentoRequest extends FormRequest
             'date' => ['sometimes', 'required', 'date'],
             'payment_method' => ['sometimes', 'nullable', 'string', 'max:255'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            ...$this->partesRules(),
         ];
+    }
+
+    /**
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [fn (Validator $validator) => $this->validatePartes(
+            $validator,
+            $this->input('amount', $this->route('lancamento')->amount),
+        )];
     }
 
     /**

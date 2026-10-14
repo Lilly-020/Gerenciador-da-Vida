@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Carteira;
 use Carbon\Carbon;
 use Database\Factories\LancamentoFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -77,12 +78,12 @@ class Lancamento extends Model
     {
         static::addGlobalScope('owner', function (Builder $builder): void {
             if (Auth::check()) {
-                $builder->where('user_id', Auth::id());
+                $builder->where('user_id', Carteira::ownerId());
             }
         });
 
         static::creating(function (Lancamento $lancamento): void {
-            $lancamento->user_id ??= Auth::id();
+            $lancamento->user_id ??= Carteira::ownerId();
         });
     }
 
@@ -116,6 +117,43 @@ class Lancamento extends Model
     public function occurrences(): HasMany
     {
         return $this->hasMany(self::class, 'parent_recurring_id');
+    }
+
+    /**
+     * @return HasMany<LancamentoParte, $this>
+     */
+    public function partes(): HasMany
+    {
+        return $this->hasMany(LancamentoParte::class);
+    }
+
+    /**
+     * Replace how this lançamento is divided between participants.
+     *
+     * @param  array<int|string, mixed>  $partes  amount per user id; empty means "not divided"
+     */
+    public function syncPartes(array $partes): void
+    {
+        $this->partes()->delete();
+
+        foreach ($partes as $userId => $amount) {
+            $this->partes()->create(['user_id' => $userId, 'amount' => $amount]);
+        }
+
+        $this->unsetRelation('partes');
+    }
+
+    /**
+     * How much of this lançamento is the given user's. A lançamento that
+     * wasn't divided belongs entirely to the carteira's owner.
+     */
+    public function shareOf(User $user): float
+    {
+        if ($this->partes->isEmpty()) {
+            return (int) $this->user_id === (int) $user->id ? (float) $this->amount : 0.0;
+        }
+
+        return (float) $this->partes->where('user_id', $user->id)->sum('amount');
     }
 
     /**

@@ -58,11 +58,11 @@
 
         @include('partials.financeiro.lancamentos-totals', ['totalRealizado' => $totalRealizado, 'totalPrevisto' => $totalPrevisto])
 
-        @include('partials.financeiro.lancamentos-list', ['type' => $type, 'lancamentos' => $lancamentos, 'month' => $month, 'mes' => $mes])
+        @include('partials.financeiro.lancamentos-list', ['type' => $type, 'lancamentos' => $lancamentos, 'month' => $month, 'mes' => $mes, 'membros' => $membros])
     </div>
 
     <x-slot:modals>
-        <x-lancamento-create-modal :type="$type" :categories="$categories" :mes="$mes" />
-        <x-lancamento-edit-modal :type="$type" :categories="$categories" />
+        <x-lancamento-create-modal :type="$type" :categories="$categories" :mes="$mes" :membros="$membros" />
+        <x-lancamento-edit-modal :type="$type" :categories="$categories" :membros="$membros" />
     </x-slot:modals>
 </x-layout>
