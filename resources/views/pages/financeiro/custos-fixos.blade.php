@@ -47,7 +47,7 @@
     </div>
 
     <x-slot:modals>
-        <x-custo-fixo-create-modal :mes="$mes" />
-        <x-custo-fixo-edit-modal :month-title="$monthTitle" />
+        <x-custo-fixo-create-modal :mes="$mes" :membros="$membros" />
+        <x-custo-fixo-edit-modal :month-title="$monthTitle" :membros="$membros" />
     </x-slot:modals>
 </x-layout>

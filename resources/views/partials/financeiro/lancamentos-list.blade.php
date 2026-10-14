@@ -57,14 +57,10 @@
                             </span>
                         @endif
                     </p>
-                    @if ($lancamento->partes->isNotEmpty())
-                        <p class="wrap-break-word mt-1.5 text-xs text-slate-400">
-                            Dividido:
-                            @foreach ($lancamento->partes as $parte)
-                                <span class="text-slate-300">{{ $parte->user->handle() }}</span> @money($parte->amount)@if (! $loop->last) · @endif
-                            @endforeach
-                        </p>
-                    @endif
+                    @include('partials.financeiro.partes-resumo', [
+                        'partes' => $lancamento->partes->pluck('amount', 'user_id'), 'total' => $lancamento->amount,
+                        'isEntrada' => $isEntrada, 'membros' => $membros,
+                    ])
                     @if ($lancamento->notes)
                         <p class="wrap-break-word mt-1.5 text-xs whitespace-pre-line text-slate-500">{{ $lancamento->notes }}</p>
                     @endif
@@ -86,7 +82,7 @@
                     data-subcategory="{{ $lancamento->subcategory }}"
                     data-payment-method="{{ $lancamento->payment_method }}"
                     data-notes="{{ $lancamento->notes }}"
-                    @foreach ($membros as $membro)
+                    @foreach ($membros->skip(1) as $membro)
                         data-parte-u{{ $membro->id }}="{{ $lancamento->partes->firstWhere('user_id', $membro->id)?->amount }}"
                     @endforeach
                     class="text-slate-500 transition hover:text-indigo-300"

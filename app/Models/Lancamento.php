@@ -144,16 +144,19 @@ class Lancamento extends Model
     }
 
     /**
-     * How much of this lançamento is the given user's. A lançamento that
-     * wasn't divided belongs entirely to the carteira's owner.
+     * How much of this lançamento is the given user's: their own parte,
+     * plus — for the carteira's owner — whatever wasn't given to anyone
+     * (all of it, when the lançamento isn't divided).
      */
     public function shareOf(User $user): float
     {
-        if ($this->partes->isEmpty()) {
-            return (int) $this->user_id === (int) $user->id ? (float) $this->amount : 0.0;
+        $share = (float) $this->partes->where('user_id', $user->id)->sum('amount');
+
+        if ((int) $this->user_id === (int) $user->id) {
+            $share += (float) $this->amount - (float) $this->partes->sum('amount');
         }
 
-        return (float) $this->partes->where('user_id', $user->id)->sum('amount');
+        return round($share, 2);
     }
 
     /**

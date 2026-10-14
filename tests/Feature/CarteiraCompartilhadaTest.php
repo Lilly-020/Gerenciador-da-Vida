@@ -185,15 +185,16 @@ class CarteiraCompartilhadaTest extends TestCase
         ]);
 
         $response->assertOk();
-        $this->assertStringContainsString('Dividido', $response->json('list'));
-        $this->assertStringContainsString('@joao', $response->json('list'));
+        // On an expense the participant's share comes in; the rest is the owner's.
+        $this->assertStringContainsString('de @joao', $response->json('list'));
+        $this->assertStringContainsString('Fica para @lilly', $response->json('list'));
 
         $lancamento = Lancamento::withoutGlobalScopes()->where('description', 'Jantar')->firstOrFail();
         $this->assertSame(60.0, $lancamento->shareOf($this->owner));
         $this->assertSame(40.0, $lancamento->shareOf($this->guest));
     }
 
-    public function test_a_division_must_add_up_and_stay_within_the_carteira(): void
+    public function test_a_division_cannot_exceed_the_total_or_leave_the_carteira(): void
     {
         $this->share();
         $stranger = User::factory()->create();
@@ -203,13 +204,83 @@ class CarteiraCompartilhadaTest extends TestCase
         ];
 
         $this->actingAs($this->owner)->postJson('/financeiro/lancamentos', [
-            ...$base, "parte_u{$this->owner->id}" => 60, "parte_u{$this->guest->id}" => 30,
+            ...$base, "parte_u{$this->owner->id}" => 60, "parte_u{$this->guest->id}" => 50,
         ])->assertJsonValidationErrors('partes');
         $this->actingAs($this->owner)->postJson('/financeiro/lancamentos', [
             ...$base, "parte_u{$this->owner->id}" => 60, "parte_u{$stranger->id}" => 40,
         ])->assertJsonValidationErrors('partes');
 
         $this->assertSame(0, Lancamento::withoutGlobalScopes()->count());
+    }
+
+    public function test_what_is_not_given_to_a_participant_stays_with_the_owner(): void
+    {
+        $this->share();
+
+        $this->actingAs($this->owner)->postJson('/financeiro/lancamentos', [
+            'type' => 'entrada', 'category' => 'Freelance', 'description' => 'Projeto em dupla', 'amount' => 1000,
+            'date' => today()->toDateString(), "parte_u{$this->guest->id}" => 400,
+        ])->assertOk();
+
+        $lancamento = Lancamento::withoutGlobalScopes()->where('description', 'Projeto em dupla')->firstOrFail();
+        $this->assertSame(600.0, $lancamento->shareOf($this->owner));
+        $this->assertSame(400.0, $lancamento->shareOf($this->guest));
+
+        // On an income the participant's share goes out.
+        $this->actingAs($this->owner)->get('/financeiro/entradas')
+            ->assertSee('para @joao')
+            ->assertSee('Fica para @lilly');
+    }
+
+    public function test_a_fixed_cost_can_have_a_participant_share_which_its_payment_inherits(): void
+    {
+        $this->share();
+
+        $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
+            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10, 'periodicity' => 'mensal',
+            'starts_on' => today()->startOfMonth()->toDateString(), "parte_u{$this->guest->id}" => 30,
+        ])->assertOk();
+
+        $custoFixo = CustoFixo::withoutGlobalScopes()->where('name', 'Vivo')->firstOrFail();
+        $this->assertEquals([$this->guest->id => 30], $custoFixo->partes);
+
+        $this->actingAs($this->owner)->get('/financeiro/custos-fixos')
+            ->assertSee('de @joao')
+            ->assertSee('Fica para @lilly');
+
+        $this->actingAs($this->owner)->postJson("/financeiro/custos-fixos/{$custoFixo->id}/pagar")->assertOk();
+
+        $pagamento = Lancamento::withoutGlobalScopes()->where('custo_fixo_id', $custoFixo->id)->firstOrFail();
+        $this->assertSame(30.0, $pagamento->shareOf($this->guest));
+        $this->assertSame(30.0, $pagamento->shareOf($this->owner));
+    }
+
+    public function test_a_fixed_costs_share_can_differ_in_a_single_month(): void
+    {
+        $this->share();
+        $custoFixo = CustoFixo::factory()->for($this->owner)->create([
+            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10, 'partes' => [$this->guest->id => 30],
+        ]);
+        $nextMonth = today()->addMonthNoOverflow()->startOfMonth();
+
+        $this->actingAs($this->owner)->putJson("/financeiro/custos-fixos/{$custoFixo->id}?mes=".$nextMonth->format('Y-m'), [
+            'scope' => 'mes', 'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10,
+            "parte_u{$this->guest->id}" => 45,
+        ])->assertOk();
+
+        $custoFixo = CustoFixo::withoutGlobalScopes()->with('ajustes')->findOrFail($custoFixo->id);
+        $this->assertEquals([$this->guest->id => 45], $custoFixo->valuesFor($nextMonth)['partes']);
+        $this->assertEquals([$this->guest->id => 30], $custoFixo->valuesFor(today())['partes']);
+    }
+
+    public function test_a_fixed_costs_share_cannot_exceed_its_amount(): void
+    {
+        $this->share();
+
+        $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
+            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10, 'periodicity' => 'mensal',
+            'starts_on' => today()->toDateString(), "parte_u{$this->guest->id}" => 61,
+        ])->assertJsonValidationErrors('partes');
     }
 
     public function test_editing_can_change_or_clear_a_division_and_a_status_toggle_leaves_it_alone(): void

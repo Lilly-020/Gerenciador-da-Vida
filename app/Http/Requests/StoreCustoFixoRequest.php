@@ -2,12 +2,16 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesPartes;
 use App\Models\CustoFixo;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreCustoFixoRequest extends FormRequest
 {
+    use ValidatesPartes;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -32,7 +36,16 @@ class StoreCustoFixoRequest extends FormRequest
             'starts_on' => ['required', 'date'],
             'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            ...$this->partesRules(),
         ];
+    }
+
+    /**
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [fn (Validator $validator) => $this->validatePartes($validator, $this->input('amount'))];
     }
 
     /**

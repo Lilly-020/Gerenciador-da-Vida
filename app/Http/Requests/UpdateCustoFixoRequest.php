@@ -27,7 +27,7 @@ class UpdateCustoFixoRequest extends StoreCustoFixoRequest
         // Changing a single month only touches the fields a month can
         // have of its own; the schedule fields aren't even submitted.
         if ($this->input('scope') === self::SCOPE_MES) {
-            return [...Arr::only(parent::rules(), CustoFixo::MONTHLY_FIELDS), ...$scope];
+            return [...Arr::only(parent::rules(), [...CustoFixo::MONTHLY_FIELDS, 'partes.*']), ...$scope];
         }
 
         return [

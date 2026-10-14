@@ -69,6 +69,9 @@
                         <span class="text-indigo-300">Alterado só neste mês</span>
                     @endif
                 </p>
+                @include('partials.financeiro.partes-resumo', [
+                    'partes' => $values['partes'] ?? [], 'total' => $values['amount'], 'isEntrada' => false, 'membros' => $membros,
+                ])
                 @if ($values['notes'])
                     <p class="wrap-break-word mt-1.5 text-xs whitespace-pre-line text-slate-500">{{ $values['notes'] }}</p>
                 @endif
@@ -99,6 +102,9 @@
                     data-starts-on="{{ $custoFixo->starts_on->toDateString() }}"
                     data-ends-on="{{ $custoFixo->ends_on?->toDateString() }}"
                     data-notes="{{ $values['notes'] }}"
+                    @foreach ($membros->skip(1) as $membro)
+                        data-parte-u{{ $membro->id }}="{{ $values['partes'][$membro->id] ?? '' }}"
+                    @endforeach
                     data-status="{{ $custoFixo->status }}"
                     class="text-slate-500 transition hover:text-indigo-300"
                     aria-label="Editar"

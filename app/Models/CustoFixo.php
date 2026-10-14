@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 
-#[Fillable(['name', 'category', 'amount', 'due_day', 'periodicity', 'starts_on', 'ends_on', 'notes', 'status'])]
+#[Fillable(['name', 'category', 'amount', 'due_day', 'periodicity', 'starts_on', 'ends_on', 'notes', 'status', 'partes'])]
 class CustoFixo extends Model
 {
     /** @use HasFactory<CustoFixoFactory> */
@@ -48,7 +48,7 @@ class CustoFixo extends Model
      *
      * @var array<int, string>
      */
-    public const MONTHLY_FIELDS = ['name', 'category', 'amount', 'due_day', 'notes'];
+    public const MONTHLY_FIELDS = ['name', 'category', 'amount', 'due_day', 'notes', 'partes'];
 
     /**
      * @var array<int, string>
@@ -67,6 +67,7 @@ class CustoFixo extends Model
             'amount' => 'decimal:2',
             'starts_on' => 'date',
             'ends_on' => 'date',
+            'partes' => 'array',
         ];
     }
 
@@ -116,7 +117,7 @@ class CustoFixo extends Model
      * This cost's MONTHLY_FIELDS as they stand in the given month: the
      * month's own ajuste if it has one, otherwise the cost's own values.
      *
-     * @return array{name: string, category: string, amount: string, due_day: int, notes: ?string}
+     * @return array{name: string, category: string, amount: string, due_day: int, notes: ?string, partes: ?array<int, float>}
      */
     public function valuesFor(Carbon $month): array
     {
@@ -138,7 +139,8 @@ class CustoFixo extends Model
             && $values['category'] === $this->category
             && round((float) $values['amount'], 2) === round((float) $this->amount, 2)
             && (int) $values['due_day'] === (int) $this->due_day
-            && (string) $values['notes'] === (string) $this->notes;
+            && (string) $values['notes'] === (string) $this->notes
+            && ($values['partes'] ?: []) == ($this->partes ?: []);
 
         if ($matchesOwnValues) {
             $ajuste?->delete();
@@ -246,6 +248,8 @@ class CustoFixo extends Model
         ]);
         $lancamento->user_id = $this->user_id;
         $lancamento->save();
+        // The payment is divided the same way the cost is that month.
+        $lancamento->syncPartes($values['partes'] ?: []);
 
         return $lancamento;
     }

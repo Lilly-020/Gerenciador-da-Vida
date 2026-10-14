@@ -1,4 +1,4 @@
-@props(['monthTitle'])
+@props(['monthTitle', 'membros'])
 
 <div id="edit-custo-fixo-modal" class="board-modal fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm" aria-hidden="true">
     <div class="flex min-h-full items-center justify-center px-4 py-8">
@@ -137,6 +137,8 @@
                         class="w-full resize-none rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                     ></textarea>
                 </div>
+
+                @include('partials.financeiro.partes-fields', ['prefix' => 'edit-custo-fixo', 'membros' => $membros, 'isEntrada' => false])
 
                 <div class="flex justify-end gap-2 pt-2">
                     <button

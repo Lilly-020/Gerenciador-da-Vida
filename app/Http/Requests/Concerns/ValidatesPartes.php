@@ -6,7 +6,7 @@ use App\Support\Carteira;
 use Illuminate\Validation\Validator;
 
 /**
- * Shared by the lançamento form requests: reads the "dividir entre
+ * Shared by the lançamento and custo fixo form requests: reads the "dividir entre
  * participantes" fields. The forms post them flat, one `parte_u{userId}`
  * per carteira member, which is gathered here into `partes` (amount per
  * user id, blanks and zeros dropped). When no such field is posted at
@@ -25,7 +25,7 @@ trait ValidatesPartes
         $this->merge([
             'partes' => $fields
                 ->filter(fn ($value): bool => is_numeric($value) && (float) $value > 0)
-                ->mapWithKeys(fn ($value, $key): array => [(int) substr((string) $key, strlen('parte_u')) => $value])
+                ->mapWithKeys(fn ($value, $key): array => [(int) substr((string) $key, strlen('parte_u')) => round((float) $value, 2)])
                 ->all(),
         ]);
     }
@@ -43,7 +43,8 @@ trait ValidatesPartes
 
     /**
      * A division, when given, must be among the carteira's members and
-     * add up to the lançamento's amount.
+     * fit within the total; what is left over stays with the carteira's
+     * owner.
      */
     protected function validatePartes(Validator $validator, mixed $amount): void
     {
@@ -61,8 +62,8 @@ trait ValidatesPartes
             return;
         }
 
-        if (abs(array_sum($partes) - (float) $amount) > 0.009) {
-            $validator->errors()->add('partes', 'A soma das partes precisa ser igual ao valor do lançamento.');
+        if (array_sum($partes) - (float) $amount > 0.009) {
+            $validator->errors()->add('partes', 'A soma das partes não pode passar do valor total.');
         }
     }
 }

@@ -112,6 +112,7 @@ class CustoFixoController extends Controller
 
         return [
             'custoFixos' => $custoFixos,
+            'membros' => Carteira::members(),
             'month' => $month,
             'mes' => $this->monthParam($month),
             'monthTitle' => self::monthTitle($month),
