@@ -358,6 +358,40 @@ class CarteiraCompartilhadaTest extends TestCase
             ]);
     }
 
+    public function test_the_dashboard_cards_count_only_the_logged_in_users_share(): void
+    {
+        $this->share();
+        $jantar = Lancamento::factory()->for($this->owner)->saida()->create(['amount' => 100]);
+        $jantar->syncPartes([$this->owner->id => 60, $this->guest->id => 40]);
+        Lancamento::factory()->for($this->owner)->saida()->create(['amount' => 900]);
+        $freela = Lancamento::factory()->for($this->owner)->entrada()->create(['amount' => 1000]);
+        $freela->syncPartes([$this->guest->id => 250]);
+
+        $this->actingAs($this->owner)->get('/financeiro')
+            ->assertSee('Parte dos outros participantes')
+            ->assertViewHas('cards', fn (array $cards): bool => $cards['entradas'] === 750.0
+                && $cards['saidas'] === 960.0
+                && $cards['saldo'] === -210.0)
+            ->assertViewHas('participantes', fn ($participantes): bool => $participantes->count() === 1
+                && $participantes[0]['user']->is($this->guest)
+                && $participantes[0]['entradas'] === 250.0
+                && $participantes[0]['saidas'] === 40.0);
+
+        $this->asGuestInOwnersCarteira()->get('/financeiro')
+            ->assertViewHas('cards', fn (array $cards): bool => $cards['entradas'] === 250.0 && $cards['saidas'] === 40.0)
+            ->assertViewHas('participantes', fn ($participantes): bool => $participantes[0]['user']->is($this->owner)
+                && $participantes[0]['saidas'] === 960.0);
+    }
+
+    public function test_a_carteira_without_participants_keeps_its_full_totals(): void
+    {
+        Lancamento::factory()->for($this->owner)->saida()->create(['amount' => 900]);
+
+        $this->actingAs($this->owner)->get('/financeiro')
+            ->assertDontSee('Parte dos outros participantes')
+            ->assertViewHas('cards', fn (array $cards): bool => $cards['saidas'] === 900.0);
+    }
+
     public function test_a_carteira_without_participants_shows_a_single_chart(): void
     {
         $this->actingAs($this->owner)->get('/financeiro')

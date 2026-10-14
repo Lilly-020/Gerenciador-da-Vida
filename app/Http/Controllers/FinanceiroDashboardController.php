@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Investimento;
 use App\Models\Lancamento;
+use App\Models\User;
 use App\Support\Carteira;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -37,8 +38,17 @@ class FinanceiroDashboardController extends Controller
             ->whereBetween('date', Lancamento::dateRange($start, $end))
             ->get();
 
-        $entradas = (float) $lancamentos->where('type', Lancamento::TYPE_ENTRADA)->sum('amount');
-        $saidas = (float) $lancamentos->where('type', Lancamento::TYPE_SAIDA)->sum('amount');
+        // In a carteira with participants, the cards count only the
+        // logged-in user's share of each lançamento; everyone else's is
+        // listed apart (see $participantes below).
+        $viewer = $request->user();
+        $membros = Carteira::members();
+        $sharesOf = fn (User $member): array => [
+            'entradas' => (float) $lancamentos->where('type', Lancamento::TYPE_ENTRADA)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
+            'saidas' => (float) $lancamentos->where('type', Lancamento::TYPE_SAIDA)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
+        ];
+
+        ['entradas' => $entradas, 'saidas' => $saidas] = $sharesOf($viewer);
 
         $investimentos = $user->investimentos()->with('aportes')->get();
         $investido = (float) $investimentos
@@ -52,7 +62,8 @@ class FinanceiroDashboardController extends Controller
             'entradas' => $entradas,
             'saidas' => $saidas,
             'investido' => $investido,
-            'saldo' => $entradas - $saidas - $investido,
+            // The carteira's investments are its owner's money.
+            'saldo' => $entradas - $saidas - ($viewer->is($user) ? $investido : 0),
             'patrimonio_investido' => $investimentos->sum(fn (Investimento $i): float => $i->patrimonioEstimado()),
             'rendimento_acumulado' => $investimentos->sum(fn (Investimento $i): float => $i->rendimentoEstimado()),
             'rendimento_mes' => $investimentos->sum(fn (Investimento $i): float => $i->rendimentoEntre($today->copy()->startOfMonth(), $today)),
@@ -65,11 +76,15 @@ class FinanceiroDashboardController extends Controller
             'periodStart' => $start,
             'periodEnd' => $end,
             'cards' => $cards,
+            'participantes' => $membros
+                ->reject(fn (User $member): bool => $member->is($viewer))
+                ->map(fn (User $member): array => ['user' => $member, ...$sharesOf($member)])
+                ->values(),
             'despesasPorCategoria' => $this->despesasPorCategoria($lancamentos),
             'totaisPorCategoria' => $this->totaisPorCategoria($lancamentos),
             // Only meaningful in a carteira with participants: the same
             // chart again, counting just the logged-in user's share.
-            'minhaPartePorCategoria' => Carteira::members()->count() > 1
+            'minhaPartePorCategoria' => $membros->count() > 1
                 ? $this->totaisPorCategoria($lancamentos, fn (Lancamento $l): float => $l->shareOf($request->user()))
                 : null,
         ]);
