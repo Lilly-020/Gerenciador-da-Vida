@@ -82,6 +82,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/tarefas', [TarefaController::class, 'index'])->name('tarefas');
+    Route::get('/tarefas/buscar', [TarefaController::class, 'buscar'])->name('tarefas.buscar');
     Route::post('/tarefas', [TarefaController::class, 'store'])->name('tarefas.store');
     Route::patch('/tarefas/{tarefa}', [TarefaController::class, 'update'])->name('tarefas.update');
     Route::delete('/tarefas/{tarefa}', [TarefaController::class, 'destroy'])->name('tarefas.destroy');

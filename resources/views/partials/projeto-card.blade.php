@@ -11,6 +11,10 @@
     data-board-card
     data-projeto-id="{{ $projeto->id }}"
     data-title="{{ $projeto->title }}"
+    data-filter-item
+    data-filter-title="{{ $projeto->title }}"
+    data-filter-start="{{ ($projeto->starts_at ?? $projeto->due_at ?? $projeto->created_at)?->format('Y-m-d') }}"
+    data-filter-end="{{ ($projeto->due_at ?? $projeto->starts_at ?? $projeto->created_at)?->format('Y-m-d') }}"
     data-description="{{ $projeto->description }}"
     data-starts-at="{{ $projeto->starts_at?->format('Y-m-d') }}"
     data-due-at="{{ $projeto->due_at?->format('Y-m-d') }}"

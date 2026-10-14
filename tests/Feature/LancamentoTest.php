@@ -115,6 +115,20 @@ class LancamentoTest extends TestCase
         $response->assertSeeInOrder(['Imposto', 'Pix', 'Recorrente', 'mensal, dia 20', 'Pago']);
     }
 
+    public function test_lancamento_cards_describe_themselves_for_the_filter_bar(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->saida()->onDate(today()->toDateString())
+            ->create(['description' => 'Mercado', 'category' => 'Alimentação', 'amount' => 123.45]);
+
+        $this->actingAs($user)->get('/financeiro/saidas')
+            ->assertSee('data-filtros-alvo="lancamentos-list"', false)
+            ->assertSee('data-filter-title="Mercado"', false)
+            ->assertSee('data-filter-category="Alimentação"', false)
+            ->assertSee('data-filter-start="'.today()->format('Y-m-d').'"', false)
+            ->assertSee('data-filter-amount="123.45"', false);
+    }
+
     public function test_the_financeiro_nav_tab_stays_highlighted_on_sub_pages(): void
     {
         $user = User::factory()->create();

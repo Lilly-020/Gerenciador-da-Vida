@@ -286,6 +286,47 @@ class TarefaTest extends TestCase
         $this->assertModelExists($other);
     }
 
+    public function test_tasks_can_be_searched_by_title_across_every_day(): void
+    {
+        $user = User::factory()->create();
+        Tarefa::factory()->for($user)->create(['title' => 'Estudar Laravel', 'date' => '2026-03-10']);
+        Tarefa::factory()->for($user)->create(['title' => 'Estudar inglês', 'date' => '2026-08-02']);
+        Tarefa::factory()->for($user)->create(['title' => 'Academia', 'date' => '2026-08-02']);
+        Tarefa::factory()->for(User::factory())->create(['title' => 'Estudar do vizinho']);
+
+        $html = $this->actingAs($user)->getJson('/tarefas/buscar?q=estudar')->assertOk()->json('html');
+
+        $this->assertStringContainsString('Estudar Laravel', $html);
+        $this->assertStringContainsString('Estudar inglês', $html);
+        $this->assertStringContainsString('date=2026-03-10', $html);
+        $this->assertStringNotContainsString('Academia', $html);
+        $this->assertStringNotContainsString('vizinho', $html);
+    }
+
+    public function test_tasks_can_be_searched_by_a_date_range_including_its_last_day(): void
+    {
+        $user = User::factory()->create();
+        Tarefa::factory()->for($user)->create(['title' => 'Em março', 'date' => '2026-03-10']);
+        Tarefa::factory()->for($user)->create(['title' => 'No último dia', 'date' => '2026-08-02']);
+        Tarefa::factory()->for($user)->create(['title' => 'Depois', 'date' => '2026-08-03']);
+
+        $html = $this->actingAs($user)->getJson('/tarefas/buscar?de=2026-08-01&ate=2026-08-02')->json('html');
+
+        $this->assertStringContainsString('No último dia', $html);
+        $this->assertStringNotContainsString('Em março', $html);
+        $this->assertStringNotContainsString('Depois', $html);
+    }
+
+    public function test_an_empty_task_search_returns_nothing(): void
+    {
+        $user = User::factory()->create();
+        Tarefa::factory()->for($user)->create();
+
+        $this->actingAs($user)->getJson('/tarefas/buscar')->assertExactJson(['html' => '']);
+        $this->actingAs($user)->getJson('/tarefas/buscar?q=nada-disso')
+            ->assertJsonPath('html', fn (string $html): bool => str_contains($html, 'Nenhuma tarefa encontrada'));
+    }
+
     public function test_creating_a_task_requires_a_title_and_date(): void
     {
         $user = User::factory()->create();

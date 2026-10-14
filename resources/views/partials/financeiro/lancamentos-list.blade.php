@@ -9,7 +9,14 @@
             // of it is the logged-in user's: shown read-only, at that part.
             $isForeign = (int) $lancamento->user_id !== (int) \App\Support\Carteira::ownerId();
         @endphp
-        <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3">
+        <div
+            data-filter-item
+            data-filter-title="{{ $lancamento->description }}"
+            data-filter-start="{{ $lancamento->date->format('Y-m-d') }}"
+            data-filter-category="{{ $lancamento->category }}"
+            data-filter-amount="{{ $isForeign ? $lancamento->saidaFor(auth()->user()) : $lancamento->amount }}"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3"
+        >
             <div class="flex min-w-0 flex-1 items-center gap-3">
                 @unless ($isForeign)
                 <input

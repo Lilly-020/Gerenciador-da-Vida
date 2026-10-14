@@ -14,7 +14,14 @@
     $patrimonioEm1Ano = $investimento->patrimonioEstimado(now()->addYear());
 @endphp
 
-<div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-lg shadow-black/20 sm:p-5">
+<div
+    data-filter-item
+    data-filter-title="{{ $investimento->name }}"
+    data-filter-category="{{ $investimento->typeLabel() }}"
+    data-filter-start="{{ ($investimento->aportes->min('date') ?? $investimento->created_at)?->format('Y-m-d') }}"
+    data-filter-end="{{ ($investimento->aportes->max('date') ?? $investimento->created_at)?->format('Y-m-d') }}"
+    class="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-lg shadow-black/20 sm:p-5"
+>
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
             <h2 class="wrap-break-word text-base font-semibold text-white sm:text-lg">{{ $investimento->name }}</h2>

@@ -43,6 +43,8 @@
 
         @include('partials.financeiro.custos-fixos-summary')
 
+        <x-filtros alvo="custos-fixos-list" :datas="false" :categorias="true" />
+
         @include('partials.financeiro.custos-fixos-list')
     </div>
 

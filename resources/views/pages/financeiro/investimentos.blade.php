@@ -33,7 +33,9 @@
 
         @include('partials.financeiro.investimento-simulador')
 
-        <div class="space-y-4">
+        <x-filtros alvo="investimentos-list" :categorias="true" data-label="Aportes" />
+
+        <div id="investimentos-list" class="space-y-4">
             @forelse ($investimentos as $investimento)
                 @include('partials.financeiro.investimento-card', ['investimento' => $investimento])
             @empty

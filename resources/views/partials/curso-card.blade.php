@@ -8,6 +8,10 @@
     data-curso-id="{{ $curso->id }}"
     data-status="{{ $curso->status }}"
     data-title="{{ $curso->title }}"
+    data-filter-item
+    data-filter-title="{{ $curso->title }}"
+    data-filter-start="{{ ($curso->starts_at ?? $curso->due_at ?? $curso->created_at)?->format('Y-m-d') }}"
+    data-filter-end="{{ ($curso->due_at ?? $curso->starts_at ?? $curso->created_at)?->format('Y-m-d') }}"
     data-platform="{{ $curso->platform }}"
     data-link="{{ $curso->link }}"
     data-objective="{{ $curso->objective }}"

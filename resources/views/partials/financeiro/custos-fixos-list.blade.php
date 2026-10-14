@@ -18,7 +18,13 @@
             $notDueThisPeriod = ! $notStartedYet && ! $hasEnded && ! $isDue;
             $nextDue = $notDueThisPeriod ? $custoFixo->nextDueMonth($month->copy()->addMonthNoOverflow()) : null;
         @endphp
-        <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3">
+        <div
+            data-filter-item
+            data-filter-title="{{ $values['name'] }}"
+            data-filter-category="{{ $values['category'] }}"
+            data-filter-amount="{{ $values['amount'] }}"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3"
+        >
             <div class="min-w-0 flex-1">
                 <p class="wrap-break-word text-sm font-medium text-white">{{ $values['name'] }}</p>
                 <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400">

@@ -232,6 +232,8 @@ export function setupTarefas() {
 
     setupInlineTaskEdit(page, applyDayUpdate);
 
+    setupTarefaBusca(page);
+
     page.addEventListener('submit', async (event) => {
         const form = event.target.closest('[data-add-tarefa-form]');
 
@@ -281,5 +283,64 @@ export function setupTarefas() {
         } finally {
             submitButton.disabled = false;
         }
+    });
+}
+
+/**
+ * Search bar above the calendar: looks tasks up across every day by title
+ * and/or date range, and lists them with a link to their day.
+ */
+function setupTarefaBusca(page) {
+    const busca = page.querySelector('[data-tarefa-busca]');
+
+    if (!busca) {
+        return;
+    }
+
+    const titulo = busca.querySelector('[data-tarefa-busca-titulo]');
+    const de = busca.querySelector('[data-tarefa-busca-de]');
+    const ate = busca.querySelector('[data-tarefa-busca-ate]');
+    const limpar = busca.querySelector('[data-tarefa-busca-limpar]');
+    const resultados = busca.querySelector('[data-tarefa-busca-resultados]');
+    let timer = null;
+    let latest = 0;
+
+    const search = async () => {
+        const params = new URLSearchParams({ q: titulo.value.trim(), de: de.value, ate: ate.value });
+        const ativo = Boolean(params.get('q') || params.get('de') || params.get('ate'));
+        const request = ++latest;
+
+        limpar.classList.toggle('hidden', !ativo);
+
+        if (!ativo) {
+            resultados.innerHTML = '';
+
+            return;
+        }
+
+        try {
+            const data = await postJson(`/tarefas/buscar?${params}`, 'GET');
+
+            // A slower, older response must not overwrite a newer one.
+            if (request === latest) {
+                resultados.innerHTML = data.html;
+            }
+        } catch (error) {
+            alertDialog(error.message);
+        }
+    };
+
+    [titulo, de, ate].forEach((field) => {
+        field.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(search, 250);
+        });
+    });
+
+    limpar.addEventListener('click', () => {
+        titulo.value = '';
+        de.value = '';
+        ate.value = '';
+        search();
     });
 }

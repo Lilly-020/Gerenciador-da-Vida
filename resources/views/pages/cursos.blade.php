@@ -14,6 +14,8 @@
             </button>
         </div>
 
+        <x-filtros alvo="cursos-board" data-label="Período" />
+
         <div id="cursos-board" class="flex items-start gap-4 overflow-x-auto pb-4">
             @foreach ($columns as $status => $meta)
                 <div data-column="{{ $status }}" class="w-72 shrink-0 rounded-2xl border border-white/10 bg-white/5 p-3 transition">

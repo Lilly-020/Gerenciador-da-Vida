@@ -18,6 +18,8 @@
             @include('partials.projeto-stats', ['stats' => $stats])
         </div>
 
+        <x-filtros alvo="projetos-grid" data-label="Período" />
+
         <div id="projetos-grid" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
             @forelse ($projetos as $projeto)
                 @include('partials.projeto-card', ['projeto' => $projeto])

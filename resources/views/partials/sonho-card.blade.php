@@ -7,6 +7,9 @@
     data-board-card
     data-sonho-id="{{ $sonho->id }}"
     data-title="{{ $sonho->title }}"
+    data-filter-item
+    data-filter-title="{{ $sonho->title }}"
+    data-filter-start="{{ $sonho->created_at?->format('Y-m-d') }}"
     class="rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-lg shadow-black/20 sm:p-6"
 >
     <div class="flex flex-wrap items-start justify-between gap-3">

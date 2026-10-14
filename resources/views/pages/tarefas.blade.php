@@ -45,6 +45,38 @@
             </div>
         </div>
 
+        <div data-tarefa-busca class="mb-4">
+            <div class="flex flex-wrap items-end gap-2">
+                <div class="min-w-48 flex-1">
+                    <label for="tarefa-busca-titulo" class="sr-only">Buscar tarefa por título</label>
+                    <input
+                        id="tarefa-busca-titulo"
+                        type="search"
+                        data-tarefa-busca-titulo
+                        placeholder="Buscar tarefa por título, em qualquer dia"
+                        autocomplete="off"
+                        class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
+                    >
+                </div>
+                <div>
+                    <label for="tarefa-busca-de" class="mb-1 block text-xs text-slate-400">Data de</label>
+                    <input id="tarefa-busca-de" type="date" data-tarefa-busca-de class="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20 scheme-dark">
+                </div>
+                <div>
+                    <label for="tarefa-busca-ate" class="mb-1 block text-xs text-slate-400">até</label>
+                    <input id="tarefa-busca-ate" type="date" data-tarefa-busca-ate class="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20 scheme-dark">
+                </div>
+                <button
+                    type="button"
+                    data-tarefa-busca-limpar
+                    class="hidden rounded-lg border border-white/10 px-3 py-2.5 text-sm text-slate-300 transition hover:text-white"
+                >
+                    Limpar
+                </button>
+            </div>
+            <div data-tarefa-busca-resultados class="mt-3 empty:hidden"></div>
+        </div>
+
         <div data-view-panel="calendar">
             <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-5">
                 <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-lg shadow-black/20 sm:p-5 lg:col-span-3">

@@ -18,6 +18,8 @@ use Illuminate\View\View;
 
 class TarefaController extends Controller
 {
+    private const SEARCH_LIMIT = 50;
+
     /**
      * Display the calendar and the selected day's tasks, with a small
      * today/week/month completion dashboard.
@@ -58,6 +60,37 @@ class TarefaController extends Controller
             'daily' => $this->dailySeries($user),
             'weekly' => $this->weeklySeries($user),
             'monthly' => $this->monthlySeries($user),
+        ]);
+    }
+
+    /**
+     * Search the user's tasks across every day, by title and/or date
+     * range. Returns the rendered result list for the page's search bar.
+     */
+    public function buscar(Request $request): JsonResponse
+    {
+        $termo = trim((string) $request->query('q'));
+        $de = $this->parseDate($request->query('de'));
+        $ate = $this->parseDate($request->query('ate'));
+
+        if ($termo === '' && ! $de && ! $ate) {
+            return response()->json(['html' => '']);
+        }
+
+        $tarefas = $request->user()->tarefas()
+            ->when($termo !== '', fn ($query) => $query->whereLike('title', '%'.addcslashes($termo, '%_\\').'%'))
+            ->when($de, fn ($query) => $query->where('date', '>=', $de->toDateString()))
+            ->when($ate, fn ($query) => $query->where('date', '<=', $ate->format('Y-m-d 23:59:59')))
+            ->orderByDesc('date')
+            ->orderBy('id')
+            ->limit(self::SEARCH_LIMIT + 1)
+            ->get();
+
+        return response()->json([
+            'html' => view('partials.tarefa-busca', [
+                'tarefas' => $tarefas->take(self::SEARCH_LIMIT),
+                'hasMore' => $tarefas->count() > self::SEARCH_LIMIT,
+            ])->render(),
         ]);
     }
 
@@ -133,14 +166,19 @@ class TarefaController extends Controller
      */
     private function resolveDate(?string $value): Carbon
     {
-        if (! $value) {
-            return Carbon::today();
+        return $this->parseDate($value) ?? Carbon::today();
+    }
+
+    private function parseDate(mixed $value): ?Carbon
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
         }
 
         try {
             return Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
         } catch (\Throwable) {
-            return Carbon::today();
+            return null;
         }
     }
 

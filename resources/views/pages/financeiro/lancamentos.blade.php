@@ -58,6 +58,8 @@
 
         @include('partials.financeiro.lancamentos-totals')
 
+        <x-filtros alvo="lancamentos-list" :categorias="true" />
+
         @include('partials.financeiro.lancamentos-list', ['type' => $type, 'lancamentos' => $lancamentos, 'month' => $month, 'mes' => $mes, 'membros' => $membros])
     </div>
 

@@ -18,6 +18,8 @@
             @include('partials.sonho-stats', ['stats' => $stats])
         </div>
 
+        <x-filtros alvo="sonhos-grid" data-label="Criado" />
+
         <div id="sonhos-grid" class="grid grid-cols-1 gap-4">
             @forelse ($sonhos as $sonho)
                 @include('partials.sonho-card', ['sonho' => $sonho])
