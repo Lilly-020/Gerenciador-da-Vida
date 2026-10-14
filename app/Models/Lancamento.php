@@ -173,7 +173,7 @@ class Lancamento extends Model
 
     public function isDivided(): bool
     {
-        return $this->partes->isNotEmpty();
+        return $this->partes->where('user_id', '!=', $this->user_id)->isNotEmpty();
     }
 
     public function partesSaemDoDono(): bool
@@ -187,11 +187,16 @@ class Lancamento extends Model
      */
     public function parteOf(User $user): float
     {
+        // Only participants' rows count: the owner's part is never a row
+        // of its own (and one left over from older data must not be
+        // subtracted from the owner as if it were somebody else's).
+        $participantes = $this->partes->where('user_id', '!=', $this->user_id);
+
         if ((int) $this->user_id === (int) $user->id) {
-            return round((float) $this->amount - (float) $this->partes->sum('amount'), 2);
+            return round((float) $this->amount - (float) $participantes->sum('amount'), 2);
         }
 
-        return round((float) $this->partes->where('user_id', $user->id)->sum('amount'), 2);
+        return round((float) $participantes->where('user_id', $user->id)->sum('amount'), 2);
     }
 
     /**

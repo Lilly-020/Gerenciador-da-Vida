@@ -272,6 +272,21 @@ class CarteiraCompartilhadaTest extends TestCase
             && $cards['saidas'] === 400.0);
     }
 
+    public function test_an_owners_own_parte_row_from_older_data_is_not_charged_twice(): void
+    {
+        $this->share();
+        $vivo = Lancamento::factory()->for($this->owner)->saida()->create(['amount' => 120]);
+        // Written directly, the way payments were stored before the
+        // owner's part stopped being a row.
+        $vivo->partes()->create(['user_id' => $this->owner->id, 'amount' => 60]);
+        $vivo->partes()->create(['user_id' => $this->guest->id, 'amount' => 60]);
+        $vivo->load('partes');
+
+        $this->assertSame(60.0, $vivo->saidaFor($this->owner));
+        $this->assertSame(60.0, $vivo->saidaFor($this->guest));
+        $this->actingAs($this->owner)->get('/financeiro/saidas')->assertViewHas('totalRealizado', 60.0);
+    }
+
     public function test_an_expenses_parts_can_come_out_of_the_owners_account_instead(): void
     {
         $this->share();
