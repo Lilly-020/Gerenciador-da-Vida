@@ -71,6 +71,7 @@
                 </p>
                 @include('partials.financeiro.partes-resumo', [
                     'partes' => $values['partes'] ?? [], 'total' => $values['amount'], 'isEntrada' => false, 'membros' => $membros,
+                    'contaDono' => $values['partes_conta'] === \App\Models\Lancamento::CONTA_DONO,
                 ])
                 @if ($values['notes'])
                     <p class="wrap-break-word mt-1.5 text-xs whitespace-pre-line text-slate-500">{{ $values['notes'] }}</p>
@@ -102,6 +103,7 @@
                     data-starts-on="{{ $custoFixo->starts_on->toDateString() }}"
                     data-ends-on="{{ $custoFixo->ends_on?->toDateString() }}"
                     data-notes="{{ $values['notes'] }}"
+                    data-partes-conta="{{ $values['partes_conta'] ?: 'participante' }}"
                     @if ($values['partes'])
                         {{-- The owner's part is whatever the others don't take. --}}
                         @foreach ($membros as $membro)

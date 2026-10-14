@@ -66,12 +66,16 @@
                     </p>
                     @if ($isForeign)
                         <p class="wrap-break-word mt-1.5 text-xs text-indigo-300">
-                            Sua parte de @money($lancamento->amount) · carteira de {{ $lancamento->user->handle() }}
+                            @if ($lancamento->type === 'entrada')
+                                Pago a {{ $lancamento->user->handle() }} · parte de uma entrada de @money($lancamento->amount) na carteira dele
+                            @else
+                                Sua parte de @money($lancamento->amount) · carteira de {{ $lancamento->user->handle() }}
+                            @endif
                         </p>
                     @else
                         @include('partials.financeiro.partes-resumo', [
                             'partes' => $lancamento->partes->pluck('amount', 'user_id'), 'total' => $lancamento->amount,
-                            'isEntrada' => $isEntrada, 'membros' => $membros,
+                            'isEntrada' => $isEntrada, 'membros' => $membros, 'contaDono' => $lancamento->partesSaemDoDono(),
                         ])
                     @endif
                     @if ($lancamento->notes)
@@ -82,7 +86,7 @@
 
             <div class="flex shrink-0 items-center gap-3">
                 <span class="text-sm font-semibold {{ $isEntrada ? 'text-emerald-300' : 'text-rose-300' }}">
-                    {{ $isEntrada ? '+' : '−' }} @money($isForeign ? $lancamento->shareOf(auth()->user()) : $lancamento->amount)
+                    {{ $isEntrada ? '+' : '−' }} @money($isForeign ? $lancamento->saidaFor(auth()->user()) : $lancamento->amount)
                 </span>
                 @unless ($isForeign)
                 <button
@@ -96,9 +100,10 @@
                     data-subcategory="{{ $lancamento->subcategory }}"
                     data-payment-method="{{ $lancamento->payment_method }}"
                     data-notes="{{ $lancamento->notes }}"
-                    @if ($lancamento->partes->isNotEmpty())
+                    data-partes-conta="{{ $lancamento->partes_conta ?: 'participante' }}"
+                    @if ($lancamento->isDivided())
                         @foreach ($membros as $membro)
-                            data-parte-u{{ $membro->id }}="{{ $lancamento->shareOf($membro) ?: '' }}"
+                            data-parte-u{{ $membro->id }}="{{ $lancamento->parteOf($membro) ?: '' }}"
                         @endforeach
                     @endif
                     class="text-slate-500 transition hover:text-indigo-300"

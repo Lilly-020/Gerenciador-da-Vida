@@ -1,28 +1,40 @@
 {{--
-    A card's participant shares. On an expense each share comes in (the
-    participant pays it); on an income it goes out (the participant takes
-    it). What is left is the carteira owner's.
+    A card's participants, and whose account each part touches.
 
-    $partes: amount per user id · $total · $isEntrada · $membros
+    $partes: amount per participant user id · $total · $isEntrada ·
+    $membros (owner first) · $contaDono: an expense's parts come out of
+    the owner's account instead of each participant's
 --}}
 @php
-    $ownerId = $membros->first()?->id;
+    $dono = $membros->first();
     $shares = collect($partes)
         ->map(fn ($amount, $userId): array => ['user' => $membros->firstWhere('id', $userId), 'amount' => (float) $amount])
-        ->filter(fn (array $share): bool => $share['user'] !== null && $share['user']->id !== $ownerId && $share['amount'] > 0);
+        ->filter(fn (array $share): bool => $share['user'] !== null && $share['user']->id !== $dono?->id && $share['amount'] > 0);
 @endphp
 
 @if ($shares->isNotEmpty())
-    <p class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+    <p class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-400">
         @foreach ($shares as $share)
-            <span class="{{ $isEntrada ? 'text-rose-300' : 'text-emerald-300' }}">
-                {{ $isEntrada ? '−' : '+' }} @money($share['amount'])
-                <span class="text-slate-400">{{ $isEntrada ? 'para' : 'de' }} {{ $share['user']->handle() }}</span>
-            </span>
+            @if ($isEntrada)
+                <span>
+                    <span class="text-emerald-300">+ @money($share['amount'])</span>
+                    recebido de {{ $share['user']->handle() }} (sai da conta dele)
+                </span>
+            @elseif ($contaDono ?? false)
+                <span>Parte de {{ $share['user']->handle() }}: <span class="text-slate-200">@money($share['amount'])</span></span>
+            @else
+                <span>
+                    <span class="text-rose-300">− @money($share['amount'])</span>
+                    da conta de {{ $share['user']->handle() }}
+                </span>
+            @endif
         @endforeach
-        <span class="text-slate-400">
-            Fica para {{ $membros->first()->handle() }}:
-            <span class="text-slate-200">@money((float) $total - $shares->sum('amount'))</span>
-        </span>
+
+        @unless ($isEntrada)
+            <span>
+                <span class="text-rose-300">− @money(($contaDono ?? false) ? (float) $total : (float) $total - $shares->sum('amount'))</span>
+                da conta de {{ $dono->handle() }}{{ ($contaDono ?? false) ? ' (paga tudo)' : '' }}
+            </span>
+        @endunless
     </p>
 @endif

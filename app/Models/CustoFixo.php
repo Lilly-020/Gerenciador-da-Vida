@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 
-#[Fillable(['name', 'category', 'amount', 'due_day', 'periodicity', 'starts_on', 'ends_on', 'notes', 'status', 'partes'])]
+#[Fillable(['name', 'category', 'amount', 'due_day', 'periodicity', 'starts_on', 'ends_on', 'notes', 'status', 'partes', 'partes_conta'])]
 class CustoFixo extends Model
 {
     /** @use HasFactory<CustoFixoFactory> */
@@ -48,7 +48,7 @@ class CustoFixo extends Model
      *
      * @var array<int, string>
      */
-    public const MONTHLY_FIELDS = ['name', 'category', 'amount', 'due_day', 'notes', 'partes'];
+    public const MONTHLY_FIELDS = ['name', 'category', 'amount', 'due_day', 'notes', 'partes', 'partes_conta'];
 
     /**
      * @var array<int, string>
@@ -117,7 +117,7 @@ class CustoFixo extends Model
      * This cost's MONTHLY_FIELDS as they stand in the given month: the
      * month's own ajuste if it has one, otherwise the cost's own values.
      *
-     * @return array{name: string, category: string, amount: string, due_day: int, notes: ?string, partes: ?array<int, float>}
+     * @return array{name: string, category: string, amount: string, due_day: int, notes: ?string, partes: ?array<int, float>, partes_conta: ?string}
      */
     public function valuesFor(Carbon $month): array
     {
@@ -125,20 +125,45 @@ class CustoFixo extends Model
     }
 
     /**
-     * How much of this cost is the given user's in the given month: for a
-     * participant, the part set for them; for the cost's owner, whatever
-     * the participants don't take.
+     * How much of this cost comes out of the given user's account in the
+     * given month: each participant pays their part and the owner the
+     * rest — unless the parts were set to come out of the owner's
+     * account, who then pays it all.
      */
     public function shareFor(Carbon $month, User $user): float
     {
         $values = $this->valuesFor($month);
-        $partes = collect($values['partes'] ?: []);
+        $isOwner = (int) $this->user_id === (int) $user->id;
+        $partes = collect($values['partes'] ?: [])->except($this->user_id);
 
-        if ((int) $this->user_id === (int) $user->id) {
-            return round((float) $values['amount'] - (float) $partes->except($user->id)->sum(), 2);
+        if ($values['partes_conta'] === Lancamento::CONTA_DONO) {
+            return $isOwner ? round((float) $values['amount'], 2) : 0.0;
         }
 
-        return round((float) $partes->get($user->id, 0), 2);
+        return round($isOwner ? (float) $values['amount'] - (float) $partes->sum() : (float) $partes->get($user->id, 0), 2);
+    }
+
+    /**
+     * Bring the payment already recorded for the given month in line with
+     * the cost's current values there (amount, name, how it is divided).
+     */
+    public function syncPaymentFor(Carbon $month): void
+    {
+        $values = $this->valuesFor($month);
+
+        $this->lancamentos()
+            ->where('status', Lancamento::STATUS_REALIZADO)
+            ->whereBetween('date', Lancamento::dateRange($month->copy()->startOfMonth(), $month->copy()->endOfMonth()))
+            ->get()
+            ->each(function (Lancamento $pagamento) use ($values): void {
+                $pagamento->update([
+                    'category' => $values['category'],
+                    'description' => $values['name'],
+                    'amount' => $values['amount'],
+                    'partes_conta' => $values['partes_conta'],
+                ]);
+                $pagamento->syncPartes($values['partes'] ?: []);
+            });
     }
 
     /**
@@ -157,7 +182,8 @@ class CustoFixo extends Model
             && round((float) $values['amount'], 2) === round((float) $this->amount, 2)
             && (int) $values['due_day'] === (int) $this->due_day
             && (string) $values['notes'] === (string) $this->notes
-            && ($values['partes'] ?: []) == ($this->partes ?: []);
+            && ($values['partes'] ?: []) == ($this->partes ?: [])
+            && ($values['partes_conta'] ?: Lancamento::CONTA_PARTICIPANTE) === ($this->partes_conta ?: Lancamento::CONTA_PARTICIPANTE);
 
         if ($matchesOwnValues) {
             $ajuste?->delete();
@@ -260,6 +286,7 @@ class CustoFixo extends Model
             'category' => $values['category'],
             'description' => $values['name'],
             'amount' => $amount ?? $values['amount'],
+            'partes_conta' => $values['partes_conta'],
             'date' => $date->toDateString(),
             'status' => Lancamento::STATUS_REALIZADO,
         ]);

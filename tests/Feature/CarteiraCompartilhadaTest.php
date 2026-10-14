@@ -185,13 +185,13 @@ class CarteiraCompartilhadaTest extends TestCase
         ]);
 
         $response->assertOk();
-        // On an expense the participant's share comes in; the rest is the owner's.
-        $this->assertStringContainsString('de @joao', $response->json('list'));
-        $this->assertStringContainsString('Fica para @lilly', $response->json('list'));
+        // Each one's part comes out of their own account.
+        $this->assertStringContainsString('da conta de @joao', $response->json('list'));
+        $this->assertStringContainsString('da conta de @lilly', $response->json('list'));
 
         $lancamento = Lancamento::withoutGlobalScopes()->where('description', 'Jantar')->firstOrFail();
-        $this->assertSame(60.0, $lancamento->shareOf($this->owner));
-        $this->assertSame(40.0, $lancamento->shareOf($this->guest));
+        $this->assertSame(60.0, $lancamento->saidaFor($this->owner));
+        $this->assertSame(40.0, $lancamento->saidaFor($this->guest));
     }
 
     public function test_a_division_cannot_exceed_the_total_or_leave_the_carteira(): void
@@ -233,29 +233,97 @@ class CarteiraCompartilhadaTest extends TestCase
         ]);
 
         $response->assertOk();
-        $this->assertStringContainsString('Fica para @lilly', $response->json('list'));
+        $this->assertStringContainsString('da conta de @lilly', $response->json('list'));
         // The edit form gets both parts back, the owner's included.
         $this->assertStringContainsString("data-parte-u{$this->owner->id}=\"30\"", $response->json('list'));
         $this->assertStringContainsString("data-parte-u{$this->guest->id}=\"30\"", $response->json('list'));
     }
 
-    public function test_what_is_not_given_to_a_participant_stays_with_the_owner(): void
+    public function test_an_income_received_from_a_participant_leaves_their_account(): void
     {
         $this->share();
 
         $this->actingAs($this->owner)->postJson('/financeiro/lancamentos', [
-            'type' => 'entrada', 'category' => 'Freelance', 'description' => 'Projeto em dupla', 'amount' => 1000,
+            'type' => 'entrada', 'category' => 'Outros', 'description' => 'Acerto do mercado', 'amount' => 1000,
             'date' => today()->toDateString(), "parte_u{$this->guest->id}" => 400,
         ])->assertOk();
 
-        $lancamento = Lancamento::withoutGlobalScopes()->where('description', 'Projeto em dupla')->firstOrFail();
-        $this->assertSame(600.0, $lancamento->shareOf($this->owner));
-        $this->assertSame(400.0, $lancamento->shareOf($this->guest));
+        $lancamento = Lancamento::withoutGlobalScopes()->where('description', 'Acerto do mercado')->firstOrFail();
 
-        // On an income the participant's share goes out.
+        // The whole amount enters the owner's account...
+        $this->assertSame(1000.0, $lancamento->entradaFor($this->owner));
+        $this->assertSame(0.0, $lancamento->saidaFor($this->owner));
+        // ...and what came from the participant leaves theirs.
+        $this->assertSame(0.0, $lancamento->entradaFor($this->guest));
+        $this->assertSame(400.0, $lancamento->saidaFor($this->guest));
+
         $this->actingAs($this->owner)->get('/financeiro/entradas')
-            ->assertSee('para @joao')
-            ->assertSee('Fica para @lilly');
+            ->assertSee('recebido de @joao')
+            ->assertViewHas('totalRealizado', 1000.0);
+
+        // In the participant's own Financeiro it shows up as a saída.
+        $own = $this->actingAs($this->guest)->withSession([Carteira::SESSION_KEY => null]);
+        $own->get('/financeiro/saidas')
+            ->assertSee('Acerto do mercado')
+            ->assertSee('Pago a @lilly')
+            ->assertViewHas('totalRealizado', 400.0);
+        $own->get('/financeiro/entradas')->assertDontSee('Acerto do mercado');
+        $own->get('/financeiro')->assertViewHas('cards', fn (array $cards): bool => $cards['entradas'] === 0.0
+            && $cards['saidas'] === 400.0);
+    }
+
+    public function test_an_expenses_parts_can_come_out_of_the_owners_account_instead(): void
+    {
+        $this->share();
+
+        $response = $this->actingAs($this->owner)->postJson('/financeiro/lancamentos', [
+            'type' => 'saida', 'category' => 'Lazer', 'description' => 'Cinema por minha conta', 'amount' => 80,
+            'date' => today()->toDateString(), "parte_u{$this->guest->id}" => 40, 'partes_conta' => 'dono',
+        ]);
+
+        $response->assertOk();
+        $this->assertStringContainsString('(paga tudo)', $response->json('list'));
+
+        $lancamento = Lancamento::withoutGlobalScopes()->where('description', 'Cinema por minha conta')->firstOrFail();
+        $this->assertSame(80.0, $lancamento->saidaFor($this->owner));
+        $this->assertSame(0.0, $lancamento->saidaFor($this->guest));
+
+        $this->actingAs($this->owner)->get('/financeiro/saidas')->assertViewHas('totalRealizado', 80.0);
+        $this->actingAs($this->guest)->withSession([Carteira::SESSION_KEY => null])->get('/financeiro/saidas')
+            ->assertDontSee('Cinema por minha conta')
+            ->assertViewHas('totalRealizado', 0.0);
+    }
+
+    public function test_a_fixed_cost_paid_from_the_owners_account_charges_only_the_owner(): void
+    {
+        $this->share();
+        $vivo = CustoFixo::factory()->for($this->owner)->create([
+            'amount' => 120, 'partes' => [$this->guest->id => 60], 'partes_conta' => 'dono',
+        ]);
+
+        $this->assertSame(120.0, $vivo->shareFor(today(), $this->owner));
+        $this->assertSame(0.0, $vivo->shareFor(today(), $this->guest));
+
+        $pagamento = $vivo->markPaid(today());
+        $this->assertSame(120.0, $pagamento->saidaFor($this->owner));
+        $this->assertSame(0.0, $pagamento->saidaFor($this->guest));
+    }
+
+    public function test_editing_a_fixed_cost_updates_the_payment_already_recorded_that_month(): void
+    {
+        $this->share();
+        $vivo = CustoFixo::factory()->for($this->owner)->create(['name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60]);
+        $pagamento = $vivo->markPaid(today());
+
+        $this->actingAs($this->owner)->putJson("/financeiro/custos-fixos/{$vivo->id}?mes=".today()->format('Y-m'), [
+            'scope' => 'mes', 'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 120, 'due_day' => 10,
+            "parte_u{$this->owner->id}" => 60, "parte_u{$this->guest->id}" => 60,
+        ])->assertOk();
+
+        $pagamento = Lancamento::withoutGlobalScopes()->with('partes')->findOrFail($pagamento->id);
+        $this->assertSame('120.00', $pagamento->amount);
+        $this->assertSame(60.0, $pagamento->saidaFor($this->owner));
+        $this->assertSame(60.0, $pagamento->saidaFor($this->guest));
     }
 
     public function test_a_fixed_cost_can_have_a_participant_share_which_its_payment_inherits(): void
@@ -271,14 +339,14 @@ class CarteiraCompartilhadaTest extends TestCase
         $this->assertEquals([$this->guest->id => 30], $custoFixo->partes);
 
         $this->actingAs($this->owner)->get('/financeiro/custos-fixos')
-            ->assertSee('de @joao')
-            ->assertSee('Fica para @lilly');
+            ->assertSee('da conta de @joao')
+            ->assertSee('da conta de @lilly');
 
         $this->actingAs($this->owner)->postJson("/financeiro/custos-fixos/{$custoFixo->id}/pagar")->assertOk();
 
         $pagamento = Lancamento::withoutGlobalScopes()->where('custo_fixo_id', $custoFixo->id)->firstOrFail();
-        $this->assertSame(30.0, $pagamento->shareOf($this->guest));
-        $this->assertSame(30.0, $pagamento->shareOf($this->owner));
+        $this->assertSame(30.0, $pagamento->saidaFor($this->guest));
+        $this->assertSame(30.0, $pagamento->saidaFor($this->owner));
     }
 
     public function test_a_fixed_costs_share_can_differ_in_a_single_month(): void
@@ -316,13 +384,14 @@ class CarteiraCompartilhadaTest extends TestCase
         $lancamento->syncPartes([$this->owner->id => 60, $this->guest->id => 40]);
         $url = "/financeiro/lancamentos/{$lancamento->id}";
 
+        // Only the participant's part is stored; the owner's is the rest.
         $this->actingAs($this->owner)->patchJson($url, ['status' => 'previsto'])->assertOk();
-        $this->assertSame(2, $lancamento->partes()->count());
+        $this->assertSame(1, $lancamento->partes()->count());
 
         $this->actingAs($this->owner)->patchJson($url, [
             'amount' => 100, "parte_u{$this->owner->id}" => 10, "parte_u{$this->guest->id}" => 90,
         ])->assertOk();
-        $this->assertSame(90.0, $lancamento->fresh()->shareOf($this->guest));
+        $this->assertSame(90.0, $lancamento->fresh()->parteOf($this->guest));
 
         $this->actingAs($this->owner)->patchJson($url, [
             'amount' => 100, "parte_u{$this->owner->id}" => '', "parte_u{$this->guest->id}" => '',
@@ -397,28 +466,30 @@ class CarteiraCompartilhadaTest extends TestCase
         $own->get('/financeiro')->assertViewHas('cards', fn (array $cards): bool => $cards['saidas'] === 0.0);
     }
 
-    public function test_the_dashboard_cards_count_only_the_logged_in_users_share(): void
+    public function test_the_dashboard_cards_show_the_logged_in_users_own_account(): void
     {
         $this->share();
         $jantar = Lancamento::factory()->for($this->owner)->saida()->create(['amount' => 100]);
-        $jantar->syncPartes([$this->owner->id => 60, $this->guest->id => 40]);
+        $jantar->syncPartes([$this->guest->id => 40]);
         Lancamento::factory()->for($this->owner)->saida()->create(['amount' => 900]);
-        $freela = Lancamento::factory()->for($this->owner)->entrada()->create(['amount' => 1000]);
-        $freela->syncPartes([$this->guest->id => 250]);
+        // R$ 250 of this income came from the participant.
+        $acerto = Lancamento::factory()->for($this->owner)->entrada()->create(['amount' => 1000]);
+        $acerto->syncPartes([$this->guest->id => 250]);
 
         $this->actingAs($this->owner)->get('/financeiro')
             ->assertSee('Parte dos outros participantes')
-            ->assertViewHas('cards', fn (array $cards): bool => $cards['entradas'] === 750.0
+            ->assertViewHas('cards', fn (array $cards): bool => $cards['entradas'] === 1000.0
                 && $cards['saidas'] === 960.0
-                && $cards['saldo'] === -210.0)
+                && $cards['saldo'] === 40.0)
             ->assertViewHas('participantes', fn ($participantes): bool => $participantes->count() === 1
                 && $participantes[0]['user']->is($this->guest)
-                && $participantes[0]['entradas'] === 250.0
-                && $participantes[0]['saidas'] === 40.0);
+                && $participantes[0]['entradas'] === 0.0
+                && $participantes[0]['saidas'] === 290.0);
 
         $this->asGuestInOwnersCarteira()->get('/financeiro')
-            ->assertViewHas('cards', fn (array $cards): bool => $cards['entradas'] === 250.0 && $cards['saidas'] === 40.0)
+            ->assertViewHas('cards', fn (array $cards): bool => $cards['entradas'] === 0.0 && $cards['saidas'] === 290.0)
             ->assertViewHas('participantes', fn ($participantes): bool => $participantes[0]['user']->is($this->owner)
+                && $participantes[0]['entradas'] === 1000.0
                 && $participantes[0]['saidas'] === 960.0);
     }
 

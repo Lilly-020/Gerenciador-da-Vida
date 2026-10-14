@@ -108,7 +108,7 @@ class LancamentoController extends Controller
             'type' => $type,
             'categories' => Lancamento::categoriesFor($type),
             'lancamentos' => $lancamentos,
-            ...$this->totals($request, $lancamentos),
+            ...$this->totals($request, $type, $lancamentos),
             'month' => $month,
             'mes' => $this->monthParam($month),
             'meses' => $this->monthOptions($request, $type, $month),
@@ -133,7 +133,7 @@ class LancamentoController extends Controller
                 'mes' => $this->monthParam($month),
                 'membros' => Carteira::members(),
             ])->render(),
-            'totals' => view('partials.financeiro.lancamentos-totals', $this->totals($request, $lancamentos))->render(),
+            'totals' => view('partials.financeiro.lancamentos-totals', $this->totals($request, $type, $lancamentos))->render(),
         ]);
     }
 
@@ -145,16 +145,22 @@ class LancamentoController extends Controller
      * @param  Collection<int, Lancamento>  $lancamentos
      * @return array{totalPrevisto: float, totalRealizado: float, participantes: \Illuminate\Support\Collection<int, array{user: User, previsto: float, realizado: float}>}
      */
-    private function totals(Request $request, Collection $lancamentos): array
+    private function totals(Request $request, string $type, Collection $lancamentos): array
     {
-        // Other members' shares only make sense within this carteira —
+        // What a lançamento means for a member's account on this page: on
+        // Saídas, what it takes out of it; on Entradas, what it adds — or,
+        // for the other members, how much of it was received from them.
+        $amountFor = fn (Lancamento $l, User $member, bool $asOther): float => $type === Lancamento::TYPE_ENTRADA && ! $asOther
+            ? $l->entradaFor($member)
+            : $l->saidaFor($member);
+        // Other members' numbers only make sense within this carteira —
         // not in the lançamentos that came from someone else's.
         $ofCarteira = $lancamentos->where('user_id', Carteira::ownerId());
-        $sharesOf = fn (User $member, bool $carteiraOnly = false): array => [
-            'previsto' => (float) ($carteiraOnly ? $ofCarteira : $lancamentos)
-                ->where('status', Lancamento::STATUS_PREVISTO)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
-            'realizado' => (float) ($carteiraOnly ? $ofCarteira : $lancamentos)
-                ->where('status', Lancamento::STATUS_REALIZADO)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
+        $sharesOf = fn (User $member, bool $asOther = false): array => [
+            'previsto' => (float) ($asOther ? $ofCarteira : $lancamentos)
+                ->where('status', Lancamento::STATUS_PREVISTO)->sum(fn (Lancamento $l): float => $amountFor($l, $member, $asOther)),
+            'realizado' => (float) ($asOther ? $ofCarteira : $lancamentos)
+                ->where('status', Lancamento::STATUS_REALIZADO)->sum(fn (Lancamento $l): float => $amountFor($l, $member, $asOther)),
         ];
         $mine = $sharesOf($request->user());
 
@@ -173,20 +179,21 @@ class LancamentoController extends Controller
      */
     private function lancamentosFor(Request $request, string $type, ?Carbon $month): Collection
     {
-        $inMonth = fn ($query) => $query
-            ->where('type', $type)
-            ->when($month, fn ($query) => $query->whereBetween(
-                'date',
-                Lancamento::dateRange($month, $month->copy()->endOfMonth()),
-            ));
+        $inMonth = fn ($query) => $query->when($month, fn ($query) => $query->whereBetween(
+            'date',
+            Lancamento::dateRange($month, $month->copy()->endOfMonth()),
+        ));
 
-        $lancamentos = $inMonth(Carteira::owner()->lancamentos()->with('partes.user'))->get();
+        $lancamentos = $inMonth(Carteira::owner()->lancamentos()->with('partes.user')->where('type', $type))->get();
 
-        // In their own carteira the user also sees — read-only — the
-        // lançamentos of other carteiras that carry a part for them.
-        if (Carteira::isOwn()) {
+        // In their own carteira the user also sees — read-only — what
+        // other carteiras' lançamentos take out of their account: their
+        // part of an expense, or of an income its owner received from them.
+        if (Carteira::isOwn() && $type === Lancamento::TYPE_SAIDA) {
             $lancamentos = $lancamentos->concat(
-                $inMonth(Lancamento::sharedWith($request->user())->with(['partes.user', 'user']))->get(),
+                $inMonth(Lancamento::sharedWith($request->user())->with(['partes.user', 'user']))
+                    ->get()
+                    ->filter(fn (Lancamento $l): bool => $l->saidaFor($request->user()) > 0),
             );
         }
 

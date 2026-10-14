@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One participant's share of a lançamento. See {@see Lancamento::shareOf()}.
+ * One participant's share of a lançamento. See {@see Lancamento::saidaFor()}.
  */
 #[Fillable(['user_id', 'amount'])]
 class LancamentoParte extends Model

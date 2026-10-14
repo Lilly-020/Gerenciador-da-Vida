@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Auth;
 #[Fillable([
     'type', 'category', 'subcategory', 'description', 'amount', 'date',
     'payment_method', 'status', 'is_recurring_template', 'recurrence_period',
-    'recurrence_day', 'parent_recurring_id', 'custo_fixo_id', 'notes',
+    'recurrence_day', 'parent_recurring_id', 'custo_fixo_id', 'notes', 'partes_conta',
 ])]
 class Lancamento extends Model
 {
@@ -35,6 +35,17 @@ class Lancamento extends Model
     public const STATUS_PREVISTO = 'previsto';
 
     public const STATUS_REALIZADO = 'realizado';
+
+    /**
+     * `partes_conta`: a divided expense's participant parts come out of
+     * each participant's own account...
+     */
+    public const CONTA_PARTICIPANTE = 'participante';
+
+    /**
+     * ...or out of the carteira owner's, who then pays the whole amount.
+     */
+    public const CONTA_DONO = 'dono';
 
     /**
      * @var array<int, string>
@@ -142,7 +153,8 @@ class Lancamento extends Model
     }
 
     /**
-     * Replace how this lançamento is divided between participants.
+     * Replace the participants' parts of this lançamento. The carteira's
+     * owner never gets a row of their own: theirs is what is left over.
      *
      * @param  array<int|string, mixed>  $partes  amount per user id; empty means "not divided"
      */
@@ -151,26 +163,71 @@ class Lancamento extends Model
         $this->partes()->delete();
 
         foreach ($partes as $userId => $amount) {
-            $this->partes()->create(['user_id' => $userId, 'amount' => $amount]);
+            if ((int) $userId !== (int) $this->user_id) {
+                $this->partes()->create(['user_id' => $userId, 'amount' => $amount]);
+            }
         }
 
         $this->unsetRelation('partes');
     }
 
-    /**
-     * How much of this lançamento is the given user's: their own parte,
-     * plus — for the carteira's owner — whatever wasn't given to anyone
-     * (all of it, when the lançamento isn't divided).
-     */
-    public function shareOf(User $user): float
+    public function isDivided(): bool
     {
-        $share = (float) $this->partes->where('user_id', $user->id)->sum('amount');
+        return $this->partes->isNotEmpty();
+    }
 
+    public function partesSaemDoDono(): bool
+    {
+        return $this->partes_conta === self::CONTA_DONO;
+    }
+
+    /**
+     * The given user's part as the form shows it: a participant's own
+     * part, or — for the carteira's owner — what the participants leave.
+     */
+    public function parteOf(User $user): float
+    {
         if ((int) $this->user_id === (int) $user->id) {
-            $share += (float) $this->amount - (float) $this->partes->sum('amount');
+            return round((float) $this->amount - (float) $this->partes->sum('amount'), 2);
         }
 
-        return round($share, 2);
+        return round((float) $this->partes->where('user_id', $user->id)->sum('amount'), 2);
+    }
+
+    /**
+     * How much this lançamento adds to the given user's account. An
+     * entrada is always the carteira owner's, in full — a participant on
+     * it is who the owner received (part of) it from.
+     */
+    public function entradaFor(User $user): float
+    {
+        $isOwner = (int) $this->user_id === (int) $user->id;
+
+        return $this->type === self::TYPE_ENTRADA && $isOwner ? (float) $this->amount : 0.0;
+    }
+
+    /**
+     * How much this lançamento takes out of the given user's account.
+     *
+     * - Entrada: the part the owner received from a participant leaves
+     *   that participant's account.
+     * - Saída: each participant's part leaves their own account and the
+     *   owner pays the rest — unless the parts were set to come out of the
+     *   owner's account, who then pays everything.
+     */
+    public function saidaFor(User $user): float
+    {
+        $isOwner = (int) $this->user_id === (int) $user->id;
+
+        if ($this->type === self::TYPE_ENTRADA) {
+            return $isOwner ? 0.0 : $this->parteOf($user);
+        }
+
+        if ($this->partesSaemDoDono()) {
+            return $isOwner ? (float) $this->amount : 0.0;
+        }
+
+        return $this->parteOf($user);
     }
 
     /**

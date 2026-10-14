@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Concerns;
 
+use App\Models\Lancamento;
 use App\Support\Carteira;
 use Illuminate\Support\Number;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
@@ -39,6 +41,7 @@ trait ValidatesPartes
         return [
             'partes' => ['sometimes', 'array'],
             'partes.*' => ['numeric', 'min:0.01'],
+            'partes_conta' => ['sometimes', 'nullable', Rule::in([Lancamento::CONTA_PARTICIPANTE, Lancamento::CONTA_DONO])],
         ];
     }
 

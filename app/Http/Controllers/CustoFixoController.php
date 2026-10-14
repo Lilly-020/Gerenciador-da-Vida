@@ -34,7 +34,7 @@ class CustoFixoController extends Controller
      */
     public function store(StoreCustoFixoRequest $request): RedirectResponse|JsonResponse
     {
-        Carteira::owner()->custoFixos()->create($request->validated());
+        Carteira::owner()->custoFixos()->create($this->withoutOwnersPart($request->validated()));
 
         return $this->respondWith($request);
     }
@@ -47,14 +47,20 @@ class CustoFixoController extends Controller
      */
     public function update(UpdateCustoFixoRequest $request, CustoFixo $custoFixo): RedirectResponse|JsonResponse
     {
-        $data = Arr::except($request->validated(), 'scope');
+        $data = $this->withoutOwnersPart(Arr::except($request->validated(), 'scope'));
+        $month = $this->viewedMonth($request);
 
         if ($request->input('scope') === UpdateCustoFixoRequest::SCOPE_MES) {
-            $custoFixo->adjustFor($this->viewedMonth($request), $data);
+            $custoFixo->adjustFor($month, $data);
         } else {
             $custoFixo->update($data);
             $custoFixo->ajustes()->delete();
         }
+
+        // A payment already recorded for the month being looked at
+        // follows the change; other months' payments are history.
+        $custoFixo->unsetRelation('ajustes');
+        $custoFixo->syncPaymentFor($month);
 
         return $this->respondWith($request);
     }
@@ -132,6 +138,22 @@ class CustoFixoController extends Controller
                 ->map(fn (User $member): array => ['user' => $member, ...$totalsOf($member)])
                 ->values(),
         ];
+    }
+
+    /**
+     * The owner's own part is never stored: it is what the participants
+     * leave (the form only asks for it so the parts can be checked).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withoutOwnersPart(array $data): array
+    {
+        if (isset($data['partes'])) {
+            unset($data['partes'][Carteira::ownerId()]);
+        }
+
+        return $data;
     }
 
     private function viewedMonth(Request $request): Carbon

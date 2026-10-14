@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * What a fixed cost looks like in one specific month, when the user edited
  * "só este mês" instead of the cost itself. See {@see CustoFixo::valuesFor()}.
  */
-#[Fillable(['month', 'name', 'category', 'amount', 'due_day', 'notes', 'partes'])]
+#[Fillable(['month', 'name', 'category', 'amount', 'due_day', 'notes', 'partes', 'partes_conta'])]
 class CustoFixoAjuste extends Model
 {
     /**

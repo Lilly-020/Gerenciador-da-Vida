@@ -49,23 +49,20 @@ class FinanceiroDashboardController extends Controller
             : collect();
         $conta = $lancamentos->concat($compartilhados);
 
-        // In a carteira with participants, the cards count only the
-        // logged-in user's share of each lançamento; everyone else's is
-        // listed apart (see $participantes below).
+        // Everything is counted per account: what each lançamento adds
+        // to, or takes out of, one person's — see Lancamento::entradaFor()
+        // and saidaFor(). The cards are the logged-in user's account; the
+        // other members of the carteira are listed apart.
         $viewer = $request->user();
         $membros = Carteira::members();
-        $sharesOf = fn (User $member, Collection $from): array => [
-            'entradas' => (float) $from->where('type', Lancamento::TYPE_ENTRADA)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
-            'saidas' => (float) $from->where('type', Lancamento::TYPE_SAIDA)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
-        ];
-        $viewerShare = fn (Lancamento $l): float => $l->shareOf($viewer);
+        $movimentos = $this->movimentosFor($viewer, $conta);
 
-        ['entradas' => $entradas, 'saidas' => $saidas] = $sharesOf($viewer, $conta);
+        $entradas = (float) $movimentos->where('type', Lancamento::TYPE_ENTRADA)->sum('amount');
+        $saidas = (float) $movimentos->where('type', Lancamento::TYPE_SAIDA)->sum('amount');
 
         // Two analyses once anything is divided: what the user spends on
         // their own, and what is spent together (at its full value).
         $temDivisao = $membros->count() > 1 || $compartilhados->isNotEmpty();
-        [$conjuntos, $individuais] = $conta->partition(fn (Lancamento $l): bool => $l->partes->isNotEmpty());
 
         $investimentos = $user->investimentos()->with('aportes')->get();
         $investido = (float) $investimentos
@@ -95,13 +92,19 @@ class FinanceiroDashboardController extends Controller
             'cards' => $cards,
             'participantes' => $membros
                 ->reject(fn (User $member): bool => $member->is($viewer))
-                ->map(fn (User $member): array => ['user' => $member, ...$sharesOf($member, $lancamentos)])
+                ->map(function (User $member) use ($lancamentos): array {
+                    $movimentos = $this->movimentosFor($member, $lancamentos);
+
+                    return [
+                        'user' => $member,
+                        'entradas' => (float) $movimentos->where('type', Lancamento::TYPE_ENTRADA)->sum('amount'),
+                        'saidas' => (float) $movimentos->where('type', Lancamento::TYPE_SAIDA)->sum('amount'),
+                    ];
+                })
                 ->values(),
-            'despesasPorCategoria' => $this->despesasPorCategoria($conta, $viewerShare),
-            'totaisPorCategoria' => $temDivisao
-                ? $this->totaisPorCategoria($individuais, $viewerShare)
-                : $this->totaisPorCategoria($conta),
-            'gastosConjuntos' => $temDivisao ? $this->totaisPorCategoria($conjuntos) : null,
+            'despesasPorCategoria' => $this->despesasPorCategoria($movimentos),
+            'totaisPorCategoria' => $this->totaisPorCategoria($temDivisao ? $movimentos->where('conjunto', false) : $movimentos),
+            'gastosConjuntos' => $temDivisao ? $this->totaisPorCategoria($conta->filter->isDivided()) : null,
         ]);
     }
 
@@ -143,54 +146,63 @@ class FinanceiroDashboardController extends Controller
     }
 
     /**
-     * One bar per category for the period: entrada categories first, then
-     * saída ones, each group from largest to smallest. A name used by both
-     * types (e.g. "Outros") yields two separate bars. `$amountOf` lets a
-     * caller count only part of each lançamento (one participant's share).
+     * What each lançamento means for one person's account, as plain
+     * "movimentos": an entrada for what it adds, a saída for what it takes
+     * out (a single lançamento can be either, depending on who is asking).
+     * `conjunto` marks the ones that come from a divided lançamento.
      *
      * @param  Collection<int, Lancamento>  $lancamentos
-     * @param  (\Closure(Lancamento): float)|null  $amountOf
+     * @return Collection<int, object{type: string, category: string, description: string, date: Carbon, amount: float, conjunto: bool}>
+     */
+    private function movimentosFor(User $user, Collection $lancamentos): Collection
+    {
+        return $lancamentos->flatMap(fn (Lancamento $l): array => collect([
+            Lancamento::TYPE_ENTRADA => $l->entradaFor($user),
+            Lancamento::TYPE_SAIDA => $l->saidaFor($user),
+        ])->filter(fn (float $amount): bool => $amount > 0)->map(fn (float $amount, string $type): object => (object) [
+            'type' => $type,
+            'category' => $l->category,
+            'description' => $l->description,
+            'date' => $l->date,
+            'amount' => $amount,
+            'conjunto' => $l->isDivided(),
+        ])->values()->all())->values();
+    }
+
+    /**
+     * One bar per category: entrada categories first, then saída ones,
+     * each group from largest to smallest. A name used by both types
+     * (e.g. "Outros") yields two separate bars. Takes lançamentos (full
+     * amounts) or movimentos (one account's).
+     *
+     * @param  Collection<int, object>  $items  each with type, category and amount
      * @return array<int, array{category: string, type: string, amount: float}>
      */
-    private function totaisPorCategoria(Collection $lancamentos, ?\Closure $amountOf = null): array
+    private function totaisPorCategoria(Collection $items): array
     {
-        $amountOf ??= fn (Lancamento $l): float => (float) $l->amount;
-
         return collect([Lancamento::TYPE_ENTRADA, Lancamento::TYPE_SAIDA])
-            ->flatMap(fn (string $type) => $lancamentos
+            ->flatMap(fn (string $type) => $items
                 ->where('type', $type)
                 ->groupBy('category')
                 ->map(fn (Collection $group, string $category): array => [
                     'category' => $category,
                     'type' => $type,
-                    'amount' => (float) $group->sum($amountOf),
+                    'amount' => (float) $group->sum(fn (object $item): float => (float) $item->amount),
                 ])
-                ->filter(fn (array $item): bool => $item['amount'] > 0)
                 ->sortByDesc('amount')
                 ->values())
             ->all();
     }
 
     /**
-     * The user's expenses by category, each with the lançamentos behind
-     * it. `$amountOf` gives how much of a lançamento counts (the user's
-     * own share of it).
+     * An account's expenses by category, each with the movimentos behind it.
      *
-     * @param  Collection<int, Lancamento>  $lancamentos
-     * @param  \Closure(Lancamento): float  $amountOf
-     * @return array<int, array{category: string, amount: float, percentage: float, lancamentos: Collection<int, object{description: string, date: Carbon, amount: float}>}>
+     * @param  Collection<int, object>  $movimentos
+     * @return array<int, array{category: string, amount: float, percentage: float, lancamentos: Collection<int, object>}>
      */
-    private function despesasPorCategoria(Collection $lancamentos, \Closure $amountOf): array
+    private function despesasPorCategoria(Collection $movimentos): array
     {
-        $saidas = $lancamentos
-            ->where('type', Lancamento::TYPE_SAIDA)
-            ->map(fn (Lancamento $l): object => (object) [
-                'category' => $l->category,
-                'description' => $l->description,
-                'date' => $l->date,
-                'amount' => $amountOf($l),
-            ])
-            ->filter(fn (object $item): bool => $item->amount > 0);
+        $saidas = $movimentos->where('type', Lancamento::TYPE_SAIDA);
         $total = (float) $saidas->sum('amount');
 
         if ($total <= 0) {
