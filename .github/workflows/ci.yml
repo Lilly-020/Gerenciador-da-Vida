@@ -64,6 +64,11 @@ jobs:
             exit 1
           fi
 
+          if [[ "$DEPLOY_SSH_KEY" != *"PRIVATE KEY"* ]]; then
+            echo "::error::DEPLOY_SSH_KEY is not a private key (the .pub file was probably pasted instead)."
+            exit 1
+          fi
+
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
           chmod 600 ~/.ssh/deploy
