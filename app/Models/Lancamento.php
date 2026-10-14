@@ -128,6 +128,20 @@ class Lancamento extends Model
     }
 
     /**
+     * Lançamentos from other people's carteiras that carry a part for the
+     * given user. That part belongs in the user's own account, so their
+     * own Financeiro counts it alongside what is in their carteira.
+     *
+     * @return Builder<self>
+     */
+    public static function sharedWith(User $user): Builder
+    {
+        return self::withoutGlobalScope('owner')
+            ->where('user_id', '!=', $user->id)
+            ->whereHas('partes', fn (Builder $query) => $query->where('user_id', $user->id));
+    }
+
+    /**
      * Replace how this lançamento is divided between participants.
      *
      * @param  array<int|string, mixed>  $partes  amount per user id; empty means "not divided"

@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesMonth;
 use App\Http\Requests\StoreLancamentoRequest;
 use App\Http\Requests\UpdateLancamentoRequest;
 use App\Models\Lancamento;
+use App\Models\User;
 use App\Support\Carteira;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -107,8 +108,7 @@ class LancamentoController extends Controller
             'type' => $type,
             'categories' => Lancamento::categoriesFor($type),
             'lancamentos' => $lancamentos,
-            'totalPrevisto' => $lancamentos->where('status', Lancamento::STATUS_PREVISTO)->sum('amount'),
-            'totalRealizado' => $lancamentos->where('status', Lancamento::STATUS_REALIZADO)->sum('amount'),
+            ...$this->totals($request, $lancamentos),
             'month' => $month,
             'mes' => $this->monthParam($month),
             'meses' => $this->monthOptions($request, $type, $month),
@@ -133,11 +133,39 @@ class LancamentoController extends Controller
                 'mes' => $this->monthParam($month),
                 'membros' => Carteira::members(),
             ])->render(),
-            'totals' => view('partials.financeiro.lancamentos-totals', [
-                'totalPrevisto' => $lancamentos->where('status', Lancamento::STATUS_PREVISTO)->sum('amount'),
-                'totalRealizado' => $lancamentos->where('status', Lancamento::STATUS_REALIZADO)->sum('amount'),
-            ])->render(),
+            'totals' => view('partials.financeiro.lancamentos-totals', $this->totals($request, $lancamentos))->render(),
         ]);
+    }
+
+    /**
+     * Realizado/previsto totals counting only the logged-in user's share
+     * of each lançamento, plus the same pair for every other member of
+     * the carteira (empty when it has no participants).
+     *
+     * @param  Collection<int, Lancamento>  $lancamentos
+     * @return array{totalPrevisto: float, totalRealizado: float, participantes: \Illuminate\Support\Collection<int, array{user: User, previsto: float, realizado: float}>}
+     */
+    private function totals(Request $request, Collection $lancamentos): array
+    {
+        // Other members' shares only make sense within this carteira —
+        // not in the lançamentos that came from someone else's.
+        $ofCarteira = $lancamentos->where('user_id', Carteira::ownerId());
+        $sharesOf = fn (User $member, bool $carteiraOnly = false): array => [
+            'previsto' => (float) ($carteiraOnly ? $ofCarteira : $lancamentos)
+                ->where('status', Lancamento::STATUS_PREVISTO)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
+            'realizado' => (float) ($carteiraOnly ? $ofCarteira : $lancamentos)
+                ->where('status', Lancamento::STATUS_REALIZADO)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
+        ];
+        $mine = $sharesOf($request->user());
+
+        return [
+            'totalPrevisto' => $mine['previsto'],
+            'totalRealizado' => $mine['realizado'],
+            'participantes' => Carteira::members()
+                ->reject(fn (User $member): bool => $member->is($request->user()))
+                ->map(fn (User $member): array => ['user' => $member, ...$sharesOf($member, true)])
+                ->values(),
+        ];
     }
 
     /**
@@ -145,16 +173,26 @@ class LancamentoController extends Controller
      */
     private function lancamentosFor(Request $request, string $type, ?Carbon $month): Collection
     {
-        return Carteira::owner()->lancamentos()
-            ->with('partes.user')
+        $inMonth = fn ($query) => $query
             ->where('type', $type)
             ->when($month, fn ($query) => $query->whereBetween(
                 'date',
                 Lancamento::dateRange($month, $month->copy()->endOfMonth()),
-            ))
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->get();
+            ));
+
+        $lancamentos = $inMonth(Carteira::owner()->lancamentos()->with('partes.user'))->get();
+
+        // In their own carteira the user also sees — read-only — the
+        // lançamentos of other carteiras that carry a part for them.
+        if (Carteira::isOwn()) {
+            $lancamentos = $lancamentos->concat(
+                $inMonth(Lancamento::sharedWith($request->user())->with(['partes.user', 'user']))->get(),
+            );
+        }
+
+        return $lancamentos
+            ->sortBy([['date', 'desc'], ['id', 'desc']])
+            ->values();
     }
 
     /**

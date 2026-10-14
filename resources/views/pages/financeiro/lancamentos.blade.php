@@ -56,7 +56,7 @@
             @endif
         </form>
 
-        @include('partials.financeiro.lancamentos-totals', ['totalRealizado' => $totalRealizado, 'totalPrevisto' => $totalPrevisto])
+        @include('partials.financeiro.lancamentos-totals')
 
         @include('partials.financeiro.lancamentos-list', ['type' => $type, 'lancamentos' => $lancamentos, 'month' => $month, 'mes' => $mes, 'membros' => $membros])
     </div>

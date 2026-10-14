@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesMonth;
 use App\Http\Requests\StoreCustoFixoRequest;
 use App\Http\Requests\UpdateCustoFixoRequest;
 use App\Models\CustoFixo;
+use App\Models\User;
 use App\Support\Carteira;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -108,17 +109,28 @@ class CustoFixoController extends Controller
         $dueInMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
             ->filter(fn (CustoFixo $c): bool => $c->isDueIn($month));
 
-        $amountInMonth = fn (CustoFixo $c): float => (float) $c->valuesFor($month)['amount'];
+        // Totals count only the logged-in user's share of each cost; the
+        // other members of the carteira get the same pair of totals apart.
+        $totalsOf = fn (User $member): array => [
+            'total' => (float) $dueInMonth->sum(fn (CustoFixo $c): float => $c->shareFor($month, $member)),
+            'totalPago' => (float) $dueInMonth
+                ->filter(fn (CustoFixo $c): bool => $c->isPaidFor($month))
+                ->sum(fn (CustoFixo $c): float => $c->shareFor($month, $member)),
+        ];
+        $membros = Carteira::members();
 
         return [
             'custoFixos' => $custoFixos,
-            'membros' => Carteira::members(),
+            'membros' => $membros,
             'month' => $month,
             'mes' => $this->monthParam($month),
             'monthTitle' => self::monthTitle($month),
             'isCurrentMonth' => $month->isSameMonth(Carbon::today()),
-            'total' => $dueInMonth->sum($amountInMonth),
-            'totalPago' => $dueInMonth->filter(fn (CustoFixo $c): bool => $c->isPaidFor($month))->sum($amountInMonth),
+            ...$totalsOf($request->user()),
+            'participantes' => $membros
+                ->reject(fn (User $member): bool => $member->is($request->user()))
+                ->map(fn (User $member): array => ['user' => $member, ...$totalsOf($member)])
+                ->values(),
         ];
     }
 

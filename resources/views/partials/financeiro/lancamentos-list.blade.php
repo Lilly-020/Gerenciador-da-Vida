@@ -4,8 +4,14 @@
 
 <div id="lancamentos-list" class="space-y-2">
     @forelse ($lancamentos as $lancamento)
+        @php
+            // A lançamento from someone else's carteira, here because part
+            // of it is the logged-in user's: shown read-only, at that part.
+            $isForeign = (int) $lancamento->user_id !== (int) \App\Support\Carteira::ownerId();
+        @endphp
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3">
             <div class="flex min-w-0 flex-1 items-center gap-3">
+                @unless ($isForeign)
                 <input
                     type="checkbox"
                     data-lancamento-toggle-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}"
@@ -13,6 +19,7 @@
                     title="Marcar como {{ $lancamento->status === 'previsto' ? 'realizado' : 'previsto' }}"
                     class="h-4 w-4 shrink-0 rounded border-white/20 bg-slate-950/60 text-indigo-500 focus:ring-indigo-400/40"
                 >
+                @endunless
 
                 <div class="min-w-0">
                     <p class="wrap-break-word text-sm font-medium text-white">{{ $lancamento->description }}</p>
@@ -57,10 +64,16 @@
                             </span>
                         @endif
                     </p>
-                    @include('partials.financeiro.partes-resumo', [
-                        'partes' => $lancamento->partes->pluck('amount', 'user_id'), 'total' => $lancamento->amount,
-                        'isEntrada' => $isEntrada, 'membros' => $membros,
-                    ])
+                    @if ($isForeign)
+                        <p class="wrap-break-word mt-1.5 text-xs text-indigo-300">
+                            Sua parte de @money($lancamento->amount) · carteira de {{ $lancamento->user->handle() }}
+                        </p>
+                    @else
+                        @include('partials.financeiro.partes-resumo', [
+                            'partes' => $lancamento->partes->pluck('amount', 'user_id'), 'total' => $lancamento->amount,
+                            'isEntrada' => $isEntrada, 'membros' => $membros,
+                        ])
+                    @endif
                     @if ($lancamento->notes)
                         <p class="wrap-break-word mt-1.5 text-xs whitespace-pre-line text-slate-500">{{ $lancamento->notes }}</p>
                     @endif
@@ -69,8 +82,9 @@
 
             <div class="flex shrink-0 items-center gap-3">
                 <span class="text-sm font-semibold {{ $isEntrada ? 'text-emerald-300' : 'text-rose-300' }}">
-                    {{ $isEntrada ? '+' : '−' }} @money($lancamento->amount)
+                    {{ $isEntrada ? '+' : '−' }} @money($isForeign ? $lancamento->shareOf(auth()->user()) : $lancamento->amount)
                 </span>
+                @unless ($isForeign)
                 <button
                     type="button"
                     data-lancamento-edit-trigger
@@ -105,6 +119,7 @@
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414Z" clip-rule="evenodd" />
                     </svg>
                 </button>
+                @endunless
             </div>
         </div>
     @empty

@@ -38,17 +38,34 @@ class FinanceiroDashboardController extends Controller
             ->whereBetween('date', Lancamento::dateRange($start, $end))
             ->get();
 
+        // In their own carteira the user's account also includes their
+        // parts of lançamentos in the carteiras they take part in.
+        $compartilhados = Carteira::isOwn()
+            ? Lancamento::sharedWith($request->user())
+                ->with('partes')
+                ->where('status', Lancamento::STATUS_REALIZADO)
+                ->whereBetween('date', Lancamento::dateRange($start, $end))
+                ->get()
+            : collect();
+        $conta = $lancamentos->concat($compartilhados);
+
         // In a carteira with participants, the cards count only the
         // logged-in user's share of each lançamento; everyone else's is
         // listed apart (see $participantes below).
         $viewer = $request->user();
         $membros = Carteira::members();
-        $sharesOf = fn (User $member): array => [
-            'entradas' => (float) $lancamentos->where('type', Lancamento::TYPE_ENTRADA)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
-            'saidas' => (float) $lancamentos->where('type', Lancamento::TYPE_SAIDA)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
+        $sharesOf = fn (User $member, Collection $from): array => [
+            'entradas' => (float) $from->where('type', Lancamento::TYPE_ENTRADA)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
+            'saidas' => (float) $from->where('type', Lancamento::TYPE_SAIDA)->sum(fn (Lancamento $l): float => $l->shareOf($member)),
         ];
+        $viewerShare = fn (Lancamento $l): float => $l->shareOf($viewer);
 
-        ['entradas' => $entradas, 'saidas' => $saidas] = $sharesOf($viewer);
+        ['entradas' => $entradas, 'saidas' => $saidas] = $sharesOf($viewer, $conta);
+
+        // Two analyses once anything is divided: what the user spends on
+        // their own, and what is spent together (at its full value).
+        $temDivisao = $membros->count() > 1 || $compartilhados->isNotEmpty();
+        [$conjuntos, $individuais] = $conta->partition(fn (Lancamento $l): bool => $l->partes->isNotEmpty());
 
         $investimentos = $user->investimentos()->with('aportes')->get();
         $investido = (float) $investimentos
@@ -78,15 +95,13 @@ class FinanceiroDashboardController extends Controller
             'cards' => $cards,
             'participantes' => $membros
                 ->reject(fn (User $member): bool => $member->is($viewer))
-                ->map(fn (User $member): array => ['user' => $member, ...$sharesOf($member)])
+                ->map(fn (User $member): array => ['user' => $member, ...$sharesOf($member, $lancamentos)])
                 ->values(),
-            'despesasPorCategoria' => $this->despesasPorCategoria($lancamentos),
-            'totaisPorCategoria' => $this->totaisPorCategoria($lancamentos),
-            // Only meaningful in a carteira with participants: the same
-            // chart again, counting just the logged-in user's share.
-            'minhaPartePorCategoria' => $membros->count() > 1
-                ? $this->totaisPorCategoria($lancamentos, fn (Lancamento $l): float => $l->shareOf($request->user()))
-                : null,
+            'despesasPorCategoria' => $this->despesasPorCategoria($conta, $viewerShare),
+            'totaisPorCategoria' => $temDivisao
+                ? $this->totaisPorCategoria($individuais, $viewerShare)
+                : $this->totaisPorCategoria($conta),
+            'gastosConjuntos' => $temDivisao ? $this->totaisPorCategoria($conjuntos) : null,
         ]);
     }
 
@@ -157,12 +172,25 @@ class FinanceiroDashboardController extends Controller
     }
 
     /**
+     * The user's expenses by category, each with the lançamentos behind
+     * it. `$amountOf` gives how much of a lançamento counts (the user's
+     * own share of it).
+     *
      * @param  Collection<int, Lancamento>  $lancamentos
-     * @return array<int, array{category: string, amount: float, percentage: float, lancamentos: Collection<int, Lancamento>}>
+     * @param  \Closure(Lancamento): float  $amountOf
+     * @return array<int, array{category: string, amount: float, percentage: float, lancamentos: Collection<int, object{description: string, date: Carbon, amount: float}>}>
      */
-    private function despesasPorCategoria(Collection $lancamentos): array
+    private function despesasPorCategoria(Collection $lancamentos, \Closure $amountOf): array
     {
-        $saidas = $lancamentos->where('type', Lancamento::TYPE_SAIDA);
+        $saidas = $lancamentos
+            ->where('type', Lancamento::TYPE_SAIDA)
+            ->map(fn (Lancamento $l): object => (object) [
+                'category' => $l->category,
+                'description' => $l->description,
+                'date' => $l->date,
+                'amount' => $amountOf($l),
+            ])
+            ->filter(fn (object $item): bool => $item->amount > 0);
         $total = (float) $saidas->sum('amount');
 
         if ($total <= 0) {

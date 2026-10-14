@@ -79,7 +79,7 @@
         @if ($participantes->isNotEmpty())
             <div class="mb-4 rounded-xl border border-white/10 bg-gradient-to-b from-slate-900/70 to-slate-900/40 p-4">
                 <p class="text-xs font-medium tracking-wide text-slate-400 uppercase">Parte dos outros participantes</p>
-                <p class="mt-1 text-xs text-slate-500">Os cards acima contam só a sua parte. O que é de cada participante fica aqui, separado.</p>
+                <p class="mt-1 text-xs text-slate-500">Os cards acima contam só o que é seu. O que é de cada participante desta carteira fica aqui, separado, e conta na conta dele.</p>
 
                 <div class="mt-3 space-y-2">
                     @foreach ($participantes as $participante)
@@ -108,15 +108,15 @@
         <div class="mb-4">
             @include('partials.financeiro.categorias-chart', [
                 'totaisPorCategoria' => $totaisPorCategoria,
-                'title' => $minhaPartePorCategoria === null ? 'Por categoria' : 'Por categoria — todos os participantes',
+                'title' => $gastosConjuntos === null ? 'Por categoria' : 'Por categoria — gastos individuais',
             ])
         </div>
 
-        @if ($minhaPartePorCategoria !== null)
+        @if ($gastosConjuntos !== null)
             <div class="mb-4">
                 @include('partials.financeiro.categorias-chart', [
-                    'totaisPorCategoria' => $minhaPartePorCategoria,
-                    'title' => 'Por categoria — minha parte',
+                    'totaisPorCategoria' => $gastosConjuntos,
+                    'title' => 'Por categoria — gastos conjuntos',
                 ])
             </div>
         @endif

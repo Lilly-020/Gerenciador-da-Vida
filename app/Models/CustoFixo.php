@@ -125,6 +125,23 @@ class CustoFixo extends Model
     }
 
     /**
+     * How much of this cost is the given user's in the given month: for a
+     * participant, the part set for them; for the cost's owner, whatever
+     * the participants don't take.
+     */
+    public function shareFor(Carbon $month, User $user): float
+    {
+        $values = $this->valuesFor($month);
+        $partes = collect($values['partes'] ?: []);
+
+        if ((int) $this->user_id === (int) $user->id) {
+            return round((float) $values['amount'] - (float) $partes->except($user->id)->sum(), 2);
+        }
+
+        return round((float) $partes->get($user->id, 0), 2);
+    }
+
+    /**
      * Change this cost for the given month only. Values that end up
      * matching the cost's own just drop the month's ajuste.
      *

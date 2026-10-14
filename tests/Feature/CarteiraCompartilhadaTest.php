@@ -330,32 +330,71 @@ class CarteiraCompartilhadaTest extends TestCase
         $this->assertSame(0, $lancamento->partes()->count());
     }
 
-    public function test_the_dashboard_charts_the_whole_carteira_and_the_logged_in_users_share(): void
+    public function test_the_dashboard_separates_individual_and_joint_spending(): void
     {
         $this->share();
         $jantar = Lancamento::factory()->for($this->owner)->saida()->create(['category' => 'Alimentação', 'amount' => 100]);
         $jantar->syncPartes([$this->owner->id => 60, $this->guest->id => 40]);
-        // Not divided: counts entirely for the carteira's owner.
         Lancamento::factory()->for($this->owner)->saida()->create(['category' => 'Moradia', 'amount' => 900]);
 
-        $everyone = [
-            ['category' => 'Moradia', 'type' => 'saida', 'amount' => 900.0],
-            ['category' => 'Alimentação', 'type' => 'saida', 'amount' => 100.0],
-        ];
+        $joint = [['category' => 'Alimentação', 'type' => 'saida', 'amount' => 100.0]];
 
         $this->actingAs($this->owner)->get('/financeiro')
-            ->assertSee('minha parte')
-            ->assertViewHas('totaisPorCategoria', $everyone)
-            ->assertViewHas('minhaPartePorCategoria', [
-                ['category' => 'Moradia', 'type' => 'saida', 'amount' => 900.0],
-                ['category' => 'Alimentação', 'type' => 'saida', 'amount' => 60.0],
-            ]);
+            ->assertSee('gastos individuais')
+            ->assertSee('gastos conjuntos')
+            ->assertViewHas('totaisPorCategoria', [['category' => 'Moradia', 'type' => 'saida', 'amount' => 900.0]])
+            ->assertViewHas('gastosConjuntos', $joint);
 
+        // The participant has no spending of their own in this carteira.
         $this->asGuestInOwnersCarteira()->get('/financeiro')
-            ->assertViewHas('totaisPorCategoria', $everyone)
-            ->assertViewHas('minhaPartePorCategoria', [
-                ['category' => 'Alimentação', 'type' => 'saida', 'amount' => 40.0],
-            ]);
+            ->assertViewHas('totaisPorCategoria', [])
+            ->assertViewHas('gastosConjuntos', $joint);
+    }
+
+    public function test_a_participants_part_counts_in_their_own_account_not_the_owners(): void
+    {
+        $this->share('ver');
+        $vivo = CustoFixo::factory()->for($this->owner)->create([
+            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'partes' => [$this->guest->id => 20],
+        ]);
+        $this->actingAs($this->owner)->postJson("/financeiro/custos-fixos/{$vivo->id}/pagar")->assertOk();
+        Lancamento::factory()->for($this->guest)->saida()->create(['category' => 'Lazer', 'amount' => 15]);
+
+        // The owner's account is charged only their R$ 40.
+        $this->actingAs($this->owner)->get('/financeiro')
+            ->assertViewHas('cards', fn (array $cards): bool => $cards['saidas'] === 40.0);
+
+        // The participant — in their own carteira — is charged their R$ 20,
+        // next to what they spent on their own.
+        $own = $this->actingAs($this->guest)->withSession([Carteira::SESSION_KEY => null]);
+
+        $own->get('/financeiro')
+            ->assertViewHas('cards', fn (array $cards): bool => $cards['saidas'] === 35.0)
+            ->assertViewHas('totaisPorCategoria', [['category' => 'Lazer', 'type' => 'saida', 'amount' => 15.0]])
+            ->assertViewHas('gastosConjuntos', [['category' => 'Telefone', 'type' => 'saida', 'amount' => 60.0]])
+            ->assertViewHas('despesasPorCategoria', fn (array $categorias): bool => collect($categorias)
+                ->pluck('amount', 'category')->all() === ['Telefone' => 20.0, 'Lazer' => 15.0]);
+
+        $own->get('/financeiro/saidas')
+            ->assertSee('Vivo')
+            ->assertSee('carteira de @lilly')
+            ->assertViewHas('totalRealizado', 35.0);
+
+        // It is read-only there: the lançamento still belongs to the owner.
+        $pagamento = Lancamento::withoutGlobalScopes()->where('custo_fixo_id', $vivo->id)->firstOrFail();
+        $own->deleteJson("/financeiro/lancamentos/{$pagamento->id}")->assertNotFound();
+        $this->assertModelExists($pagamento);
+    }
+
+    public function test_someone_elses_lancamentos_without_a_part_for_the_user_never_show_up(): void
+    {
+        $this->share();
+        Lancamento::factory()->for($this->owner)->saida()->create(['description' => 'Só da Lilly', 'amount' => 500]);
+
+        $own = $this->actingAs($this->guest)->withSession([Carteira::SESSION_KEY => null]);
+
+        $own->get('/financeiro/saidas')->assertDontSee('Só da Lilly')->assertViewHas('totalRealizado', 0.0);
+        $own->get('/financeiro')->assertViewHas('cards', fn (array $cards): bool => $cards['saidas'] === 0.0);
     }
 
     public function test_the_dashboard_cards_count_only_the_logged_in_users_share(): void
@@ -383,6 +422,50 @@ class CarteiraCompartilhadaTest extends TestCase
                 && $participantes[0]['saidas'] === 960.0);
     }
 
+    public function test_entradas_and_saidas_totals_count_only_the_logged_in_users_share(): void
+    {
+        $this->share();
+        $jantar = Lancamento::factory()->for($this->owner)->saida()->create(['amount' => 100]);
+        $jantar->syncPartes([$this->owner->id => 60, $this->guest->id => 40]);
+        Lancamento::factory()->for($this->owner)->saida()->previsto()->create(['amount' => 900]);
+
+        $this->actingAs($this->owner)->get('/financeiro/saidas')
+            ->assertSee('Parte dos outros participantes')
+            ->assertViewHas('totalRealizado', 60.0)
+            ->assertViewHas('totalPrevisto', 900.0)
+            ->assertViewHas('participantes', fn ($participantes): bool => $participantes[0]['user']->is($this->guest)
+                && $participantes[0]['realizado'] === 40.0
+                && $participantes[0]['previsto'] === 0.0);
+
+        $this->asGuestInOwnersCarteira()->get('/financeiro/saidas')
+            ->assertViewHas('totalRealizado', 40.0)
+            ->assertViewHas('totalPrevisto', 0.0);
+
+        // The fetch responses re-render the same totals.
+        $response = $this->actingAs($this->owner)->withSession([Carteira::SESSION_KEY => null])
+            ->patchJson("/financeiro/lancamentos/{$jantar->id}", ['status' => 'previsto']);
+        $this->assertStringContainsString('Parte dos outros participantes', $response->json('totals'));
+    }
+
+    public function test_custos_fixos_totals_count_only_the_logged_in_users_share(): void
+    {
+        $this->share();
+        $vivo = CustoFixo::factory()->for($this->owner)->create(['amount' => 60, 'partes' => [$this->guest->id => 20]]);
+        CustoFixo::factory()->for($this->owner)->create(['amount' => 1000]);
+        $vivo->markPaid(today());
+
+        $this->actingAs($this->owner)->withSession([Carteira::SESSION_KEY => null])->get('/financeiro/custos-fixos')
+            ->assertSee('Parte dos outros participantes')
+            ->assertViewHas('total', 1040.0)
+            ->assertViewHas('totalPago', 40.0)
+            ->assertViewHas('participantes', fn ($participantes): bool => $participantes[0]['total'] === 20.0
+                && $participantes[0]['totalPago'] === 20.0);
+
+        $this->asGuestInOwnersCarteira()->get('/financeiro/custos-fixos')
+            ->assertViewHas('total', 20.0)
+            ->assertViewHas('totalPago', 20.0);
+    }
+
     public function test_a_carteira_without_participants_keeps_its_full_totals(): void
     {
         Lancamento::factory()->for($this->owner)->saida()->create(['amount' => 900]);
@@ -395,7 +478,7 @@ class CarteiraCompartilhadaTest extends TestCase
     public function test_a_carteira_without_participants_shows_a_single_chart(): void
     {
         $this->actingAs($this->owner)->get('/financeiro')
-            ->assertViewHas('minhaPartePorCategoria', null)
-            ->assertDontSee('minha parte');
+            ->assertViewHas('gastosConjuntos', null)
+            ->assertDontSee('gastos conjuntos');
     }
 }
