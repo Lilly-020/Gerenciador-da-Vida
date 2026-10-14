@@ -1,4 +1,4 @@
-@props(['type', 'categories'])
+@props(['type', 'categories', 'mes'])
 
 @php
     $isEntrada = $type === 'entrada';
@@ -21,7 +21,7 @@
                 </button>
             </div>
 
-            <form id="new-lancamento-form" action="{{ route('financeiro.lancamentos.store', absolute: false) }}" method="POST" class="space-y-4">
+            <form id="new-lancamento-form" action="{{ route('financeiro.lancamentos.store', ['mes' => $mes], absolute: false) }}" method="POST" class="space-y-4">
                 @csrf
                 <input type="hidden" name="type" value="{{ $type }}">
 

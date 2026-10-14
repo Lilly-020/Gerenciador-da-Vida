@@ -85,6 +85,10 @@
             @endforeach
         </div>
 
+        <div class="mb-4">
+            @include('partials.financeiro.categorias-chart', ['totaisPorCategoria' => $totaisPorCategoria])
+        </div>
+
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
             @include('partials.financeiro.fluxo-chart', ['fluxoMensal' => $fluxoMensal])
             @include('partials.financeiro.despesas-categoria', ['despesasPorCategoria' => $despesasPorCategoria])

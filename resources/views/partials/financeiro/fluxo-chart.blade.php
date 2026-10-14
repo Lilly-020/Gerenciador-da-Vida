@@ -21,14 +21,14 @@
     @if (! $hasData)
         <p class="flex h-40 items-center justify-center text-xs text-slate-500">Sem lançamentos no período</p>
     @else
-        <div class="flex h-40 items-end gap-2">
+        <div class="flex h-40 items-end justify-center gap-2">
             @foreach ($fluxoMensal as $month)
                 @php
                     $entradaPct = ($month['entradas'] / $maxValue) * 100;
                     $saidaPct = ($month['saidas'] / $maxValue) * 100;
                 @endphp
                 <div
-                    class="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
+                    class="flex h-full max-w-24 min-w-0 flex-1 flex-col items-center justify-end gap-1"
                     title="{{ $month['sublabel'] }}: entradas @money($month['entradas']) · saídas @money($month['saidas']) · saldo @money($month['saldo'])"
                 >
                     <div class="flex h-full w-full items-end justify-center gap-0.5">

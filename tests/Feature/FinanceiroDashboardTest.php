@@ -48,6 +48,37 @@ class FinanceiroDashboardTest extends TestCase
         $response->assertSee("R$\u{00A0}2.300,00", false);
     }
 
+    public function test_dashboard_charts_one_bar_per_category(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->create(['category' => 'Salário', 'amount' => 5000]);
+        Lancamento::factory()->for($user)->saida()->create(['category' => 'Lazer', 'amount' => 100]);
+        Lancamento::factory()->for($user)->saida()->create(['category' => 'Moradia', 'amount' => 900]);
+        Lancamento::factory()->for($user)->saida()->create(['category' => 'Moradia', 'amount' => 300]);
+
+        $response = $this->actingAs($user)->get('/financeiro');
+
+        $response->assertViewHas('totaisPorCategoria', [
+            ['category' => 'Salário', 'type' => 'entrada', 'amount' => 5000.0],
+            ['category' => 'Moradia', 'type' => 'saida', 'amount' => 1200.0],
+            ['category' => 'Lazer', 'type' => 'saida', 'amount' => 100.0],
+        ]);
+    }
+
+    public function test_each_expense_category_lists_its_own_lancamentos(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->saida()->create(['category' => 'Lazer', 'description' => 'Cinema']);
+        Lancamento::factory()->for($user)->saida()->create(['category' => 'Moradia', 'description' => 'Conserto da pia']);
+
+        $response = $this->actingAs($user)->get('/financeiro');
+
+        $response->assertSee('Cinema');
+        $response->assertSee('Conserto da pia');
+        $response->assertViewHas('despesasPorCategoria', fn (array $categorias): bool => collect($categorias)
+            ->firstWhere('category', 'Lazer')['lancamentos']->pluck('description')->all() === ['Cinema']);
+    }
+
     public function test_lancamentos_outside_the_selected_period_are_excluded(): void
     {
         $user = User::factory()->create();

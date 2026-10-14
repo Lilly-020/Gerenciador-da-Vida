@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesMonth;
 use App\Http\Requests\StoreLancamentoRequest;
 use App\Http\Requests\UpdateLancamentoRequest;
 use App\Models\Lancamento;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,6 +15,8 @@ use Illuminate\View\View;
 
 class LancamentoController extends Controller
 {
+    use ResolvesMonth;
+
     /**
      * List Entradas for the authenticated user.
      */
@@ -70,11 +75,8 @@ class LancamentoController extends Controller
 
     private function list(Request $request, string $type): View
     {
-        $lancamentos = $request->user()->lancamentos()
-            ->where('type', $type)
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->get();
+        $month = $this->resolveMonth($request);
+        $lancamentos = $this->lancamentosFor($request, $type, $month);
 
         return view('pages.financeiro.lancamentos', [
             'type' => $type,
@@ -82,6 +84,9 @@ class LancamentoController extends Controller
             'lancamentos' => $lancamentos,
             'totalPrevisto' => $lancamentos->where('status', Lancamento::STATUS_PREVISTO)->sum('amount'),
             'totalRealizado' => $lancamentos->where('status', Lancamento::STATUS_REALIZADO)->sum('amount'),
+            'month' => $month,
+            'mes' => $this->monthParam($month),
+            'meses' => $this->monthOptions($request, $type, $month),
         ]);
     }
 
@@ -91,21 +96,60 @@ class LancamentoController extends Controller
             return back();
         }
 
-        $lancamentos = $request->user()->lancamentos()
-            ->where('type', $type)
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->get();
+        $month = $this->resolveMonth($request);
+        $lancamentos = $this->lancamentosFor($request, $type, $month);
 
         return response()->json([
             'list' => view('partials.financeiro.lancamentos-list', [
                 'type' => $type,
                 'lancamentos' => $lancamentos,
+                'month' => $month,
+                'mes' => $this->monthParam($month),
             ])->render(),
             'totals' => view('partials.financeiro.lancamentos-totals', [
                 'totalPrevisto' => $lancamentos->where('status', Lancamento::STATUS_PREVISTO)->sum('amount'),
                 'totalRealizado' => $lancamentos->where('status', Lancamento::STATUS_REALIZADO)->sum('amount'),
             ])->render(),
         ]);
+    }
+
+    /**
+     * @return Collection<int, Lancamento>
+     */
+    private function lancamentosFor(Request $request, string $type, ?Carbon $month): Collection
+    {
+        return $request->user()->lancamentos()
+            ->where('type', $type)
+            ->when($month, fn ($query) => $query->whereBetween(
+                'date',
+                Lancamento::dateRange($month, $month->copy()->endOfMonth()),
+            ))
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    /**
+     * Months offered in the filter, newest first: every month that has a
+     * lançamento of this type, plus the current and the selected one so
+     * neither disappears from the select just for being empty.
+     *
+     * @return array<string, string>
+     */
+    private function monthOptions(Request $request, string $type, ?Carbon $month): array
+    {
+        $keys = $request->user()->lancamentos()
+            ->where('type', $type)
+            ->toBase()
+            ->pluck('date')
+            ->map(fn ($date): string => substr((string) $date, 0, 7))
+            ->push(Carbon::today()->format('Y-m'))
+            ->when($month, fn ($keys) => $keys->push($month->format('Y-m')))
+            ->unique()
+            ->sortDesc();
+
+        return $keys
+            ->mapWithKeys(fn (string $key): array => [$key => self::monthTitle(Carbon::createFromFormat('!Y-m', $key))])
+            ->all();
     }
 }

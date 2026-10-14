@@ -24,6 +24,84 @@ class LancamentoTest extends TestCase
         $response->assertDontSee('Supermercado');
     }
 
+    public function test_lancamentos_pages_show_only_the_current_month_by_default(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->saida()->create(['description' => 'Mercado deste mês', 'amount' => 100]);
+        Lancamento::factory()->for($user)->saida()->onDate(today()->subMonthNoOverflow()->toDateString())
+            ->create(['description' => 'Mercado do mês passado', 'amount' => 40]);
+
+        $response = $this->actingAs($user)->get('/financeiro/saidas');
+
+        $response->assertOk();
+        $response->assertSee('Mercado deste mês');
+        $response->assertDontSee('Mercado do mês passado');
+        $response->assertViewHas('totalRealizado', 100.0);
+    }
+
+    public function test_lancamentos_pages_can_be_filtered_by_month(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->onDate('2026-03-01')->create(['description' => 'Primeiro de março']);
+        Lancamento::factory()->for($user)->entrada()->onDate('2026-03-31')->create(['description' => 'Fim de março']);
+        Lancamento::factory()->for($user)->entrada()->onDate('2026-04-01')->create(['description' => 'Primeiro de abril']);
+
+        $response = $this->actingAs($user)->get('/financeiro/entradas?mes=2026-03');
+
+        $response->assertOk();
+        $response->assertSee('Primeiro de março');
+        $response->assertSee('Fim de março');
+        $response->assertDontSee('Primeiro de abril');
+        $response->assertSee('Março de 2026');
+    }
+
+    public function test_lancamentos_pages_can_show_every_month(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->onDate('2025-03-10')->create(['description' => 'Entrada antiga']);
+        Lancamento::factory()->for($user)->entrada()->create(['description' => 'Entrada recente']);
+
+        $response = $this->actingAs($user)->get('/financeiro/entradas?mes=todos');
+
+        $response->assertSee('Entrada antiga');
+        $response->assertSee('Entrada recente');
+    }
+
+    public function test_an_invalid_month_falls_back_to_the_current_month(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->create(['description' => 'Entrada recente']);
+
+        $response = $this->actingAs($user)->get('/financeiro/entradas?mes=2026-13');
+
+        $response->assertOk();
+        $response->assertSee('Entrada recente');
+    }
+
+    public function test_updating_a_lancamento_re_renders_the_month_being_viewed(): void
+    {
+        $user = User::factory()->create();
+        $march = Lancamento::factory()->for($user)->entrada()->previsto()->onDate('2026-03-10')
+            ->create(['description' => 'Entrada de março']);
+        Lancamento::factory()->for($user)->entrada()->create(['description' => 'Entrada recente']);
+
+        $response = $this->actingAs($user)
+            ->patchJson("/financeiro/lancamentos/{$march->id}?mes=2026-03", ['status' => 'realizado']);
+
+        $response->assertOk();
+        $this->assertStringContainsString('Entrada de março', $response->json('list'));
+        $this->assertStringNotContainsString('Entrada recente', $response->json('list'));
+        $this->assertStringContainsString('mes=2026-03', $response->json('list'));
+    }
+
+    public function test_a_lancamento_card_shows_its_notes(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->create(['notes' => 'Reembolso do pedido cancelado']);
+
+        $this->actingAs($user)->get('/financeiro/entradas')->assertSee('Reembolso do pedido cancelado');
+    }
+
     public function test_the_financeiro_nav_tab_stays_highlighted_on_sub_pages(): void
     {
         $user = User::factory()->create();

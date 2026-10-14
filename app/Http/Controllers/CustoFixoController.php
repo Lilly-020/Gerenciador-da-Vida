@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesMonth;
 use App\Http\Requests\StoreCustoFixoRequest;
 use App\Http\Requests\UpdateCustoFixoRequest;
 use App\Models\CustoFixo;
@@ -13,22 +14,16 @@ use Illuminate\View\View;
 
 class CustoFixoController extends Controller
 {
+    use ResolvesMonth;
+
     /**
-     * List the authenticated user's fixed costs, with this month's paid
-     * status for each.
+     * List the authenticated user's fixed costs as they stand in the
+     * selected month (the current one by default): which are due, and
+     * which of those are already paid.
      */
     public function index(Request $request): View
     {
-        $custoFixos = $request->user()->custoFixos()->with('lancamentos')->orderBy('due_day')->get();
-        $today = Carbon::today();
-        $dueThisMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
-            ->filter(fn (CustoFixo $c): bool => $c->isDueIn($today));
-
-        return view('pages.financeiro.custos-fixos', [
-            'custoFixos' => $custoFixos,
-            'total' => $dueThisMonth->sum('amount'),
-            'totalPago' => $dueThisMonth->filter(fn (CustoFixo $c): bool => $c->isPaidFor($today))->sum('amount'),
-        ]);
+        return view('pages.financeiro.custos-fixos', $this->viewData($request));
     }
 
     /**
@@ -83,17 +78,32 @@ class CustoFixoController extends Controller
             return back();
         }
 
-        $custoFixos = $request->user()->custoFixos()->with('lancamentos')->orderBy('due_day')->get();
-        $today = Carbon::today();
-        $dueThisMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
-            ->filter(fn (CustoFixo $c): bool => $c->isDueIn($today));
+        $data = $this->viewData($request);
 
         return response()->json([
-            'list' => view('partials.financeiro.custos-fixos-list', ['custoFixos' => $custoFixos])->render(),
-            'summary' => view('partials.financeiro.custos-fixos-summary', [
-                'total' => $dueThisMonth->sum('amount'),
-                'totalPago' => $dueThisMonth->filter(fn (CustoFixo $c): bool => $c->isPaidFor($today))->sum('amount'),
-            ])->render(),
+            'list' => view('partials.financeiro.custos-fixos-list', $data)->render(),
+            'summary' => view('partials.financeiro.custos-fixos-summary', $data)->render(),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function viewData(Request $request): array
+    {
+        $month = $this->resolveMonth($request) ?? Carbon::today()->startOfMonth();
+        $custoFixos = $request->user()->custoFixos()->with('lancamentos')->orderBy('due_day')->get();
+        $dueInMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
+            ->filter(fn (CustoFixo $c): bool => $c->isDueIn($month));
+
+        return [
+            'custoFixos' => $custoFixos,
+            'month' => $month,
+            'mes' => $this->monthParam($month),
+            'monthTitle' => self::monthTitle($month),
+            'isCurrentMonth' => $month->isSameMonth(Carbon::today()),
+            'total' => $dueInMonth->sum('amount'),
+            'totalPago' => $dueInMonth->filter(fn (CustoFixo $c): bool => $c->isPaidFor($month))->sum('amount'),
+        ];
     }
 }

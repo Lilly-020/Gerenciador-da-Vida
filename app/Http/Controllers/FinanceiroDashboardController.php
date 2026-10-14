@@ -67,6 +67,7 @@ class FinanceiroDashboardController extends Controller
             'cards' => $cards,
             'fluxoMensal' => $this->fluxoMensal($user, $start, $end),
             'despesasPorCategoria' => $this->despesasPorCategoria($lancamentos),
+            'totaisPorCategoria' => $this->totaisPorCategoria($lancamentos),
         ]);
     }
 
@@ -155,8 +156,32 @@ class FinanceiroDashboardController extends Controller
     }
 
     /**
+     * One bar per category for the period: entrada categories first, then
+     * saída ones, each group from largest to smallest. A name used by both
+     * types (e.g. "Outros") yields two separate bars.
+     *
      * @param  Collection<int, Lancamento>  $lancamentos
-     * @return array<int, array{category: string, amount: float, percentage: int}>
+     * @return array<int, array{category: string, type: string, amount: float}>
+     */
+    private function totaisPorCategoria(Collection $lancamentos): array
+    {
+        return collect([Lancamento::TYPE_ENTRADA, Lancamento::TYPE_SAIDA])
+            ->flatMap(fn (string $type) => $lancamentos
+                ->where('type', $type)
+                ->groupBy('category')
+                ->map(fn (Collection $group, string $category): array => [
+                    'category' => $category,
+                    'type' => $type,
+                    'amount' => (float) $group->sum('amount'),
+                ])
+                ->sortByDesc('amount')
+                ->values())
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, Lancamento>  $lancamentos
+     * @return array<int, array{category: string, amount: float, percentage: int, lancamentos: Collection<int, Lancamento>}>
      */
     private function despesasPorCategoria(Collection $lancamentos): array
     {
@@ -176,6 +201,7 @@ class FinanceiroDashboardController extends Controller
                     'category' => $category,
                     'amount' => $amount,
                     'percentage' => (int) round($amount / $total * 100),
+                    'lancamentos' => $group->sortByDesc('date')->values(),
                 ];
             })
             ->sortByDesc('amount')

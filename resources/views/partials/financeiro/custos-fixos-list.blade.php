@@ -1,16 +1,20 @@
 @php
+    // Within the current month "started"/"ended" are judged against today;
+    // for any other month, against that whole month.
     $today = \Carbon\Carbon::today();
+    $startsBy = $isCurrentMonth ? $today : $month->copy()->endOfMonth();
+    $endsBy = $isCurrentMonth ? $today : $month->copy()->startOfMonth();
 @endphp
 
 <div id="custos-fixos-list" class="space-y-2">
     @forelse ($custoFixos as $custoFixo)
         @php
-            $isDueThisMonth = $custoFixo->isDueIn($today);
-            $isPaid = $custoFixo->isPaidFor($today);
-            $notStartedYet = $custoFixo->starts_on->gt($today);
-            $hasEnded = $custoFixo->ends_on !== null && $custoFixo->ends_on->lt($today);
-            $notDueThisPeriod = ! $notStartedYet && ! $hasEnded && ! $isDueThisMonth;
-            $nextDue = $notDueThisPeriod ? $custoFixo->nextDueMonth($today->copy()->addMonthNoOverflow()) : null;
+            $isDue = $custoFixo->isDueIn($month);
+            $isPaid = $custoFixo->isPaidFor($month);
+            $notStartedYet = $custoFixo->starts_on->gt($startsBy);
+            $hasEnded = $custoFixo->ends_on !== null && $custoFixo->ends_on->lt($endsBy);
+            $notDueThisPeriod = ! $notStartedYet && ! $hasEnded && ! $isDue;
+            $nextDue = $notDueThisPeriod ? $custoFixo->nextDueMonth($month->copy()->addMonthNoOverflow()) : null;
         @endphp
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3">
             <div class="min-w-0 flex-1">
@@ -35,7 +39,7 @@
                     @elseif ($notDueThisPeriod)
                         <span class="inline-flex items-center gap-1 text-slate-400">
                             <span class="h-1.5 w-1.5 rounded-full bg-slate-500"></span>
-                            Não vence este mês
+                            {{ $isCurrentMonth ? 'Não vence este mês' : 'Não vence neste mês' }}
                             @if ($nextDue)
                                 · próximo em {{ $nextDue->format('m/Y') }}
                             @endif
@@ -43,18 +47,34 @@
                     @else
                         <span class="inline-flex items-center gap-1 {{ $isPaid ? 'text-emerald-300' : 'text-amber-300' }}">
                             <span class="h-1.5 w-1.5 rounded-full {{ $isPaid ? 'bg-emerald-400' : 'bg-amber-400' }}"></span>
-                            {{ $isPaid ? 'Pago este mês' : 'Pendente' }}
+                            {{ $isPaid ? ($isCurrentMonth ? 'Pago este mês' : 'Pago') : 'Pendente' }}
                         </span>
                     @endif
+                    @unless ($notStartedYet)
+                        <span class="h-1 w-1 rounded-full bg-slate-600"></span>
+                        <span>Desde {{ $custoFixo->starts_on->format('d/m/Y') }}</span>
+                    @endunless
+                    @if ($custoFixo->ends_on && ! $hasEnded)
+                        <span class="h-1 w-1 rounded-full bg-slate-600"></span>
+                        <span>Até {{ $custoFixo->ends_on->format('d/m/Y') }}</span>
+                    @endif
+                    @if ($custoFixo->status === \App\Models\CustoFixo::STATUS_INATIVO)
+                        <span class="h-1 w-1 rounded-full bg-slate-600"></span>
+                        <span class="text-rose-300">Inativo</span>
+                    @endif
                 </p>
+                @if ($custoFixo->notes)
+                    <p class="wrap-break-word mt-1.5 text-xs whitespace-pre-line text-slate-500">{{ $custoFixo->notes }}</p>
+                @endif
             </div>
 
             <div class="flex shrink-0 items-center gap-3">
                 <span class="text-sm font-semibold text-white">@money($custoFixo->amount)</span>
-                @if ($isDueThisMonth && ! $isPaid)
+                {{-- Paying records a Saída dated today, so it only applies to the current month. --}}
+                @if ($isCurrentMonth && $isDue && ! $isPaid)
                     <button
                         type="button"
-                        data-custo-fixo-pay-url="{{ route('financeiro.custos-fixos.pagar', $custoFixo, absolute: false) }}"
+                        data-custo-fixo-pay-url="{{ route('financeiro.custos-fixos.pagar', ['custoFixo' => $custoFixo, 'mes' => $mes], absolute: false) }}"
                         class="rounded-full bg-indigo-500/90 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500"
                     >
                         Marcar como pago
@@ -63,7 +83,7 @@
                 <button
                     type="button"
                     data-custo-fixo-edit-trigger
-                    data-custo-fixo-edit-url="{{ route('financeiro.custos-fixos.update', $custoFixo, absolute: false) }}"
+                    data-custo-fixo-edit-url="{{ route('financeiro.custos-fixos.update', ['custoFixo' => $custoFixo, 'mes' => $mes], absolute: false) }}"
                     data-name="{{ $custoFixo->name }}"
                     data-category="{{ $custoFixo->category }}"
                     data-amount="{{ $custoFixo->amount }}"
@@ -83,7 +103,7 @@
                 </button>
                 <button
                     type="button"
-                    data-custo-fixo-delete-url="{{ route('financeiro.custos-fixos.destroy', $custoFixo, absolute: false) }}"
+                    data-custo-fixo-delete-url="{{ route('financeiro.custos-fixos.destroy', ['custoFixo' => $custoFixo, 'mes' => $mes], absolute: false) }}"
                     class="text-slate-500 transition hover:text-rose-400"
                     aria-label="Excluir"
                 >

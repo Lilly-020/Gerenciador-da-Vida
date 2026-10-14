@@ -1,3 +1,5 @@
+@props(['mes'])
+
 <div id="new-custo-fixo-modal" class="board-modal fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm" aria-hidden="true">
     <div class="flex min-h-full items-center justify-center px-4 py-8">
         <div class="modal-panel w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/95 p-6 shadow-2xl shadow-black/40">
@@ -15,7 +17,7 @@
                 </button>
             </div>
 
-            <form id="new-custo-fixo-form" action="{{ route('financeiro.custos-fixos.store', absolute: false) }}" method="POST" class="space-y-4">
+            <form id="new-custo-fixo-form" action="{{ route('financeiro.custos-fixos.store', ['mes' => $mes], absolute: false) }}" method="POST" class="space-y-4">
                 @csrf
                 <div>
                     <label for="custo-fixo-name" class="mb-1.5 block text-sm font-medium text-slate-300">Nome</label>

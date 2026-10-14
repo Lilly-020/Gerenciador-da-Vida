@@ -8,7 +8,7 @@
             <div class="flex min-w-0 flex-1 items-center gap-3">
                 <input
                     type="checkbox"
-                    data-lancamento-toggle-url="{{ route('financeiro.lancamentos.update', $lancamento, absolute: false) }}"
+                    data-lancamento-toggle-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}"
                     @checked($lancamento->status === 'realizado')
                     title="Marcar como {{ $lancamento->status === 'previsto' ? 'realizado' : 'previsto' }}"
                     class="h-4 w-4 shrink-0 rounded border-white/20 bg-slate-950/60 text-indigo-500 focus:ring-indigo-400/40"
@@ -37,6 +37,9 @@
                             <span class="text-amber-300">Previsto</span>
                         @endif
                     </p>
+                    @if ($lancamento->notes)
+                        <p class="wrap-break-word mt-1.5 text-xs whitespace-pre-line text-slate-500">{{ $lancamento->notes }}</p>
+                    @endif
                 </div>
             </div>
 
@@ -47,7 +50,7 @@
                 <button
                     type="button"
                     data-lancamento-edit-trigger
-                    data-lancamento-edit-url="{{ route('financeiro.lancamentos.update', $lancamento, absolute: false) }}"
+                    data-lancamento-edit-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}"
                     data-description="{{ $lancamento->description }}"
                     data-amount="{{ $lancamento->amount }}"
                     data-date="{{ $lancamento->date->toDateString() }}"
@@ -65,7 +68,7 @@
                 </button>
                 <button
                     type="button"
-                    data-lancamento-delete-url="{{ route('financeiro.lancamentos.destroy', $lancamento, absolute: false) }}"
+                    data-lancamento-delete-url="{{ route('financeiro.lancamentos.destroy', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}"
                     class="text-slate-500 transition hover:text-rose-400"
                     aria-label="Excluir"
                 >
@@ -77,7 +80,11 @@
         </div>
     @empty
         <div class="rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-400">
-            Nenhum lançamento ainda. Clique em "Adicionar {{ $isEntrada ? 'entrada' : 'saída' }}" para começar.
+            @if ($month)
+                Nenhum lançamento em {{ \App\Http\Controllers\LancamentoController::monthTitle($month) }}.
+            @else
+                Nenhum lançamento ainda. Clique em "Adicionar {{ $isEntrada ? 'entrada' : 'saída' }}" para começar.
+            @endif
         </div>
     @endforelse
 </div>

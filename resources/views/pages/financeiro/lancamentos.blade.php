@@ -1,6 +1,8 @@
 @php
     $isEntrada = $type === 'entrada';
     $title = $isEntrada ? 'Entradas' : 'Saídas';
+    $routeName = $isEntrada ? 'financeiro.entradas' : 'financeiro.saidas';
+    $arrowClasses = 'inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-slate-950/60 text-slate-300 transition hover:border-indigo-400/50 hover:text-white';
 @endphp
 
 <x-layout :title="$title" align="start">
@@ -23,13 +25,44 @@
             </button>
         </div>
 
+        <form method="GET" action="{{ route($routeName, absolute: false) }}" class="mb-4 flex flex-wrap items-center gap-2">
+            @if ($month)
+                <a
+                    href="{{ route($routeName, ['mes' => $month->copy()->subMonthNoOverflow()->format('Y-m')], absolute: false) }}"
+                    class="{{ $arrowClasses }}"
+                    aria-label="Mês anterior"
+                >‹</a>
+            @endif
+
+            <label for="mes" class="sr-only">Mês</label>
+            <select
+                id="mes"
+                name="mes"
+                onchange="this.form.submit()"
+                class="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
+            >
+                <option value="todos" @selected(! $month)>Todos os meses</option>
+                @foreach ($meses as $key => $label)
+                    <option value="{{ $key }}" @selected($mes === $key)>{{ $label }}</option>
+                @endforeach
+            </select>
+
+            @if ($month)
+                <a
+                    href="{{ route($routeName, ['mes' => $month->copy()->addMonthNoOverflow()->format('Y-m')], absolute: false) }}"
+                    class="{{ $arrowClasses }}"
+                    aria-label="Próximo mês"
+                >›</a>
+            @endif
+        </form>
+
         @include('partials.financeiro.lancamentos-totals', ['totalRealizado' => $totalRealizado, 'totalPrevisto' => $totalPrevisto])
 
-        @include('partials.financeiro.lancamentos-list', ['type' => $type, 'lancamentos' => $lancamentos])
+        @include('partials.financeiro.lancamentos-list', ['type' => $type, 'lancamentos' => $lancamentos, 'month' => $month, 'mes' => $mes])
     </div>
 
     <x-slot:modals>
-        <x-lancamento-create-modal :type="$type" :categories="$categories" />
+        <x-lancamento-create-modal :type="$type" :categories="$categories" :mes="$mes" />
         <x-lancamento-edit-modal :type="$type" :categories="$categories" />
     </x-slot:modals>
 </x-layout>

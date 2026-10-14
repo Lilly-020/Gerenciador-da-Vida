@@ -22,6 +22,82 @@ class CustoFixoTest extends TestCase
         $response->assertSee('Aluguel');
     }
 
+    public function test_index_can_show_next_months_fixed_costs(): void
+    {
+        $user = User::factory()->create();
+        $nextMonth = today()->addMonthNoOverflow()->startOfMonth();
+        CustoFixo::factory()->for($user)->create(['name' => 'Aluguel', 'amount' => 1000]);
+        CustoFixo::factory()->for($user)->create([
+            'name' => 'Academia', 'amount' => 120, 'starts_on' => $nextMonth,
+        ]);
+        CustoFixo::factory()->for($user)->create([
+            'name' => 'Curso', 'amount' => 300, 'ends_on' => today()->endOfMonth(),
+        ]);
+
+        $response = $this->actingAs($user)->get('/financeiro/custos-fixos?mes='.$nextMonth->format('Y-m'));
+
+        $response->assertOk();
+        $response->assertViewHas('total', fn ($total): bool => (float) $total === 1120.0);
+        $response->assertSee('Encerrado em');
+        $response->assertDontSee('Começa em');
+        $response->assertDontSee('Marcar como pago');
+        $response->assertSee('Voltar para o mês atual');
+    }
+
+    public function test_a_payment_this_month_does_not_count_as_paid_next_month(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create(['amount' => 1000]);
+        $custoFixo->markPaid(today());
+
+        $nextMonth = today()->addMonthNoOverflow()->format('Y-m');
+
+        $this->actingAs($user)->get('/financeiro/custos-fixos')
+            ->assertViewHas('totalPago', fn ($pago): bool => (float) $pago === 1000.0);
+        $this->actingAs($user)->get("/financeiro/custos-fixos?mes={$nextMonth}")
+            ->assertViewHas('totalPago', fn ($pago): bool => (float) $pago === 0.0);
+    }
+
+    public function test_editing_a_fixed_cost_re_renders_the_month_being_viewed(): void
+    {
+        $user = User::factory()->create();
+        $nextMonth = today()->addMonthNoOverflow()->startOfMonth();
+        $custoFixo = CustoFixo::factory()->for($user)->create(['starts_on' => $nextMonth]);
+
+        $response = $this->actingAs($user)->putJson(
+            "/financeiro/custos-fixos/{$custoFixo->id}?mes=".$nextMonth->format('Y-m'),
+            [
+                'name' => 'Academia', 'category' => 'Mensalidades', 'amount' => 150, 'due_day' => 10,
+                'periodicity' => 'mensal', 'starts_on' => $nextMonth->toDateString(), 'status' => 'ativo',
+            ],
+        );
+
+        $response->assertOk();
+        $this->assertStringContainsString('150,00', $response->json('summary'));
+        $this->assertStringContainsString('mes='.$nextMonth->format('Y-m'), $response->json('list'));
+    }
+
+    public function test_each_fixed_cost_card_shows_all_of_its_details(): void
+    {
+        $user = User::factory()->create();
+        CustoFixo::factory()->for($user)->create([
+            'name' => 'Vivo',
+            'category' => 'Telefone',
+            'starts_on' => '2026-01-15',
+            'ends_on' => today()->addYear()->endOfYear(),
+            'notes' => 'Plano controle, vence no cartão',
+            'status' => CustoFixo::STATUS_INATIVO,
+        ]);
+
+        $response = $this->actingAs($user)->get('/financeiro/custos-fixos');
+
+        $response->assertSee('Telefone');
+        $response->assertSee('Desde 15/01/2026');
+        $response->assertSee('Até '.today()->addYear()->endOfYear()->format('d/m/Y'));
+        $response->assertSee('Inativo');
+        $response->assertSee('Plano controle, vence no cartão');
+    }
+
     public function test_user_can_create_a_fixed_cost(): void
     {
         $user = User::factory()->create();
