@@ -181,6 +181,78 @@ class CustoFixoTest extends TestCase
         ]);
     }
 
+    public function test_a_fixed_cost_can_be_edited_for_a_single_month(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create(['name' => 'Vivo', 'amount' => 60, 'due_day' => 10]);
+        $thisMonth = today()->format('Y-m');
+        $nextMonth = today()->addMonthNoOverflow()->format('Y-m');
+
+        $response = $this->actingAs($user)->putJson("/financeiro/custos-fixos/{$custoFixo->id}?mes={$nextMonth}", [
+            'scope' => 'mes', 'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 75, 'due_day' => 12,
+            'notes' => 'Veio com multa',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('60.00', $custoFixo->fresh()->amount);
+        $this->assertStringContainsString('Alterado só neste mês', $response->json('list'));
+        $this->assertStringContainsString('Veio com multa', $response->json('list'));
+
+        $this->actingAs($user)->get("/financeiro/custos-fixos?mes={$nextMonth}")
+            ->assertViewHas('total', fn ($total): bool => (float) $total === 75.0)
+            ->assertSee('Vence dia 12');
+        $this->actingAs($user)->get("/financeiro/custos-fixos?mes={$thisMonth}")
+            ->assertViewHas('total', fn ($total): bool => (float) $total === 60.0)
+            ->assertDontSee('Alterado só neste mês');
+    }
+
+    public function test_editing_a_single_month_twice_keeps_one_ajuste_and_matching_values_remove_it(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create([
+            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10,
+        ]);
+        $url = "/financeiro/custos-fixos/{$custoFixo->id}?mes=".today()->format('Y-m');
+        $payload = ['scope' => 'mes', 'name' => 'Vivo', 'category' => 'Telefone', 'due_day' => 10];
+
+        $this->actingAs($user)->putJson($url, [...$payload, 'amount' => 75])->assertOk();
+        $this->actingAs($user)->putJson($url, [...$payload, 'amount' => 80])->assertOk();
+
+        $this->assertSame(1, $custoFixo->ajustes()->count());
+        $this->assertSame('80.00', $custoFixo->ajustes()->first()->amount);
+
+        $this->actingAs($user)->putJson($url, [...$payload, 'amount' => 60])->assertOk();
+
+        $this->assertSame(0, $custoFixo->ajustes()->count());
+    }
+
+    public function test_editing_every_month_replaces_single_month_ajustes(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create(['amount' => 60]);
+        $custoFixo->adjustFor(today(), ['amount' => 75]);
+
+        $this->actingAs($user)->putJson("/financeiro/custos-fixos/{$custoFixo->id}", [
+            'scope' => 'todos', 'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 65, 'due_day' => 10,
+            'periodicity' => 'mensal', 'starts_on' => today()->startOfMonth()->toDateString(), 'status' => 'ativo',
+        ])->assertOk();
+
+        $this->assertSame(0, $custoFixo->ajustes()->count());
+        $this->actingAs($user)->get('/financeiro/custos-fixos')
+            ->assertViewHas('total', fn ($total): bool => (float) $total === 65.0);
+    }
+
+    public function test_paying_a_fixed_cost_uses_the_months_own_amount(): void
+    {
+        $user = User::factory()->create();
+        $custoFixo = CustoFixo::factory()->for($user)->create(['amount' => 60]);
+        $custoFixo->adjustFor(today(), ['amount' => 75]);
+
+        $this->actingAs($user)->postJson("/financeiro/custos-fixos/{$custoFixo->id}/pagar")->assertOk();
+
+        $this->assertDatabaseHas('lancamentos', ['custo_fixo_id' => $custoFixo->id, 'amount' => 75]);
+    }
+
     public function test_editing_a_fixed_cost_requires_core_fields(): void
     {
         $user = User::factory()->create();

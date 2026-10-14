@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 
 #[Fillable(['name', 'category', 'amount', 'due_day', 'periodicity', 'starts_on', 'ends_on', 'notes', 'status'])]
@@ -39,6 +40,14 @@ class CustoFixo extends Model
         'semestral' => 6,
         'anual' => 12,
     ];
+
+    /**
+     * The fields that can be changed for a single month (see adjustFor());
+     * the rest describe the cost's schedule and always apply to every month.
+     *
+     * @var array<int, string>
+     */
+    public const MONTHLY_FIELDS = ['name', 'category', 'amount', 'due_day', 'notes'];
 
     /**
      * @var array<int, string>
@@ -87,6 +96,58 @@ class CustoFixo extends Model
     public function lancamentos(): HasMany
     {
         return $this->hasMany(Lancamento::class);
+    }
+
+    /**
+     * @return HasMany<CustoFixoAjuste, $this>
+     */
+    public function ajustes(): HasMany
+    {
+        return $this->hasMany(CustoFixoAjuste::class);
+    }
+
+    public function ajusteFor(Carbon $month): ?CustoFixoAjuste
+    {
+        return $this->ajustes->first(fn (CustoFixoAjuste $ajuste): bool => $ajuste->month->isSameMonth($month));
+    }
+
+    /**
+     * This cost's MONTHLY_FIELDS as they stand in the given month: the
+     * month's own ajuste if it has one, otherwise the cost's own values.
+     *
+     * @return array{name: string, category: string, amount: string, due_day: int, notes: ?string}
+     */
+    public function valuesFor(Carbon $month): array
+    {
+        return ($this->ajusteFor($month) ?? $this)->only(self::MONTHLY_FIELDS);
+    }
+
+    /**
+     * Change this cost for the given month only. Values that end up
+     * matching the cost's own just drop the month's ajuste.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public function adjustFor(Carbon $month, array $values): void
+    {
+        $values = [...$this->valuesFor($month), ...Arr::only($values, self::MONTHLY_FIELDS)];
+        $ajuste = $this->ajusteFor($month);
+
+        $matchesOwnValues = $values['name'] === $this->name
+            && $values['category'] === $this->category
+            && round((float) $values['amount'], 2) === round((float) $this->amount, 2)
+            && (int) $values['due_day'] === (int) $this->due_day
+            && (string) $values['notes'] === (string) $this->notes;
+
+        if ($matchesOwnValues) {
+            $ajuste?->delete();
+        } elseif ($ajuste) {
+            $ajuste->update($values);
+        } else {
+            $this->ajustes()->create([...$values, 'month' => $month->copy()->startOfMonth()->toDateString()]);
+        }
+
+        $this->unsetRelation('ajustes');
     }
 
     /**
@@ -172,11 +233,13 @@ class CustoFixo extends Model
      */
     public function markPaid(Carbon $date, ?float $amount = null): Lancamento
     {
+        $values = $this->valuesFor($date);
+
         $lancamento = $this->lancamentos()->make([
             'type' => Lancamento::TYPE_SAIDA,
-            'category' => $this->category,
-            'description' => $this->name,
-            'amount' => $amount ?? $this->amount,
+            'category' => $values['category'],
+            'description' => $values['name'],
+            'amount' => $amount ?? $values['amount'],
             'date' => $date->toDateString(),
             'status' => Lancamento::STATUS_REALIZADO,
         ]);

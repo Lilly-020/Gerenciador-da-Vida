@@ -23,6 +23,7 @@
                         min="0"
                         data-sim-input
                         data-sim-field="valorInicial"
+                        data-money
                         value="1000"
                         class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                     >
@@ -37,6 +38,7 @@
                         min="0"
                         data-sim-input
                         data-sim-field="aporteMensal"
+                        data-money
                         value="0"
                         placeholder="Opcional"
                         class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"

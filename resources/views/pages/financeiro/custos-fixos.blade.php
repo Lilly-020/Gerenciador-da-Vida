@@ -48,6 +48,6 @@
 
     <x-slot:modals>
         <x-custo-fixo-create-modal :mes="$mes" />
-        <x-custo-fixo-edit-modal />
+        <x-custo-fixo-edit-modal :month-title="$monthTitle" />
     </x-slot:modals>
 </x-layout>

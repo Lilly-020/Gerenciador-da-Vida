@@ -13,7 +13,7 @@
                                 <span class="text-slate-500 transition group-open:rotate-90">›</span>
                                 {{ $item['category'] }}
                             </span>
-                            <span class="shrink-0 text-slate-400">{{ $item['percentage'] }}% · @money($item['amount'])</span>
+                            <span class="shrink-0 text-slate-400">{{ number_format($item['percentage'], 2, ',', '.') }}% · @money($item['amount'])</span>
                         </div>
                         <div class="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
                             <div class="h-full rounded-full bg-indigo-400/80" style="width: {{ $item['percentage'] }}%"></div>

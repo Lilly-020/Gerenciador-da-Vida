@@ -1,3 +1,5 @@
+@props(['monthTitle'])
+
 <div id="edit-custo-fixo-modal" class="board-modal fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm" aria-hidden="true">
     <div class="flex min-h-full items-center justify-center px-4 py-8">
         <div class="modal-panel w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/95 p-6 shadow-2xl shadow-black/40">
@@ -17,6 +19,22 @@
 
             <form id="edit-custo-fixo-form" class="space-y-4">
                 <input type="hidden" name="status">
+
+                <div>
+                    <label for="edit-custo-fixo-scope" class="mb-1.5 block text-sm font-medium text-slate-300">Aplicar a alteração em</label>
+                    <select
+                        id="edit-custo-fixo-scope"
+                        name="scope"
+                        data-custo-fixo-scope
+                        class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
+                    >
+                        <option value="mes">Só em {{ $monthTitle }}</option>
+                        <option value="todos">Todos os meses</option>
+                    </select>
+                    <p class="mt-1.5 text-xs text-slate-500">
+                        Periodicidade, início e fim valem sempre para todos os meses.
+                    </p>
+                </div>
 
                 <div>
                     <label for="edit-custo-fixo-name" class="mb-1.5 block text-sm font-medium text-slate-300">Nome</label>
@@ -52,6 +70,7 @@
                             step="0.01"
                             min="0.01"
                             name="amount"
+                            data-money
                             required
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                         >
@@ -71,7 +90,7 @@
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                         >
                     </div>
-                    <div>
+                    <div data-custo-fixo-schedule-field>
                         <label for="edit-custo-fixo-periodicity" class="mb-1.5 block text-sm font-medium text-slate-300">Periodicidade</label>
                         <select
                             id="edit-custo-fixo-periodicity"
@@ -86,7 +105,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-3" data-custo-fixo-schedule-field>
                     <div>
                         <label for="edit-custo-fixo-starts-on" class="mb-1.5 block text-sm font-medium text-slate-300">Início</label>
                         <input

@@ -131,7 +131,7 @@ class FinanceiroDashboardController extends Controller
 
     /**
      * @param  Collection<int, Lancamento>  $lancamentos
-     * @return array<int, array{category: string, amount: float, percentage: int, lancamentos: Collection<int, Lancamento>}>
+     * @return array<int, array{category: string, amount: float, percentage: float, lancamentos: Collection<int, Lancamento>}>
      */
     private function despesasPorCategoria(Collection $lancamentos): array
     {
@@ -150,7 +150,7 @@ class FinanceiroDashboardController extends Controller
                 return [
                     'category' => $category,
                     'amount' => $amount,
-                    'percentage' => (int) round($amount / $total * 100),
+                    'percentage' => $amount / $total * 100,
                     'lancamentos' => $group->sortByDesc('date')->values(),
                 ];
             })

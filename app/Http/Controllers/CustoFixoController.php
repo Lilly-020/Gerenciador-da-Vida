@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\View\View;
 
 class CustoFixoController extends Controller
@@ -37,11 +38,21 @@ class CustoFixoController extends Controller
     }
 
     /**
-     * Update a fixed cost's editable fields.
+     * Update a fixed cost — either only as it stands in the month being
+     * viewed (`scope=mes`), or the cost itself, for every month. The latter
+     * also drops any single-month ajustes, so "todos os meses" really does
+     * leave every month with the values just saved.
      */
     public function update(UpdateCustoFixoRequest $request, CustoFixo $custoFixo): RedirectResponse|JsonResponse
     {
-        $custoFixo->update($request->validated());
+        $data = Arr::except($request->validated(), 'scope');
+
+        if ($request->input('scope') === UpdateCustoFixoRequest::SCOPE_MES) {
+            $custoFixo->adjustFor($this->viewedMonth($request), $data);
+        } else {
+            $custoFixo->update($data);
+            $custoFixo->ajustes()->delete();
+        }
 
         return $this->respondWith($request);
     }
@@ -91,10 +102,12 @@ class CustoFixoController extends Controller
      */
     private function viewData(Request $request): array
     {
-        $month = $this->resolveMonth($request) ?? Carbon::today()->startOfMonth();
-        $custoFixos = $request->user()->custoFixos()->with('lancamentos')->orderBy('due_day')->get();
+        $month = $this->viewedMonth($request);
+        $custoFixos = $request->user()->custoFixos()->with(['lancamentos', 'ajustes'])->orderBy('due_day')->get();
         $dueInMonth = $custoFixos->where('status', CustoFixo::STATUS_ATIVO)
             ->filter(fn (CustoFixo $c): bool => $c->isDueIn($month));
+
+        $amountInMonth = fn (CustoFixo $c): float => (float) $c->valuesFor($month)['amount'];
 
         return [
             'custoFixos' => $custoFixos,
@@ -102,8 +115,13 @@ class CustoFixoController extends Controller
             'mes' => $this->monthParam($month),
             'monthTitle' => self::monthTitle($month),
             'isCurrentMonth' => $month->isSameMonth(Carbon::today()),
-            'total' => $dueInMonth->sum('amount'),
-            'totalPago' => $dueInMonth->filter(fn (CustoFixo $c): bool => $c->isPaidFor($month))->sum('amount'),
+            'total' => $dueInMonth->sum($amountInMonth),
+            'totalPago' => $dueInMonth->filter(fn (CustoFixo $c): bool => $c->isPaidFor($month))->sum($amountInMonth),
         ];
+    }
+
+    private function viewedMonth(Request $request): Carbon
+    {
+        return $this->resolveMonth($request) ?? Carbon::today()->startOfMonth();
     }
 }

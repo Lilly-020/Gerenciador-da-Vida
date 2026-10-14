@@ -43,6 +43,7 @@
                             step="0.01"
                             min="0.01"
                             name="amount"
+                            data-money
                             required
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                         >

@@ -79,6 +79,18 @@ class FinanceiroDashboardTest extends TestCase
             ->firstWhere('category', 'Lazer')['lancamentos']->pluck('description')->all() === ['Cinema']);
     }
 
+    public function test_expense_category_percentages_are_not_rounded_to_whole_numbers(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->saida()->create(['category' => 'Lazer', 'amount' => 100]);
+        Lancamento::factory()->for($user)->saida()->create(['category' => 'Moradia', 'amount' => 200]);
+
+        $response = $this->actingAs($user)->get('/financeiro');
+
+        $response->assertSee('33,33%');
+        $response->assertSee('66,67%');
+    }
+
     public function test_lancamentos_outside_the_selected_period_are_excluded(): void
     {
         $user = User::factory()->create();

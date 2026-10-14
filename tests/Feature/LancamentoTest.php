@@ -102,6 +102,19 @@ class LancamentoTest extends TestCase
         $this->actingAs($user)->get('/financeiro/entradas')->assertSee('Reembolso do pedido cancelado');
     }
 
+    public function test_a_lancamento_card_shows_every_detail_it_has(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->saida()->create([
+            'subcategory' => 'Imposto', 'payment_method' => 'Pix', 'is_recurring_template' => true,
+            'recurrence_period' => 'mensal', 'recurrence_day' => 20,
+        ]);
+
+        $response = $this->actingAs($user)->get('/financeiro/saidas');
+
+        $response->assertSeeInOrder(['Imposto', 'Pix', 'Recorrente', 'mensal, dia 20', 'Pago']);
+    }
+
     public function test_the_financeiro_nav_tab_stays_highlighted_on_sub_pages(): void
     {
         $user = User::factory()->create();

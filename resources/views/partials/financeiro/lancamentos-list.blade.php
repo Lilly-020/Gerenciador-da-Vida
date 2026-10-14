@@ -30,11 +30,31 @@
                         @endif
                         @if ($lancamento->is_recurring_template)
                             <span class="h-1 w-1 rounded-full bg-slate-600"></span>
-                            <span class="text-indigo-300">Recorrente</span>
-                        @endif
-                        @if ($lancamento->status === 'previsto')
+                            <span class="text-indigo-300">
+                                Recorrente
+                                @if ($lancamento->recurrence_period)
+                                    · {{ $lancamento->recurrence_period }}@if ($lancamento->recurrence_day), dia {{ $lancamento->recurrence_day }}@endif
+                                @endif
+                            </span>
+                        @elseif ($lancamento->parent_recurring_id)
                             <span class="h-1 w-1 rounded-full bg-slate-600"></span>
-                            <span class="text-amber-300">Previsto</span>
+                            <span class="text-indigo-300">Gerado por recorrência</span>
+                        @endif
+                        @if ($lancamento->custo_fixo_id)
+                            <span class="h-1 w-1 rounded-full bg-slate-600"></span>
+                            <span class="text-indigo-300">Custo fixo</span>
+                        @endif
+                        <span class="h-1 w-1 rounded-full bg-slate-600"></span>
+                        @if ($lancamento->status === 'previsto')
+                            <span class="inline-flex items-center gap-1 text-amber-300">
+                                <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                                Previsto
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 text-emerald-300">
+                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                                {{ $isEntrada ? 'Recebido' : 'Pago' }}
+                            </span>
                         @endif
                     </p>
                     @if ($lancamento->notes)

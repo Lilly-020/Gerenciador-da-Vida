@@ -1,6 +1,7 @@
 import { setupCursorTrail } from './cursor';
 import { setupCursos } from './cursos';
 import { setupCustosFixos, setupInvestimentos, setupLancamentos } from './financeiro';
+import { setupMoneyInputs } from './money';
 import { setupProjetos } from './projetos';
 import { setupSonhos } from './sonhos';
 import { setupTarefas } from './tarefas';
@@ -114,6 +115,7 @@ function setupNavIndicator() {
 function init() {
     setupNavIndicator();
     setupCursorTrail();
+    setupMoneyInputs();
     setupSonhos();
     setupProjetos();
     setupCursos();

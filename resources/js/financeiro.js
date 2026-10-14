@@ -174,6 +174,44 @@ export function setupCustosFixos() {
         method: 'PUT',
         applyUpdate,
     });
+
+    setupCustoFixoScope(page);
+}
+
+/**
+ * Custo fixo edit modal: when the change is for a single month, the
+ * schedule fields (periodicidade, início, fim) can't be changed, so they
+ * are hidden and disabled — a disabled field is left out of the submit.
+ */
+function setupCustoFixoScope(page) {
+    const scope = document.querySelector('[data-custo-fixo-scope]');
+    const scheduleFields = document.querySelectorAll('[data-custo-fixo-schedule-field]');
+
+    if (!scope) {
+        return;
+    }
+
+    const sync = () => {
+        const singleMonth = scope.value === 'mes';
+
+        scheduleFields.forEach((wrapper) => {
+            wrapper.classList.toggle('hidden', singleMonth);
+            wrapper.querySelectorAll('input, select').forEach((field) => {
+                field.disabled = singleMonth;
+            });
+        });
+    };
+
+    scope.addEventListener('change', sync);
+
+    // Registered after setupRowEditModal's own click listener on the same
+    // element, so the modal's fields are already prefilled by the time
+    // this runs.
+    page.addEventListener('click', (event) => {
+        if (event.target.closest('[data-custo-fixo-edit-trigger]')) {
+            sync();
+        }
+    });
 }
 
 /**

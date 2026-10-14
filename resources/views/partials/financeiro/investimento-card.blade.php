@@ -153,6 +153,7 @@
                         step="0.01"
                         min="0.01"
                         name="amount"
+                        data-money
                         required
                         placeholder="Valor"
                         class="w-28 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"

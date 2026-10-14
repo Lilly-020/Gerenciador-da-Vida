@@ -9,6 +9,8 @@
 <div id="custos-fixos-list" class="space-y-2">
     @forelse ($custoFixos as $custoFixo)
         @php
+            $values = $custoFixo->valuesFor($month);
+            $isAdjusted = $custoFixo->ajusteFor($month) !== null;
             $isDue = $custoFixo->isDueIn($month);
             $isPaid = $custoFixo->isPaidFor($month);
             $notStartedYet = $custoFixo->starts_on->gt($startsBy);
@@ -18,11 +20,11 @@
         @endphp
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3">
             <div class="min-w-0 flex-1">
-                <p class="wrap-break-word text-sm font-medium text-white">{{ $custoFixo->name }}</p>
+                <p class="wrap-break-word text-sm font-medium text-white">{{ $values['name'] }}</p>
                 <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400">
-                    <span>{{ $custoFixo->category }}</span>
+                    <span>{{ $values['category'] }}</span>
                     <span class="h-1 w-1 rounded-full bg-slate-600"></span>
-                    <span>Vence dia {{ $custoFixo->due_day }}</span>
+                    <span>Vence dia {{ $values['due_day'] }}</span>
                     <span class="h-1 w-1 rounded-full bg-slate-600"></span>
                     <span class="capitalize">{{ $custoFixo->periodicity }}</span>
                     <span class="h-1 w-1 rounded-full bg-slate-600"></span>
@@ -62,14 +64,18 @@
                         <span class="h-1 w-1 rounded-full bg-slate-600"></span>
                         <span class="text-rose-300">Inativo</span>
                     @endif
+                    @if ($isAdjusted)
+                        <span class="h-1 w-1 rounded-full bg-slate-600"></span>
+                        <span class="text-indigo-300">Alterado só neste mês</span>
+                    @endif
                 </p>
-                @if ($custoFixo->notes)
-                    <p class="wrap-break-word mt-1.5 text-xs whitespace-pre-line text-slate-500">{{ $custoFixo->notes }}</p>
+                @if ($values['notes'])
+                    <p class="wrap-break-word mt-1.5 text-xs whitespace-pre-line text-slate-500">{{ $values['notes'] }}</p>
                 @endif
             </div>
 
             <div class="flex shrink-0 items-center gap-3">
-                <span class="text-sm font-semibold text-white">@money($custoFixo->amount)</span>
+                <span class="text-sm font-semibold text-white">@money($values['amount'])</span>
                 {{-- Paying records a Saída dated today, so it only applies to the current month. --}}
                 @if ($isCurrentMonth && $isDue && ! $isPaid)
                     <button
@@ -84,14 +90,15 @@
                     type="button"
                     data-custo-fixo-edit-trigger
                     data-custo-fixo-edit-url="{{ route('financeiro.custos-fixos.update', ['custoFixo' => $custoFixo, 'mes' => $mes], absolute: false) }}"
-                    data-name="{{ $custoFixo->name }}"
-                    data-category="{{ $custoFixo->category }}"
-                    data-amount="{{ $custoFixo->amount }}"
-                    data-due-day="{{ $custoFixo->due_day }}"
+                    data-scope="mes"
+                    data-name="{{ $values['name'] }}"
+                    data-category="{{ $values['category'] }}"
+                    data-amount="{{ $values['amount'] }}"
+                    data-due-day="{{ $values['due_day'] }}"
                     data-periodicity="{{ $custoFixo->periodicity }}"
                     data-starts-on="{{ $custoFixo->starts_on->toDateString() }}"
                     data-ends-on="{{ $custoFixo->ends_on?->toDateString() }}"
-                    data-notes="{{ $custoFixo->notes }}"
+                    data-notes="{{ $values['notes'] }}"
                     data-status="{{ $custoFixo->status }}"
                     class="text-slate-500 transition hover:text-indigo-300"
                     aria-label="Editar"
