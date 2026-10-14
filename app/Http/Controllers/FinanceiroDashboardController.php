@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Investimento;
 use App\Models\Lancamento;
-use App\Models\Tarefa;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -65,7 +63,6 @@ class FinanceiroDashboardController extends Controller
             'periodStart' => $start,
             'periodEnd' => $end,
             'cards' => $cards,
-            'fluxoMensal' => $this->fluxoMensal($user, $start, $end),
             'despesasPorCategoria' => $this->despesasPorCategoria($lancamentos),
             'totaisPorCategoria' => $this->totaisPorCategoria($lancamentos),
         ]);
@@ -106,53 +103,6 @@ class FinanceiroDashboardController extends Controller
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    /**
-     * Monthly entradas/saídas/saldo series covering the selected period
-     * (at least one month, capped at 24 to keep the chart readable).
-     *
-     * @return array<int, array{label: string, sublabel: string, entradas: float, saidas: float, saldo: float, isCurrent: bool}>
-     */
-    private function fluxoMensal(User $user, Carbon $start, Carbon $end): array
-    {
-        $monthStart = $start->copy()->startOfMonth();
-        $monthEnd = $end->copy()->startOfMonth();
-        $months = max(1, min(24, $monthStart->diffInMonths($monthEnd) + 1));
-
-        $rangeStart = $monthStart->copy();
-        $rangeEnd = $monthEnd->copy()->endOfMonth();
-
-        $lancamentos = $user->lancamentos()
-            ->where('status', Lancamento::STATUS_REALIZADO)
-            ->whereBetween('date', Lancamento::dateRange($rangeStart, $rangeEnd))
-            ->get()
-            ->groupBy(fn (Lancamento $l): string => $l->date->format('Y-m'));
-
-        $series = [];
-        $cursor = $monthStart->copy();
-        $currentMonthKey = Carbon::today()->format('Y-m');
-
-        for ($i = 0; $i < $months; $i++) {
-            $key = $cursor->format('Y-m');
-            $monthLancamentos = $lancamentos->get($key, collect());
-
-            $entradas = (float) $monthLancamentos->where('type', Lancamento::TYPE_ENTRADA)->sum('amount');
-            $saidas = (float) $monthLancamentos->where('type', Lancamento::TYPE_SAIDA)->sum('amount');
-
-            $series[] = [
-                'label' => mb_substr(Tarefa::monthLabel($cursor), 0, 3),
-                'sublabel' => $cursor->format('m/Y'),
-                'entradas' => $entradas,
-                'saidas' => $saidas,
-                'saldo' => $entradas - $saidas,
-                'isCurrent' => $key === $currentMonthKey,
-            ];
-
-            $cursor->addMonth();
-        }
-
-        return $series;
     }
 
     /**
