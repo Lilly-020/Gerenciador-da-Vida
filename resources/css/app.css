@@ -40,6 +40,10 @@ body.has-custom-cursor * {
 .board-modal {
     opacity: 0;
     transition: opacity 0.15s ease;
+    /* Tall modals must scroll on small screens so the save buttons stay reachable. */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .board-modal.is-open {
