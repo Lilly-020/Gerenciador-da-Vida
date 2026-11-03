@@ -49,6 +49,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/financeiro', [FinanceiroDashboardController::class, 'index'])->name('financeiro')->middleware('carteira:dashboard');
 
+    Route::get('/financeiro/custos-fixos', fn () => redirect()->route('financeiro'));
+
     Route::prefix('financeiro')->name('financeiro.')->group(function () {
         Route::get('/participantes', [CarteiraController::class, 'participantes'])->name('participantes');
         Route::post('/carteira', [CarteiraController::class, 'trocar'])->name('carteira');

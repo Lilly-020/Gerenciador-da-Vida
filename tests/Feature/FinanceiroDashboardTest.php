@@ -26,6 +26,16 @@ class FinanceiroDashboardTest extends TestCase
         $response->assertSee('Saldo disponível');
     }
 
+    public function test_the_removed_fixed_costs_page_redirects_to_the_dashboard(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/financeiro/custos-fixos');
+
+        $response->assertRedirect(route('financeiro'));
+        $this->followRedirects($response)->assertOk()->assertDontSee('Custos Fixos');
+    }
+
     public function test_guests_are_redirected_to_login(): void
     {
         $response = $this->get('/financeiro');
