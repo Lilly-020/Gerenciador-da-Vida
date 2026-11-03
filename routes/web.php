@@ -55,6 +55,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/participantes', [CarteiraController::class, 'participantes'])->name('participantes');
         Route::post('/carteira', [CarteiraController::class, 'trocar'])->name('carteira');
 
+        Route::get('/relatorio', [LancamentoController::class, 'relatorio'])->name('relatorio')->middleware('carteira:lancamentos');
+
         Route::get('/entradas', [LancamentoController::class, 'entradas'])->name('entradas')->middleware('carteira:entradas');
         Route::get('/saidas', [LancamentoController::class, 'saidas'])->name('saidas')->middleware('carteira:saidas');
 

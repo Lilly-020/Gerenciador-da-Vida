@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class LancamentoController extends Controller
@@ -34,6 +35,63 @@ class LancamentoController extends Controller
     public function saidas(Request $request): View
     {
         return $this->list($request, Lancamento::TYPE_SAIDA);
+    }
+
+    public function relatorio(Request $request): View
+    {
+        $columns = [
+            'id' => 'ID', 'date' => 'Data', 'type' => 'Tipo', 'status' => 'Status',
+            'description' => 'Descrição', 'notes' => 'Observações', 'category' => 'Categoria',
+            'subcategory' => 'Subcategoria', 'payment_method' => 'Pagamento',
+            'owner' => 'Carteira', 'shares' => 'Divisão entre participantes',
+            'recurrence' => 'Recorrência', 'amount' => 'Valor integral',
+            'entrada' => 'Entrada na sua conta', 'saida' => 'Saída da sua conta',
+            'created_at' => 'Criado em', 'updated_at' => 'Atualizado em',
+        ];
+        $request->validate([
+            'mes' => ['sometimes', 'required', 'date_format:Y-m'],
+            'personalizar' => ['sometimes', 'in:1'],
+            'campos' => ['required_with:personalizar', 'array', 'min:1'],
+            'campos.*' => ['string', Rule::in(array_keys($columns))],
+        ], ['campos.required_with' => 'Selecione pelo menos uma informação para o relatório.']);
+        $selectedColumns = array_intersect_key($columns, array_flip($request->input('campos', array_keys($columns))));
+        $month = $this->resolveMonth($request);
+        $lancamentos = new Collection;
+
+        foreach ([Lancamento::TYPE_ENTRADA => 'entradas', Lancamento::TYPE_SAIDA => 'saidas'] as $type => $section) {
+            if (Carteira::canSee($section)) {
+                $lancamentos = $lancamentos->concat($this->lancamentosFor($request, $type, $month));
+            }
+        }
+
+        $rows = $lancamentos->unique('id')->sortBy([['date', 'asc'], ['id', 'asc']])
+            ->map(function (Lancamento $lancamento) use ($request): array {
+                return [
+                    'lancamento' => $lancamento,
+                    'entrada' => $lancamento->entradaFor($request->user()),
+                    'saida' => $lancamento->saidaFor($request->user()),
+                ];
+            })->values();
+        $totals = collect([Lancamento::STATUS_REALIZADO, Lancamento::STATUS_PREVISTO])
+            ->mapWithKeys(function (string $status) use ($rows): array {
+                $items = $rows->filter(fn (array $row): bool => $row['lancamento']->status === $status);
+                $entrada = round($items->sum('entrada'), 2);
+                $saida = round($items->sum('saida'), 2);
+
+                return [$status => ['entrada' => $entrada, 'saida' => $saida, 'saldo' => round($entrada - $saida, 2)]];
+            })->all();
+
+        return view('pages.financeiro.relatorio', [
+            'columns' => $columns,
+            'selectedColumns' => $selectedColumns,
+            'rows' => $rows,
+            'totals' => $totals,
+            'month' => $month,
+            'monthTitle' => self::monthTitle($month),
+            'owner' => Carteira::owner(),
+            'user' => $request->user(),
+            'isPartial' => ! Carteira::canSee('entradas') || ! Carteira::canSee('saidas'),
+        ]);
     }
 
     /**
@@ -184,7 +242,7 @@ class LancamentoController extends Controller
             Lancamento::dateRange($month, $month->copy()->endOfMonth()),
         ));
 
-        $lancamentos = $inMonth(Carteira::owner()->lancamentos()->with('partes.user')->where('type', $type))->get();
+        $lancamentos = $inMonth(Carteira::owner()->lancamentos()->with(['partes.user', 'user'])->where('type', $type))->get();
 
         // In their own carteira the user also sees — read-only — what
         // other carteiras' lançamentos take out of their account: their
