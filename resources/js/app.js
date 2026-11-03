@@ -1,4 +1,3 @@
-import { setupCursorTrail } from './cursor';
 import { setupCursos } from './cursos';
 import { setupFiltros } from './filtros';
 import { setupInvestimentos, setupLancamentos } from './financeiro';
@@ -45,7 +44,6 @@ function setupNavigation() {
 
 function init() {
     setupNavigation();
-    setupCursorTrail();
     setupMoneyInputs();
     setupApelidoSearch();
     setupSonhos();

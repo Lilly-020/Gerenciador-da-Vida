@@ -15,6 +15,9 @@
             {{ $item['label'] }}
         </a>
     @endforeach
+    @can('manage-users')
+        <a href="{{ route('admin.usuarios.index', absolute: false) }}" @if (request()->routeIs('admin.usuarios.*')) aria-current="page" @endif class="flex min-h-11 items-center rounded-xl px-4 py-3 text-sm font-semibold {{ request()->routeIs('admin.usuarios.*') ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:bg-white/5 hover:text-white' }}">Usuários</a>
+    @endcan
     @auth
         @php($pendingInvites = auth()->user()->pendingInvitesCount())
         <a href="{{ route('perfil', $pendingInvites ? ['aba' => 'notificacoes'] : [], absolute: false) }}" @if (request()->routeIs('perfil')) aria-current="page" @endif class="mt-6 flex min-h-11 items-center justify-between rounded-xl border-t border-white/10 px-4 py-3 text-sm font-semibold {{ request()->routeIs('perfil') ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:bg-white/5 hover:text-white' }}">

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CarteiraController;
 use App\Http\Controllers\CursoController;
@@ -23,6 +24,11 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::middleware('can:manage-users')->prefix('admin/usuarios')->name('admin.usuarios.')->group(function () {
+        Route::get('/', [AdminUserController::class, 'index'])->name('index');
+        Route::post('/', [AdminUserController::class, 'store'])->name('store');
+    });
+
     Route::get('/', [SonhoController::class, 'index'])->name('sonhos');
     Route::post('/sonhos', [SonhoController::class, 'store'])->name('sonhos.store');
     Route::put('/sonhos/{sonho}', [SonhoController::class, 'update'])->name('sonhos.update');

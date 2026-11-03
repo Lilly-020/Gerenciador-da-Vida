@@ -16,7 +16,7 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        User::updateOrCreate(
+        $admin = User::updateOrCreate(
             ['email' => 'lillycardoso02@gmail.com'],
             [
                 'name' => 'Lilly Cardoso',
@@ -24,5 +24,7 @@ class AdminUserSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        $admin->forceFill(['is_admin' => true])->save();
     }
 }
