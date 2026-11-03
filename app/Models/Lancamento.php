@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Auth;
 #[Fillable([
     'type', 'category', 'subcategory', 'description', 'amount', 'date',
     'payment_method', 'status', 'is_recurring_template', 'recurrence_period',
-    'recurrence_day', 'parent_recurring_id', 'custo_fixo_id', 'notes', 'partes_conta',
+    'recurrence_day', 'parent_recurring_id', 'notes', 'partes_conta',
 ])]
 class Lancamento extends Model
 {
@@ -104,14 +104,6 @@ class Lancamento extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * @return BelongsTo<CustoFixo, $this>
-     */
-    public function custoFixo(): BelongsTo
-    {
-        return $this->belongsTo(CustoFixo::class);
     }
 
     /**

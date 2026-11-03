@@ -54,10 +54,6 @@
                             <span class="h-1 w-1 rounded-full bg-slate-600"></span>
                             <span class="text-indigo-300">Gerado por recorrência</span>
                         @endif
-                        @if ($lancamento->custo_fixo_id)
-                            <span class="h-1 w-1 rounded-full bg-slate-600"></span>
-                            <span class="text-indigo-300">Custo fixo</span>
-                        @endif
                         <span class="h-1 w-1 rounded-full bg-slate-600"></span>
                         @if ($lancamento->status === 'previsto')
                             <span class="inline-flex items-center gap-1 text-amber-300">

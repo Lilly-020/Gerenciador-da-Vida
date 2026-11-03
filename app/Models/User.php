@@ -122,14 +122,6 @@ class User extends Authenticatable
     }
 
     /**
-     * @return HasMany<CustoFixo, $this>
-     */
-    public function custoFixos(): HasMany
-    {
-        return $this->hasMany(CustoFixo::class);
-    }
-
-    /**
      * @return HasMany<Investimento, $this>
      */
     public function investimentos(): HasMany

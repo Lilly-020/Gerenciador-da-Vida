@@ -499,8 +499,7 @@ export function setupCardEditModal({ gridId, modalId, formId, urlFor, applyUpdat
 }
 
 /**
- * "Edit modal" variant for flat list rows (Financeiro's Entradas/Saídas and
- * Custos Fixos) rather than board cards. Unlike setupCardEditModal, the
+ * "Edit modal" variant for flat list rows (Financeiro's Entradas/Saídas) rather than board cards. Unlike setupCardEditModal, the
  * prefill data and the submit url live directly on the trigger button's own
  * dataset (no `[data-board-card]` ancestor to look up), and the click
  * listener is bound to a container the caller promises is stable — e.g. the

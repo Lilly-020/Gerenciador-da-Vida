@@ -22,7 +22,6 @@ class EnsureCarteiraAccess
         'dashboard' => 'financeiro',
         'entradas' => 'financeiro.entradas',
         'saidas' => 'financeiro.saidas',
-        'custos_fixos' => 'financeiro.custos-fixos',
         'investimentos' => 'financeiro.investimentos',
     ];
 

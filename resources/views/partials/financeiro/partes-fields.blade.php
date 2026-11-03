@@ -1,5 +1,5 @@
 {{--
-    Participant fields for a lançamento / custo fixo form, shown when the
+    Participant fields for a lançamento form, shown when the
     carteira has participants. Posted flat as parte_u{userId} — see
     ValidatesPartes.
 

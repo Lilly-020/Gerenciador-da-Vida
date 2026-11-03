@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * Shared by the lançamento and custo fixo form requests: reads the "dividir entre
+ * Used by the lançamento form requests: reads the "dividir entre
  * participantes" fields. The forms post them flat, one `parte_u{userId}`
  * per carteira member, which is gathered here into `partes` (amount per
  * user id, blanks and zeros dropped). When no such field is posted at

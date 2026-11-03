@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
  * Normally the logged-in user's own. A user who accepted an invitation to
  * someone else's Financeiro can switch to that "carteira" (the choice is
  * kept in the session); from then on every Financeiro query, and every
- * lançamento/custo fixo/investimento created, belongs to that owner — as
+ * lançamento/investimento created, belongs to that owner — as
  * far as the invitation's permission and sections allow.
  */
 class Carteira

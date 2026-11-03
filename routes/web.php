@@ -4,7 +4,6 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CarteiraController;
 use App\Http\Controllers\CursoController;
 use App\Http\Controllers\CursoFileController;
-use App\Http\Controllers\CustoFixoController;
 use App\Http\Controllers\FinanceiroDashboardController;
 use App\Http\Controllers\InvestimentoAporteController;
 use App\Http\Controllers\InvestimentoController;
@@ -61,14 +60,6 @@ Route::middleware('auth')->group(function () {
             Route::post('/lancamentos', [LancamentoController::class, 'store'])->name('lancamentos.store');
             Route::patch('/lancamentos/{lancamento}', [LancamentoController::class, 'update'])->name('lancamentos.update');
             Route::delete('/lancamentos/{lancamento}', [LancamentoController::class, 'destroy'])->name('lancamentos.destroy');
-        });
-
-        Route::middleware('carteira:custos_fixos')->group(function () {
-            Route::get('/custos-fixos', [CustoFixoController::class, 'index'])->name('custos-fixos');
-            Route::post('/custos-fixos', [CustoFixoController::class, 'store'])->name('custos-fixos.store');
-            Route::put('/custos-fixos/{custoFixo}', [CustoFixoController::class, 'update'])->name('custos-fixos.update');
-            Route::post('/custos-fixos/{custoFixo}/pagar', [CustoFixoController::class, 'pagar'])->name('custos-fixos.pagar');
-            Route::delete('/custos-fixos/{custoFixo}', [CustoFixoController::class, 'destroy'])->name('custos-fixos.destroy');
         });
 
         Route::middleware('carteira:investimentos')->group(function () {

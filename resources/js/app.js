@@ -1,7 +1,7 @@
 import { setupCursorTrail } from './cursor';
 import { setupCursos } from './cursos';
 import { setupFiltros } from './filtros';
-import { setupCustosFixos, setupInvestimentos, setupLancamentos } from './financeiro';
+import { setupInvestimentos, setupLancamentos } from './financeiro';
 import { setupMoneyInputs } from './money';
 import { setupApelidoSearch } from './participantes';
 import { setupProjetos } from './projetos';
@@ -124,7 +124,6 @@ function init() {
     setupCursos();
     setupTarefas();
     setupLancamentos();
-    setupCustosFixos();
     setupInvestimentos();
     setupFiltros();
 }

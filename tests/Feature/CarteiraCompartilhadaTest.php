@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\CustoFixo;
 use App\Models\Lancamento;
 use App\Models\Participacao;
 use App\Models\User;
@@ -129,7 +128,6 @@ class CarteiraCompartilhadaTest extends TestCase
     {
         $this->share('ver');
         $lancamento = Lancamento::factory()->for($this->owner)->saida()->create();
-        $custoFixo = CustoFixo::factory()->for($this->owner)->create();
 
         $this->asGuestInOwnersCarteira()->get('/financeiro/saidas')->assertOk()->assertSee('Somente leitura');
 
@@ -137,7 +135,6 @@ class CarteiraCompartilhadaTest extends TestCase
             'type' => 'saida', 'category' => 'Lazer', 'description' => 'Cinema', 'amount' => 80, 'date' => today()->toDateString(),
         ])->assertForbidden();
         $this->asGuestInOwnersCarteira()->deleteJson("/financeiro/lancamentos/{$lancamento->id}")->assertForbidden();
-        $this->asGuestInOwnersCarteira()->postJson("/financeiro/custos-fixos/{$custoFixo->id}/pagar")->assertForbidden();
 
         $this->assertModelExists($lancamento);
         $this->assertSame(1, Lancamento::withoutGlobalScopes()->count());
@@ -152,7 +149,6 @@ class CarteiraCompartilhadaTest extends TestCase
         $this->asGuestInOwnersCarteira()->get('/financeiro/entradas')->assertRedirect(route('financeiro.saidas'));
         $this->asGuestInOwnersCarteira()->get('/financeiro')->assertRedirect(route('financeiro.saidas'));
         $this->asGuestInOwnersCarteira()->getJson('/financeiro/investimentos')->assertForbidden();
-        $this->asGuestInOwnersCarteira()->getJson('/financeiro/custos-fixos')->assertForbidden();
 
         // The shared write routes still respect the lançamento's own type.
         $this->asGuestInOwnersCarteira()->deleteJson("/financeiro/lancamentos/{$entrada->id}")->assertForbidden();
@@ -217,18 +213,18 @@ class CarteiraCompartilhadaTest extends TestCase
     {
         $this->share();
         $payload = [
-            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10, 'periodicity' => 'mensal',
-            'starts_on' => today()->startOfMonth()->toDateString(),
+            'type' => 'saida', 'description' => 'Vivo', 'category' => 'Telefone', 'amount' => 60,
+            'date' => today()->toDateString(),
         ];
 
-        $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
+        $this->actingAs($this->owner)->postJson('/financeiro/lancamentos', [
             ...$payload, "parte_u{$this->owner->id}" => 60, "parte_u{$this->guest->id}" => 60,
         ])->assertJsonValidationErrors('partes');
-        $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
+        $this->actingAs($this->owner)->postJson('/financeiro/lancamentos', [
             ...$payload, "parte_u{$this->owner->id}" => 30, "parte_u{$this->guest->id}" => 20,
         ])->assertJsonValidationErrors('partes');
 
-        $response = $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
+        $response = $this->actingAs($this->owner)->postJson('/financeiro/lancamentos', [
             ...$payload, "parte_u{$this->owner->id}" => 30, "parte_u{$this->guest->id}" => 30,
         ]);
 
@@ -309,89 +305,6 @@ class CarteiraCompartilhadaTest extends TestCase
             ->assertViewHas('totalRealizado', 0.0);
     }
 
-    public function test_a_fixed_cost_paid_from_the_owners_account_charges_only_the_owner(): void
-    {
-        $this->share();
-        $vivo = CustoFixo::factory()->for($this->owner)->create([
-            'amount' => 120, 'partes' => [$this->guest->id => 60], 'partes_conta' => 'dono',
-        ]);
-
-        $this->assertSame(120.0, $vivo->shareFor(today(), $this->owner));
-        $this->assertSame(0.0, $vivo->shareFor(today(), $this->guest));
-
-        $pagamento = $vivo->markPaid(today());
-        $this->assertSame(120.0, $pagamento->saidaFor($this->owner));
-        $this->assertSame(0.0, $pagamento->saidaFor($this->guest));
-    }
-
-    public function test_editing_a_fixed_cost_updates_the_payment_already_recorded_that_month(): void
-    {
-        $this->share();
-        $vivo = CustoFixo::factory()->for($this->owner)->create(['name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60]);
-        $pagamento = $vivo->markPaid(today());
-
-        $this->actingAs($this->owner)->putJson("/financeiro/custos-fixos/{$vivo->id}?mes=".today()->format('Y-m'), [
-            'scope' => 'mes', 'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 120, 'due_day' => 10,
-            "parte_u{$this->owner->id}" => 60, "parte_u{$this->guest->id}" => 60,
-        ])->assertOk();
-
-        $pagamento = Lancamento::withoutGlobalScopes()->with('partes')->findOrFail($pagamento->id);
-        $this->assertSame('120.00', $pagamento->amount);
-        $this->assertSame(60.0, $pagamento->saidaFor($this->owner));
-        $this->assertSame(60.0, $pagamento->saidaFor($this->guest));
-    }
-
-    public function test_a_fixed_cost_can_have_a_participant_share_which_its_payment_inherits(): void
-    {
-        $this->share();
-
-        $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
-            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10, 'periodicity' => 'mensal',
-            'starts_on' => today()->startOfMonth()->toDateString(), "parte_u{$this->guest->id}" => 30,
-        ])->assertOk();
-
-        $custoFixo = CustoFixo::withoutGlobalScopes()->where('name', 'Vivo')->firstOrFail();
-        $this->assertEquals([$this->guest->id => 30], $custoFixo->partes);
-
-        $this->actingAs($this->owner)->get('/financeiro/custos-fixos')
-            ->assertSee('da conta de @joao')
-            ->assertSee('da conta de @lilly');
-
-        $this->actingAs($this->owner)->postJson("/financeiro/custos-fixos/{$custoFixo->id}/pagar")->assertOk();
-
-        $pagamento = Lancamento::withoutGlobalScopes()->where('custo_fixo_id', $custoFixo->id)->firstOrFail();
-        $this->assertSame(30.0, $pagamento->saidaFor($this->guest));
-        $this->assertSame(30.0, $pagamento->saidaFor($this->owner));
-    }
-
-    public function test_a_fixed_costs_share_can_differ_in_a_single_month(): void
-    {
-        $this->share();
-        $custoFixo = CustoFixo::factory()->for($this->owner)->create([
-            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10, 'partes' => [$this->guest->id => 30],
-        ]);
-        $nextMonth = today()->addMonthNoOverflow()->startOfMonth();
-
-        $this->actingAs($this->owner)->putJson("/financeiro/custos-fixos/{$custoFixo->id}?mes=".$nextMonth->format('Y-m'), [
-            'scope' => 'mes', 'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10,
-            "parte_u{$this->guest->id}" => 45,
-        ])->assertOk();
-
-        $custoFixo = CustoFixo::withoutGlobalScopes()->with('ajustes')->findOrFail($custoFixo->id);
-        $this->assertEquals([$this->guest->id => 45], $custoFixo->valuesFor($nextMonth)['partes']);
-        $this->assertEquals([$this->guest->id => 30], $custoFixo->valuesFor(today())['partes']);
-    }
-
-    public function test_a_fixed_costs_share_cannot_exceed_its_amount(): void
-    {
-        $this->share();
-
-        $this->actingAs($this->owner)->postJson('/financeiro/custos-fixos', [
-            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'due_day' => 10, 'periodicity' => 'mensal',
-            'starts_on' => today()->toDateString(), "parte_u{$this->guest->id}" => 61,
-        ])->assertJsonValidationErrors('partes');
-    }
-
     public function test_editing_can_change_or_clear_a_division_and_a_status_toggle_leaves_it_alone(): void
     {
         $this->share();
@@ -438,10 +351,10 @@ class CarteiraCompartilhadaTest extends TestCase
     public function test_a_participants_part_counts_in_their_own_account_not_the_owners(): void
     {
         $this->share('ver');
-        $vivo = CustoFixo::factory()->for($this->owner)->create([
-            'name' => 'Vivo', 'category' => 'Telefone', 'amount' => 60, 'partes' => [$this->guest->id => 20],
+        $pagamento = Lancamento::factory()->for($this->owner)->saida()->create([
+            'description' => 'Vivo', 'category' => 'Telefone', 'amount' => 60,
         ]);
-        $this->actingAs($this->owner)->postJson("/financeiro/custos-fixos/{$vivo->id}/pagar")->assertOk();
+        $pagamento->syncPartes([$this->guest->id => 20]);
         Lancamento::factory()->for($this->guest)->saida()->create(['category' => 'Lazer', 'amount' => 15]);
 
         // The owner's account is charged only their R$ 40.
@@ -465,7 +378,6 @@ class CarteiraCompartilhadaTest extends TestCase
             ->assertViewHas('totalRealizado', 35.0);
 
         // It is read-only there: the lançamento still belongs to the owner.
-        $pagamento = Lancamento::withoutGlobalScopes()->where('custo_fixo_id', $vivo->id)->firstOrFail();
         $own->deleteJson("/financeiro/lancamentos/{$pagamento->id}")->assertNotFound();
         $this->assertModelExists($pagamento);
     }
@@ -531,25 +443,6 @@ class CarteiraCompartilhadaTest extends TestCase
         $response = $this->actingAs($this->owner)->withSession([Carteira::SESSION_KEY => null])
             ->patchJson("/financeiro/lancamentos/{$jantar->id}", ['status' => 'previsto']);
         $this->assertStringContainsString('Parte dos outros participantes', $response->json('totals'));
-    }
-
-    public function test_custos_fixos_totals_count_only_the_logged_in_users_share(): void
-    {
-        $this->share();
-        $vivo = CustoFixo::factory()->for($this->owner)->create(['amount' => 60, 'partes' => [$this->guest->id => 20]]);
-        CustoFixo::factory()->for($this->owner)->create(['amount' => 1000]);
-        $vivo->markPaid(today());
-
-        $this->actingAs($this->owner)->withSession([Carteira::SESSION_KEY => null])->get('/financeiro/custos-fixos')
-            ->assertSee('Parte dos outros participantes')
-            ->assertViewHas('total', 1040.0)
-            ->assertViewHas('totalPago', 40.0)
-            ->assertViewHas('participantes', fn ($participantes): bool => $participantes[0]['total'] === 20.0
-                && $participantes[0]['totalPago'] === 20.0);
-
-        $this->asGuestInOwnersCarteira()->get('/financeiro/custos-fixos')
-            ->assertViewHas('total', 20.0)
-            ->assertViewHas('totalPago', 20.0);
     }
 
     public function test_a_carteira_without_participants_keeps_its_full_totals(): void

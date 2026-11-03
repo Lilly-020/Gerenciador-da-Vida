@@ -47,7 +47,6 @@ class Participacao extends Model
         'dashboard' => 'Dashboard',
         'entradas' => 'Entradas',
         'saidas' => 'Saídas',
-        'custos_fixos' => 'Custos Fixos',
         'investimentos' => 'Investimentos',
     ];
 

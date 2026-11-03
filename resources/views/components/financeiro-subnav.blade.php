@@ -8,7 +8,6 @@
         ['route' => 'financeiro', 'label' => 'Dashboard', 'section' => 'dashboard'],
         ['route' => 'financeiro.entradas', 'label' => 'Entradas', 'section' => 'entradas'],
         ['route' => 'financeiro.saidas', 'label' => 'Saídas', 'section' => 'saidas'],
-        ['route' => 'financeiro.custos-fixos', 'label' => 'Custos Fixos', 'section' => 'custos_fixos'],
         ['route' => 'financeiro.investimentos', 'label' => 'Investimentos', 'section' => 'investimentos'],
     ])->filter(fn (array $item): bool => Carteira::canSee($item['section']));
 
