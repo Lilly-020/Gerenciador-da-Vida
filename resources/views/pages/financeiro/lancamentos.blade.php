@@ -56,7 +56,7 @@
             @endif
         </form>
 
-        <a href="{{ route('financeiro.relatorio', ['mes' => $month?->format('Y-m') ?? now()->format('Y-m')], absolute: false) }}" class="mb-4 inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-indigo-300 transition hover:text-white">Relatório mensal de entradas e saídas</a>
+        <a href="{{ route('financeiro.relatorio', ['mes' => $month?->format('Y-m') ?? now()->format('Y-m'), 'tipo' => $type], absolute: false) }}" class="mb-4 inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-indigo-300 transition hover:text-white">Relatório mensal de {{ $isEntrada ? 'entradas' : 'saídas' }}</a>
 
         @include('partials.financeiro.lancamentos-totals')
 

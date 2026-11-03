@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Relatório financeiro — {{ $monthTitle }}</title>
+    <title>{{ $reportTitle }} — {{ $monthTitle }}</title>
     @vite(['resources/css/app.css'])
     <style>
         @media print {
@@ -21,14 +21,19 @@
 <body class="min-h-screen bg-slate-950 p-4 font-sans text-slate-200 sm:p-8">
     <main class="mx-auto max-w-screen-2xl space-y-6">
         <div class="report-controls flex flex-wrap items-center justify-between gap-4">
-            <a href="{{ route('financeiro', absolute: false) }}" class="text-sm text-indigo-300">← Voltar ao financeiro</a>
+            <a href="{{ route($reportType === 'geral' ? 'financeiro' : ($reportType === 'entrada' ? 'financeiro.entradas' : 'financeiro.saidas'), absolute: false) }}" class="text-sm text-indigo-300">← Voltar ao financeiro</a>
             <form method="GET" action="{{ route('financeiro.relatorio', absolute: false) }}" class="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="tipo" value="{{ $reportType }}">
                 <input type="hidden" name="personalizar" value="1">
+                <input type="hidden" name="layout" value="1">
+                <label class="flex w-full flex-col gap-2 text-sm">Título do relatório
+                    <input name="titulo" value="{{ $reportTitle }}" maxlength="150" class="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-white">
+                </label>
                 <label for="report-month">Mês</label>
                 <input id="report-month" type="month" name="mes" value="{{ $month->format('Y-m') }}" required class="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-white">
                 <fieldset class="w-full rounded-lg border border-white/20 p-4">
                     <legend class="px-2 font-semibold">Informações do relatório</legend>
-                    <p class="mb-3 text-sm">Marque os campos desejados e clique em Gerar relatório. Os totais finais continuam incluídos.</p>
+                    <p class="mb-3 text-sm">Marque os campos desejados e clique em Gerar relatório. Você também pode ocultar a identificação e o cálculo final.</p>
                     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         @foreach ($columns as $key => $label)
                             <label class="flex items-center gap-2 text-sm">
@@ -41,15 +46,32 @@
                         <p role="alert" class="mt-3 text-rose-300">{{ $message }}</p>
                     @enderror
                 </fieldset>
+                <fieldset class="w-full rounded-lg border border-white/20 p-4">
+                    <legend class="px-2 font-semibold">Cabeçalho e resumo</legend>
+                    <div class="flex flex-wrap gap-4">
+                        @foreach (['identificacao' => 'Nomes da carteira e do titular', 'periodo' => 'Período do relatório', 'explicacao' => 'Explicação dos cálculos', 'totais' => 'Cálculo final do mês'] as $key => $label)
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" name="exibir[]" value="{{ $key }}" @checked(in_array($key, $displayOptions, true)) class="accent-indigo-500">{{ $label }}
+                            </label>
+                        @endforeach
+                    </div>
+                </fieldset>
                 <button class="rounded-lg border border-white/20 px-4 py-2">Gerar relatório</button>
-                <button type="button" onclick="window.print()" class="rounded-lg bg-indigo-500 px-4 py-2 font-semibold text-white">Imprimir / Salvar PDF</button>
+                <button type="submit" name="imprimir" value="1" class="rounded-lg bg-indigo-500 px-4 py-2 font-semibold text-white">Imprimir / Salvar PDF</button>
             </form>
         </div>
         <header>
-            <h1 class="text-2xl font-semibold">Relatório mensal de entradas e saídas</h1>
-            <p class="mt-2">{{ $monthTitle }} · Carteira de {{ $owner->handle() }} · Titular dos cálculos: {{ $user->handle() }}</p>
+            <h1 class="text-2xl font-semibold">{{ $reportTitle }}</h1>
+            <p class="mt-2">{{ $monthTitle }}</p>
+            @if (in_array('identificacao', $displayOptions, true))
+                <p>Carteira de {{ $owner->handle() }} · Titular dos cálculos: {{ $user->handle() }}</p>
+            @endif
+            @if (in_array('periodo', $displayOptions, true))
             <p class="mt-1 text-sm">Período: {{ $month->format('d/m/Y') }} a {{ $month->copy()->endOfMonth()->format('d/m/Y') }}.</p>
+            @endif
+            @if (in_array('explicacao', $displayOptions, true))
             <p class="mt-1 text-sm">Os cálculos representam o impacto na sua conta. A tabela apresenta somente as informações selecionadas.</p>
+            @endif
             @if ($isPartial)
                 <p class="mt-2 font-semibold">Relatório parcial: inclui somente as seções compartilhadas com você.</p>
             @endif
@@ -111,19 +133,38 @@
                 </tbody>
             </table>
         </div>
+        @if (in_array('totais', $displayOptions, true))
         <section>
             <h2 class="mb-3 text-lg font-semibold">Cálculo final do mês</h2>
             <table class="w-full max-w-3xl border-collapse text-sm">
-                <thead><tr><th class="border-b border-slate-600 p-3 text-left">Situação</th><th class="border-b border-slate-600 p-3 text-right">Entradas</th><th class="border-b border-slate-600 p-3 text-right">Saídas</th><th class="border-b border-slate-600 p-3 text-right">Saldo</th></tr></thead>
+                <thead>
+                    <tr><th class="border-b border-slate-600 p-3 text-left">Situação</th>
+                        @foreach ($summaryColumns as $label)
+                            <th class="border-b border-slate-600 p-3 text-right">{{ $label }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
                 <tbody>
                     @foreach (['realizado' => 'Realizado', 'previsto' => 'Previsto'] as $key => $label)
-                        <tr><th class="border-b border-slate-700 p-3 text-left">{{ $label }}</th><td class="border-b border-slate-700 p-3 text-right">@money($totals[$key]['entrada'])</td><td class="border-b border-slate-700 p-3 text-right">@money($totals[$key]['saida'])</td><td class="border-b border-slate-700 p-3 text-right">@money($totals[$key]['saldo'])</td></tr>
+                        <tr><th class="border-b border-slate-700 p-3 text-left">{{ $label }}</th>
+                            @foreach ($summaryColumns as $column => $heading)
+                                <td class="border-b border-slate-700 p-3 text-right">@money($totals[$key][$column])</td>
+                            @endforeach
+                        </tr>
                     @endforeach
-                    <tr class="font-semibold"><th class="p-3 text-left">Total projetado</th><td class="p-3 text-right">@money($totals['realizado']['entrada'] + $totals['previsto']['entrada'])</td><td class="p-3 text-right">@money($totals['realizado']['saida'] + $totals['previsto']['saida'])</td><td class="p-3 text-right">@money($totals['realizado']['saldo'] + $totals['previsto']['saldo'])</td></tr>
+                    <tr class="font-semibold"><th class="p-3 text-left">Total projetado</th>
+                        @foreach ($summaryColumns as $column => $heading)
+                            <td class="p-3 text-right">@money($totals['realizado'][$column] + $totals['previsto'][$column])</td>
+                        @endforeach
+                    </tr>
                 </tbody>
             </table>
-            <p class="mt-3 text-sm">Saldo = entradas − saídas. O total projetado soma realizados e previstos; não representa saldo bancário acumulado.</p>
+            <p class="mt-3 text-sm">{{ $reportType === 'geral' ? 'Saldo = entradas − saídas. ' : '' }}O total projetado soma realizados e previstos; não representa saldo bancário acumulado.</p>
         </section>
+        @endif
     </main>
+    @if ($printReport)
+        <script>window.addEventListener('load', () => window.print());</script>
+    @endif
 </body>
 </html>

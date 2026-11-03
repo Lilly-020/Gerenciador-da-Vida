@@ -56,6 +56,7 @@ class RelatorioMensalTest extends TestCase
 
         $this->actingAs($guest)->withSession([Carteira::SESSION_KEY => $owner->id])->get('/financeiro/relatorio?mes=2026-11')
             ->assertOk()->assertSee('Relatório parcial')->assertSee('Despesa compartilhada')->assertDontSee('Salário secreto');
+        $this->getJson('/financeiro/relatorio?mes=2026-11&tipo=entrada')->assertForbidden();
     }
 
     public function test_report_only_renders_selected_information_and_keeps_final_totals(): void
@@ -71,11 +72,49 @@ class RelatorioMensalTest extends TestCase
 
         $response->assertOk()->assertSee('Recebimento mensal')->assertDontSee('Observação confidencial')
             ->assertDontSee('Forma confidencial')->assertSee('Cálculo final do mês')
-            ->assertViewHas('selectedColumns', ['date' => 'Data', 'description' => 'Descrição', 'amount' => 'Valor integral'])
+            ->assertViewHas('selectedColumns', ['date' => 'Data', 'description' => 'Nome / Descrição', 'amount' => 'Valor integral'])
             ->assertViewHas('totals', fn (array $totals): bool => $totals['realizado']['saldo'] === 500.0);
 
         $this->get('/financeiro/relatorio?'.http_build_query(['mes' => '2026-11', 'campos' => ['notes']]))
             ->assertOk()->assertSee('Observação confidencial')->assertDontSee('Recebimento mensal');
+    }
+
+    public function test_report_can_hide_names_values_notes_and_summary_and_use_a_custom_title(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->create([
+            'date' => '2026-11-01', 'amount' => 9876.54, 'description' => 'Nome privado', 'notes' => 'Anotação privada',
+        ]);
+        $query = http_build_query([
+            'mes' => '2026-11', 'personalizar' => 1, 'campos' => ['date'],
+            'layout' => 1, 'titulo' => 'Meu relatório simplificado', 'imprimir' => 1,
+        ]);
+
+        $response = $this->actingAs($user)->get('/financeiro/relatorio?'.$query);
+
+        $response->assertOk()->assertSee('Meu relatório simplificado')->assertDontSee('Nome privado')
+            ->assertDontSee('Anotação privada')->assertDontSee('9.876,54')
+            ->assertDontSee('Carteira de '.$user->handle())->assertDontSee('<h2', false)
+            ->assertViewHas('displayOptions', [])->assertViewHas('printReport', true);
+    }
+
+    public function test_income_and_expense_reports_keep_their_entries_columns_and_totals_separate(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->create(['date' => '2026-11-01', 'amount' => 5000, 'description' => 'Salário exclusivo']);
+        Lancamento::factory()->for($user)->saida()->create(['date' => '2026-11-02', 'amount' => 200, 'description' => 'Despesa exclusiva']);
+
+        $this->actingAs($user)->get('/financeiro/relatorio?mes=2026-11&tipo=entrada')
+            ->assertOk()->assertSee('Relatório mensal de entradas')->assertSee('Salário exclusivo')->assertDontSee('Despesa exclusiva')
+            ->assertDontSee('Saída na sua conta')->assertViewHas('summaryColumns', ['entrada' => 'Entradas'])
+            ->assertViewHas('totals', fn (array $totals): bool => $totals['realizado']['entrada'] === 5000.0 && $totals['realizado']['saida'] === 0.0);
+        $this->get('/financeiro/relatorio?mes=2026-11&tipo=saida')
+            ->assertOk()->assertSee('Relatório mensal de saídas')->assertSee('Despesa exclusiva')->assertDontSee('Salário exclusivo')
+            ->assertDontSee('Entrada na sua conta')->assertViewHas('summaryColumns', ['saida' => 'Saídas'])
+            ->assertViewHas('totals', fn (array $totals): bool => $totals['realizado']['saida'] === 200.0 && $totals['realizado']['entrada'] === 0.0);
+        $this->get('/financeiro/relatorio?mes=2026-11&tipo=geral')
+            ->assertOk()->assertSee('Salário exclusivo')->assertSee('Despesa exclusiva')
+            ->assertViewHas('totals', fn (array $totals): bool => $totals['realizado']['saldo'] === 4800.0);
     }
 
     public function test_report_rejects_empty_or_unknown_column_selections(): void

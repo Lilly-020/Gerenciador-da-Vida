@@ -41,7 +41,7 @@ class LancamentoController extends Controller
     {
         $columns = [
             'id' => 'ID', 'date' => 'Data', 'type' => 'Tipo', 'status' => 'Status',
-            'description' => 'Descrição', 'notes' => 'Observações', 'category' => 'Categoria',
+            'description' => 'Nome / Descrição', 'notes' => 'Observações', 'category' => 'Categoria',
             'subcategory' => 'Subcategoria', 'payment_method' => 'Pagamento',
             'owner' => 'Carteira', 'shares' => 'Divisão entre participantes',
             'recurrence' => 'Recorrência', 'amount' => 'Valor integral',
@@ -49,17 +49,36 @@ class LancamentoController extends Controller
             'created_at' => 'Criado em', 'updated_at' => 'Atualizado em',
         ];
         $request->validate([
+            'tipo' => ['sometimes', Rule::in(['entrada', 'saida', 'geral'])],
             'mes' => ['sometimes', 'required', 'date_format:Y-m'],
             'personalizar' => ['sometimes', 'in:1'],
+            'titulo' => ['nullable', 'string', 'max:150'],
+            'layout' => ['sometimes', 'in:1'],
+            'exibir' => ['sometimes', 'array'],
+            'exibir.*' => ['string', Rule::in(['identificacao', 'periodo', 'explicacao', 'totais'])],
+            'imprimir' => ['sometimes', 'in:1'],
             'campos' => ['required_with:personalizar', 'array', 'min:1'],
             'campos.*' => ['string', Rule::in(array_keys($columns))],
         ], ['campos.required_with' => 'Selecione pelo menos uma informação para o relatório.']);
+        $reportType = $request->input('tipo', 'geral');
+        if ($reportType !== 'geral') {
+            $this->ensureSectionShared($reportType);
+            unset($columns[$reportType === 'entrada' ? 'saida' : 'entrada']);
+        }
+        $summaryColumns = $reportType === 'geral'
+            ? ['entrada' => 'Entradas', 'saida' => 'Saídas', 'saldo' => 'Saldo']
+            : [$reportType => $reportType === 'entrada' ? 'Entradas' : 'Saídas'];
+        $defaultTitle = match ($reportType) {
+            'entrada' => 'Relatório mensal de entradas',
+            'saida' => 'Relatório mensal de saídas',
+            default => 'Relatório geral de entradas e saídas',
+        };
         $selectedColumns = array_intersect_key($columns, array_flip($request->input('campos', array_keys($columns))));
         $month = $this->resolveMonth($request);
         $lancamentos = new Collection;
 
         foreach ([Lancamento::TYPE_ENTRADA => 'entradas', Lancamento::TYPE_SAIDA => 'saidas'] as $type => $section) {
-            if (Carteira::canSee($section)) {
+            if (($reportType === 'geral' || $reportType === $type) && Carteira::canSee($section)) {
                 $lancamentos = $lancamentos->concat($this->lancamentosFor($request, $type, $month));
             }
         }
@@ -82,6 +101,11 @@ class LancamentoController extends Controller
             })->all();
 
         return view('pages.financeiro.relatorio', [
+            'reportType' => $reportType,
+            'summaryColumns' => $summaryColumns,
+            'reportTitle' => $request->input('titulo') ?: $defaultTitle,
+            'displayOptions' => $request->has('layout') ? $request->input('exibir', []) : ['identificacao', 'periodo', 'explicacao', 'totais'],
+            'printReport' => $request->boolean('imprimir'),
             'columns' => $columns,
             'selectedColumns' => $selectedColumns,
             'rows' => $rows,
@@ -90,7 +114,7 @@ class LancamentoController extends Controller
             'monthTitle' => self::monthTitle($month),
             'owner' => Carteira::owner(),
             'user' => $request->user(),
-            'isPartial' => ! Carteira::canSee('entradas') || ! Carteira::canSee('saidas'),
+            'isPartial' => $reportType === 'geral' && (! Carteira::canSee('entradas') || ! Carteira::canSee('saidas')),
         ]);
     }
 

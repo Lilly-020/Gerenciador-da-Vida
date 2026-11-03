@@ -18,6 +18,10 @@
     <div class="w-full max-w-6xl">
         <x-financeiro-subnav active="financeiro" />
 
+        @if (\App\Support\Carteira::canSee('entradas') || \App\Support\Carteira::canSee('saidas'))
+            <a href="{{ route('financeiro.relatorio', ['tipo' => 'geral', 'mes' => $periodStart->format('Y-m')], absolute: false) }}" class="mb-4 inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-indigo-300 transition hover:text-white">Relatório geral de entradas e saídas</a>
+        @endif
+
         <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-white sm:text-3xl">Financeiro</h1>
