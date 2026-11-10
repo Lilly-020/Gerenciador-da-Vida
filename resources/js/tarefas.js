@@ -273,7 +273,7 @@ export function setupTarefas() {
         try {
             const data = await postJson(`/tarefas?date=${encodeURIComponent(date)}`, 'GET');
             if (version !== detailVersion) return;
-            const form = htmlToElement(data.day).querySelector('[data-add-tarefa-form]');
+            const form = htmlToElement(data.day).querySelector('[data-task-create-template]').content.querySelector('[data-add-tarefa-form]');
             form.className = 'mt-4';
             form.querySelector('h3')?.remove();
             form.querySelectorAll('[id]').forEach((field) => {
@@ -435,7 +435,7 @@ export function setupTarefas() {
         if (!button || button.disabled) return;
         const date = button.dataset.calendarDay || button.dataset.calendarOpen || button.dataset.weekSlot || button.dataset.calendarCreate;
         const slotMinute = button.hasAttribute('data-week-slot') ? Math.min(1410, Math.max(0, Math.floor((event.clientY - button.getBoundingClientRect().top) / 30) * 30)) : null;
-        if (['week', 'month'].includes(page.dataset.view) && !button.hasAttribute('data-calendar-more')) {
+        if (button.hasAttribute('data-calendar-create') || (['week', 'month'].includes(page.dataset.view) && !button.hasAttribute('data-calendar-more'))) {
             await openCreate(date, slotMinute);
             return;
         }

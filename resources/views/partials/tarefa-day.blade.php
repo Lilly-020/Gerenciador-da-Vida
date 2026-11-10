@@ -17,6 +17,8 @@
         </p>
     </div>
 
+    <button type="button" data-calendar-create="{{ $date->toDateString() }}" class="mb-4 rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400">Nova tarefa</button>
+
     @if ($holiday = \App\Support\CalendarioFeriados::on($date))
         <div class="mb-4 rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200"><span class="text-xs font-semibold">Feriado nacional</span><p class="mt-1">{{ $holiday }}</p></div>
     @endif
@@ -74,6 +76,7 @@
         </ul>
     @endif
 
+    <template data-task-create-template>
     <form data-add-tarefa-form action="{{ route('tarefas.store', absolute: false) }}" method="POST" class="mt-5 rounded-xl border border-indigo-400/20 bg-indigo-500/5 p-4">
         <h3 class="mb-1 text-sm font-semibold text-white">Adicionar tarefa</h3>
         <p class="mb-4 text-xs text-slate-400">Dê um título e preencha apenas as opções que precisar.</p>
@@ -145,4 +148,5 @@
             <button type="submit" data-task-create-details class="rounded-lg border border-indigo-400/30 px-4 py-2.5 text-sm font-semibold text-indigo-200 hover:bg-indigo-500/10 disabled:opacity-50">Adicionar com anexos</button>
         </div>
     </form>
+    </template>
 </div>
