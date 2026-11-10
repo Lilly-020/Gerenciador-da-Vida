@@ -89,9 +89,8 @@
                     @endunless
                 </div>
 
-                @unless ($isEntrada)
                     <div>
-                        <label for="edit-lancamento-payment-method" class="mb-1.5 block text-sm font-medium text-slate-300">Forma de pagamento</label>
+                        <label for="edit-lancamento-payment-method" class="mb-1.5 block text-sm font-medium text-slate-300">{{ $isEntrada ? 'Forma de recebimento' : 'Forma de pagamento' }}</label>
                         <input
                             id="edit-lancamento-payment-method"
                             type="text"
@@ -101,7 +100,7 @@
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
                         >
                     </div>
-                @endunless
+
 
                 <div>
                     <label for="edit-lancamento-notes" class="mb-1.5 block text-sm font-medium text-slate-300">Observação</label>
@@ -116,10 +115,12 @@
 
                 @include('partials.financeiro.partes-fields', ['prefix' => 'edit-lancamento', 'membros' => $membros, 'isEntrada' => $isEntrada])
 
-                <label class="grid gap-1.5 text-sm text-slate-300">Conta
+                <label class="grid gap-1.5 text-sm text-slate-300">{{ $isEntrada ? 'Conta de recebimento' : 'Conta de pagamento' }}
                     <select name="account_id" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"><option value="">Sem conta definida</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select>
                 </label>
+                @unless ($isEntrada)
                 <label class="grid gap-1.5 text-sm text-slate-300">Tipo de gasto<select name="expense_kind" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"><option value="variavel">Variável</option><option value="fixo">Fixo</option></select></label>
+                @endunless
                 <div class="flex justify-end gap-2 pt-2">
                     <button
                         type="button"

@@ -5,7 +5,7 @@
     <label class="grid gap-1.5 text-sm text-slate-300">Instituição<input name="institution" maxlength="255" class="{{ $fieldClass }}"></label>
 </div>
 @if ($creating)
-    <label class="grid gap-1.5 text-sm text-slate-300">Valor inicial (R$)<input name="initial_amount" type="number" min="0" step="0.01" value="0" class="{{ $fieldClass }}"></label>
+    <label class="grid gap-1.5 text-sm text-slate-300">Valor inicial (R$)<input name="initial_amount" type="number" data-money min="0" step="0.01" value="0" class="{{ $fieldClass }}"></label>
     <div class="grid grid-cols-2 gap-3">
         <label class="grid gap-1.5 text-xs text-slate-400">Data do aporte<input name="initial_date" type="date" max="{{ today()->toDateString() }}" value="{{ today()->toDateString() }}" class="{{ $fieldClass }} scheme-dark"></label>
         <label class="grid gap-1.5 text-xs text-slate-400">Conta de origem<select name="account_id" class="{{ $fieldClass }}"><option value="">Sem conta definida</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></label>
@@ -27,9 +27,9 @@
         </div>
         <label class="grid gap-1.5 text-xs text-slate-400">IR estimado sobre rendimento (%)<input name="ir_rate" type="number" min="0" max="100" step="0.01" value="0" required class="{{ $fieldClass }}"></label>
         <label class="grid gap-1.5 text-xs text-slate-400">IOF estimado sobre rendimento (%)<input name="iof_rate" type="number" min="0" max="100" step="0.01" value="0" required class="{{ $fieldClass }}"></label>
-        <label class="grid gap-1.5 text-xs text-slate-400">Taxas estimadas da instituição (R$)<input name="estimated_fees" type="number" min="0" step="0.01" value="0" required class="{{ $fieldClass }}"></label>
+        <label class="grid gap-1.5 text-xs text-slate-400">Taxas estimadas da instituição (R$)<input name="estimated_fees" type="number" data-money min="0" step="0.01" value="0" required class="{{ $fieldClass }}"></label>
         <p class="text-xs text-slate-500">Informe as alíquotas aplicáveis ao produto e ao prazo. A simulação desconta IOF antes do IR e as taxas informadas; não calcula automaticamente regras tributárias ou isenções.</p>
-        <label class="grid gap-1.5 text-xs text-slate-400">Valor real informado no extrato (R$)<input name="reported_value" type="number" min="0" step="0.01" class="{{ $fieldClass }}"></label>
+        <label class="grid gap-1.5 text-xs text-slate-400">Valor real informado no extrato (R$)<input name="reported_value" type="number" data-money min="0" step="0.01" class="{{ $fieldClass }}"></label>
         <label class="grid gap-1.5 text-xs text-slate-400">Data do extrato<input name="reported_at" type="date" max="{{ today()->toDateString() }}" class="{{ $fieldClass }} scheme-dark"></label>
         <label class="grid gap-1.5 text-xs text-slate-400">Observações<textarea name="notes" maxlength="2000" rows="2" class="{{ $fieldClass }}"></textarea></label>
     </div>

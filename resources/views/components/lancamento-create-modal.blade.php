@@ -25,11 +25,13 @@
                 <p class="col-span-2 text-xs text-slate-500">Semanal repete a data inicial a cada 7 dias. Nos meses mais curtos, o vencimento usa o último dia.</p>
             </div>
             <details class="rounded-xl border border-white/10 p-3"><summary class="cursor-pointer text-sm text-indigo-300">Mais opções: conta, parcelas e observações</summary><div class="mt-4 grid gap-3">
-                <label class="grid gap-1 text-xs text-slate-400">Conta<select name="account_id" class="{{ $fieldClass }}"><option value="">Sem conta definida</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></label>
+                <label class="grid gap-1 text-xs text-slate-400">{{ $isEntrada ? 'Conta de recebimento' : 'Conta de pagamento' }}<select name="account_id" class="{{ $fieldClass }}"><option value="">Sem conta definida</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></label>
+                @unless ($isEntrada)
                 <label class="grid gap-1 text-xs text-slate-400">Tipo de gasto<select name="expense_kind" class="{{ $fieldClass }}"><option value="variavel">Variável</option><option value="fixo">Fixo</option></select></label>
-                <label class="grid gap-1 text-xs text-slate-400">Forma de pagamento<select name="payment_method" class="{{ $fieldClass }}"><option value="">Não informada</option>@foreach (['Pix', 'Débito', 'Crédito', 'Dinheiro', 'Boleto', 'Transferência'] as $method)<option>{{ $method }}</option>@endforeach</select></label>
-                <label class="grid gap-1 text-xs text-slate-400">Número de parcelas<input name="installments" type="number" min="1" max="120" value="1" required class="{{ $fieldClass }}"></label>
-                <p class="text-xs text-slate-500">O valor total será dividido em parcelas mensais. As próximas ficam previstas. Use parcelas ou recorrência.</p>
+                @endunless
+                <label class="grid gap-1 text-xs text-slate-400">{{ $isEntrada ? 'Forma de recebimento' : 'Forma de pagamento' }}<select name="payment_method" class="{{ $fieldClass }}"><option value="">Não informada</option>@foreach (($isEntrada ? ['Pix', 'Transferência', 'Dinheiro', 'Boleto', 'Cartão'] : ['Pix', 'Débito', 'Crédito', 'Dinheiro', 'Boleto', 'Transferência']) as $method)<option>{{ $method }}</option>@endforeach</select></label>
+                <label class="grid gap-1 text-xs text-slate-400">{{ $isEntrada ? 'Receber em quantas parcelas?' : 'Número de parcelas' }}<input name="installments" type="number" min="1" max="120" value="1" required class="{{ $fieldClass }}"></label>
+                <p class="text-xs text-slate-500">{{ $isEntrada ? 'Para receber um valor combinado em partes: R$ 900 em 3 parcelas gera recebimentos de R$ 300 por mês. Use 1 para receber de uma vez. Para salário mensal, use recorrência.' : 'O valor total será dividido em parcelas mensais. As próximas ficam previstas. Use parcelas ou recorrência.' }}</p>
                 <label class="grid gap-1 text-xs text-slate-400">Subcategoria<input name="subcategory" maxlength="255" class="{{ $fieldClass }}"></label>
                 <label class="grid gap-1 text-xs text-slate-400">Observações<textarea name="notes" rows="2" maxlength="2000" class="{{ $fieldClass }}"></textarea></label>
                 @include('partials.financeiro.partes-fields', ['prefix' => 'lancamento', 'membros' => $membros, 'isEntrada' => $isEntrada])

@@ -36,9 +36,9 @@
         <input name="unit" value="{{ $task?->unit }}" maxlength="30" class="{{ $fieldClass }}">
     </label>
     <label class="grid gap-1 text-xs text-slate-400">Meta (para metas numéricas ou financeiras)
-        <input type="number" name="target_value" value="{{ $task?->target_value }}" min="0.01" max="999999999999.99" step="0.01" class="{{ $fieldClass }}">
+        <input type="number" name="target_value" data-money-when-financial value="{{ $task?->target_value }}" min="0.01" max="999999999999.99" step="0.01" class="{{ $fieldClass }}">
     </label>
     <label class="grid gap-1 text-xs text-slate-400">Valor atual
-        <input type="number" name="current_value" value="{{ $task?->current_value ?? 0 }}" min="0" max="999999999999.99" step="0.01" required class="{{ $fieldClass }}">
+        <input type="number" name="current_value" data-money-when-financial value="{{ $task?->current_value ?? 0 }}" min="0" max="999999999999.99" step="0.01" required class="{{ $fieldClass }}">
     </label>
 </div>

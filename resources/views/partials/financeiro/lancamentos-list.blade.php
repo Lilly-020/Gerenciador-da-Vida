@@ -61,7 +61,9 @@
                         @endif
                         <span class="h-1 w-1 rounded-full bg-slate-600"></span>
                         @if ($lancamento->account)<span>{{ $lancamento->account->name }}</span>@endif
-                        <span>{{ $lancamento->expense_kind === 'fixo' ? 'Fixo' : 'Variável' }}</span>
+                        @if ($lancamento->type === 'saida')
+                            <span>{{ $lancamento->expense_kind === 'fixo' ? 'Fixo' : 'Variável' }}</span>
+                        @endif
                         @if ($lancamento->installment_count)<span>Parcela {{ $lancamento->installment_number }}/{{ $lancamento->installment_count }}</span>@endif
                         <span class="{{ $lancamento->situation === 'Atrasado' ? 'text-rose-300' : 'text-slate-400' }}">{{ $lancamento->situation }}</span>
                         @if ($lancamento->status === 'cancelado')

@@ -39,7 +39,7 @@
 
         @if ($isEntrada)
             <p class="mt-1.5 text-xs text-slate-500">
-                Quanto deste valor {{ $dono->handle() }} recebeu de cada participante. O valor inteiro entra na conta de {{ $dono->handle() }}; essa parte sai da conta do participante.
+                Preencha apenas se esta entrada veio de uma dessas pessoas. Exemplo: se recebeu R$ 100 de um participante, informe 100 no campo dele. O sistema registra a entrada para {{ $dono->handle() }} e a saída para quem enviou. Para salário ou dinheiro recebido de terceiros, deixe em branco.
             </p>
         @else
             <label for="{{ $prefix }}-partes-conta" class="mt-3 mb-1 block text-xs text-slate-400">A parte dos participantes sai</label>

@@ -50,7 +50,7 @@
                 <form method="POST" action="{{ route('financeiro.contas.store', absolute: false) }}" class="mt-4 grid gap-4 sm:grid-cols-2">@csrf
                     <label class="grid gap-1.5 text-xs text-slate-300">Nome da conta<input name="name" required maxlength="255" placeholder="Ex.: Sicredi" class="{{ $inputClass }}"></label>
                     <label class="grid gap-1.5 text-xs text-slate-300">Tipo<select name="kind" class="{{ $inputClass }}">@foreach ($typeLabels as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></label>
-                    <label class="grid gap-1.5 text-xs text-slate-300">Quanto havia na conta? (R$)<input type="number" name="opening_balance" step="0.01" value="0" required class="{{ $inputClass }}"></label>
+                    <label class="grid gap-1.5 text-xs text-slate-300">Quanto havia na conta? (R$)<input type="number" data-money data-money-signed name="opening_balance" step="0.01" value="0" required class="{{ $inputClass }}"></label>
                     <label class="grid gap-1.5 text-xs text-slate-300">Data desse saldo<input type="date" name="opening_date" value="{{ today()->toDateString() }}" required class="{{ $inputClass }} scheme-dark"></label>
                     <p class="text-xs leading-relaxed text-slate-500 sm:col-span-2">Use o saldo antes dos movimentos da data escolhida. Por exemplo: se começou o dia com R$ 500, informe 500 e registre os pagamentos e recebimentos desse dia em Entradas e Saídas.</p>
                     <button class="justify-self-start rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">Adicionar conta</button>
@@ -77,7 +77,7 @@
                                 @error($field)<span class="text-rose-300">{{ $message }}</span>@enderror
                             </label>
                         @endforeach
-                        <label class="grid gap-1.5 text-xs text-slate-300">Valor a transferir (R$)<input name="amount" type="number" min="0.01" step="0.01" required value="{{ old('amount') }}" class="{{ $inputClass }}">@error('amount')<span class="text-rose-300">{{ $message }}</span>@enderror</label>
+                        <label class="grid gap-1.5 text-xs text-slate-300">Valor a transferir (R$)<input name="amount" type="number" data-money min="0.01" step="0.01" required value="{{ old('amount') }}" class="{{ $inputClass }}">@error('amount')<span class="text-rose-300">{{ $message }}</span>@enderror</label>
                         <label class="grid gap-1.5 text-xs text-slate-300">Data da transferência<input name="date" type="date" max="{{ today()->toDateString() }}" value="{{ old('date', today()->toDateString()) }}" required class="{{ $inputClass }} scheme-dark">@error('date')<span class="text-rose-300">{{ $message }}</span>@enderror</label>
                         <p class="text-xs text-slate-500 sm:col-span-2">A origem e o destino devem ser diferentes. Para pagar uma compra, use Saídas; para registrar dinheiro recebido, use Entradas.</p>
                         <button type="submit" class="justify-self-start rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">Confirmar transferência</button>
