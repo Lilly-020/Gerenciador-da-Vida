@@ -141,7 +141,7 @@
                 </div>
 
                 <div class="lg:col-span-2">
-                    @if (! in_array($view, ['month', 'week'], true))
+                    @if ($view === 'calendar')
                         @include('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])
                     @endif
                 </div>
@@ -151,13 +151,11 @@
         <div data-view-panel="week" @class(['hidden' => $view !== 'week'])>
             @if ($view === 'week')
                 @include('partials.tarefa-week')
-                <div class="mt-4">@include('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])</div>
             @endif
         </div>
         <div data-view-panel="month" @class(['hidden' => $view !== 'month'])>
             @if ($view === 'month')
                 @include('partials.tarefa-month')
-                <div class="mt-4">@include('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])</div>
             @endif
         </div>
         <div data-view-panel="dashboard" @class(['hidden' => $view !== 'dashboard'])>

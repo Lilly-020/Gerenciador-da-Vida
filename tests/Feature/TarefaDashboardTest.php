@@ -11,7 +11,7 @@ class TarefaDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_month_view_shows_tasks_in_their_days_and_keeps_one_editable_day_panel(): void
+    public function test_month_view_shows_tasks_in_their_days_without_an_inline_day_panel(): void
     {
         $user = User::factory()->create();
         Tarefa::factory()->for($user)->onDate('2026-11-10')->create(['title' => 'Estudar Laravel']);
@@ -21,7 +21,8 @@ class TarefaDashboardTest extends TestCase
 
         $response->assertSee('Calendário amplo')->assertSee('Estudar Laravel')->assertSee('Ler um capítulo')
             ->assertSee('data-calendar-open="2026-11-12"', false);
-        $this->assertSame(1, substr_count($response->getContent(), 'id="tarefas-day"'));
+        $this->assertSame(0, substr_count($response->getContent(), 'id="tarefas-day"'));
+        $this->actingAs($user)->get('/tarefas?date=2026-11-10&view=calendar')->assertSee('id="tarefas-day"', false);
     }
 
     public function test_month_view_includes_adjacent_days_and_hides_other_users_tasks(): void

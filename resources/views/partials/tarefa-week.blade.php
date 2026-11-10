@@ -26,15 +26,14 @@
             <div class="week-all-day">
                 <span class="week-all-label">Dia todo</span>
                 @foreach ($weekDays as $day)
-                    <div class="min-w-0 border-r border-white/10 p-1.5">
+                    <div class="max-h-44 min-w-0 overflow-y-auto border-r border-white/10 p-1.5">
                         @if ($holiday = \App\Support\CalendarioFeriados::on($day['date']))<div data-week-kind="feriado" data-kind="feriado" class="week-all-event whitespace-normal!" title="Feriado nacional">{{ $holiday }}</div>@endif
-                        @foreach ($day['allDay']->take(3) as $task)
+                        @foreach ($day['allDay'] as $task)
                             <div data-calendar-task data-kind="atividade" class="week-all-event flex! items-center gap-2">
                                 @include('partials.tarefa-calendar-check', ['task' => $task])
                                 <button type="button" data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}" aria-haspopup="dialog" aria-label="Editar ou excluir: {{ $task->title }}" class="min-w-0 flex-1 truncate text-left {{ $task->completed ? 'line-through opacity-60' : '' }}">{{ $task->title }}</button>
                             </div>
                         @endforeach
-                        @if ($day['allDay']->count() > 3)<button data-calendar-more type="button" data-calendar-open="{{ $day['date']->toDateString() }}" class="block px-1 text-[10px] text-slate-400">+ {{ $day['allDay']->count() - 3 }} tarefas</button>@endif
                         <button type="button" data-calendar-open="{{ $day['date']->toDateString() }}" data-calendar-add data-week-all-day class="week-add-all" aria-label="Adicionar tarefa de dia todo em {{ $day['date']->format('d/m/Y') }}">+</button>
                     </div>
                 @endforeach
