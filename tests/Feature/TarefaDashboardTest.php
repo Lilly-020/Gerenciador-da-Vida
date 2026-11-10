@@ -58,7 +58,8 @@ class TarefaDashboardTest extends TestCase
         $response = $this->actingAs($user)->patchJson(route('tarefas.update', $task), ['completed' => true]);
 
         $response->assertOk()->assertJsonStructure(['day', 'stats', 'charts', 'calendar', 'overview', 'summary']);
-        $this->assertStringContainsString('✓ Concluir atividade', $response->json('calendar'));
+        $this->assertStringContainsString('aria-label="Marcar como pendente: Concluir atividade"', $response->json('calendar'));
+        $this->assertStringContainsString('checked', $response->json('calendar'));
         $this->assertStringContainsString('100%', $response->json('overview'));
         $this->assertDatabaseHas('tarefas', ['id' => $task->id, 'completed' => true]);
     }

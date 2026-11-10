@@ -5,13 +5,16 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreTarefaRequest;
 use App\Http\Requests\UpdateTarefaRequest;
 use App\Models\Tarefa;
+use App\Models\TarefaCategoria;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -34,7 +37,7 @@ class TarefaController extends Controller
         $selected = $this->resolveDate($request->query('date'));
         $view = in_array($request->query('view'), ['calendar', 'month', 'week', 'dashboard'], true) ? $request->query('view') : 'calendar';
 
-        $dayTasks = $user->tarefas()->whereDate('date', $selected)->orderBy('id')->get();
+        $dayTasks = $this->tasksBetween($user, $selected, $selected)->with('category')->orderBy('id')->get();
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -112,9 +115,9 @@ class TarefaController extends Controller
         $weekdays = array_map(intval(...), $data['weekdays'] ?? []);
 
         if ($weekdays === []) {
-            $request->user()->tarefas()->create(Arr::only($data, ['title', 'date', 'start_time', 'end_time', 'kind']));
+            $task = $request->user()->tarefas()->create(Arr::only($data, ['title', 'date', 'start_time', 'end_time', 'kind', 'category_id', 'end_date', 'notes']));
 
-            return $this->respondWith($request, $date);
+            return $this->respondWith($request, $date, $task);
         }
 
         $dates = collect($date->daysUntil(Carbon::parse($data['repeat_until'])->startOfDay()))
@@ -128,14 +131,32 @@ class TarefaController extends Controller
 
         $seriesId = (string) Str::uuid();
 
-        $dates->each(fn (Carbon $day) => $request->user()->tarefas()->create([
+        $createdTasks = $dates->map(fn (Carbon $day) => $request->user()->tarefas()->create([
             'title' => $data['title'],
             'date' => $day->toDateString(),
             'series_id' => $seriesId,
-            ...Arr::only($data, ['start_time', 'end_time', 'kind']),
+            ...Arr::only($data, ['start_time', 'end_time', 'kind', 'category_id', 'notes']),
+            'end_date' => ! empty($data['end_date']) ? $day->copy()->addDays((int) $date->diffInDays(Carbon::parse($data['end_date'])))->toDateString() : null,
         ]));
 
-        return $this->respondWith($request, $date);
+        return $this->respondWith($request, $date, $createdTasks->first());
+    }
+
+    public function storeCategory(Request $request): JsonResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:100']]);
+        $data['name'] = trim($data['name']);
+        if ($data['name'] === '') {
+            throw ValidationException::withMessages(['name' => 'Informe o nome da categoria.']);
+        }
+        $category = TarefaCategoria::firstOrCreate($data);
+
+        return response()->json(['id' => $category->id, 'name' => $category->name]);
+    }
+
+    public function show(Tarefa $tarefa): JsonResponse
+    {
+        return response()->json(['html' => view('partials.tarefa-details', ['task' => $tarefa->load(['files', 'category'])])->render()]);
     }
 
     /**
@@ -157,11 +178,12 @@ class TarefaController extends Controller
         $date = $tarefa->date->copy();
 
         if ($request->query('scope') === 'series' && $tarefa->series_id) {
-            $request->user()->tarefas()
-                ->where('series_id', $tarefa->series_id)
-                ->where('date', '>=', $date->toDateString())
-                ->delete();
+            $tasks = $request->user()->tarefas()->with('files')->where('series_id', $tarefa->series_id)
+                ->where('date', '>=', $date->toDateString())->get();
+            Storage::disk('local')->delete($tasks->flatMap(fn (Tarefa $task): Collection => $task->files->pluck('path'))->all());
+            $tasks->each->delete();
         } else {
+            Storage::disk('local')->delete($tarefa->files->pluck('path')->all());
             $tarefa->delete();
         }
 
@@ -195,10 +217,35 @@ class TarefaController extends Controller
      */
     private function monthTasks(User $user, Carbon $month): Collection
     {
-        return $user->tarefas()
-            ->whereBetween('date', $this->dateRange($month->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY), $month->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY)))
-            ->get()
-            ->groupBy(fn (Tarefa $tarefa): string => $tarefa->date->toDateString());
+        return $this->groupTasksByDay($user, $month->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY), $month->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY));
+    }
+
+    /** @return Builder<Tarefa> */
+    private function tasksBetween(User $user, Carbon $start, Carbon $end): Builder
+    {
+        return Tarefa::where('user_id', $user->id)->where('date', '<=', $end->format('Y-m-d 23:59:59'))
+            ->where(fn (Builder $query): Builder => $query->whereDate('end_date', '>=', $start->toDateString())
+                ->orWhere(fn (Builder $query): Builder => $query->whereNull('end_date')->where('date', '>=', $start->toDateString())));
+    }
+
+    /** @return Collection<string, Collection<int, Tarefa>> */
+    private function groupTasksByDay(User $user, Carbon $start, Carbon $end): Collection
+    {
+        $days = collect();
+        foreach ($this->tasksBetween($user, $start, $end)->orderBy('start_time')->orderBy('id')->get() as $task) {
+            $cursor = $task->date->copy()->max($start)->startOfDay();
+            $last = ($task->end_date ?? $task->date)->copy()->min($end)->startOfDay();
+            while ($cursor->lte($last)) {
+                $key = $cursor->toDateString();
+                if (! $days->has($key)) {
+                    $days->put($key, collect());
+                }
+                $days->get($key)->push($task);
+                $cursor->addDay();
+            }
+        }
+
+        return $days;
     }
 
     /**
@@ -287,14 +334,14 @@ class TarefaController extends Controller
      * Render the day panel + stats partials for a JSON (fetch) request, or
      * fall back to a plain redirect for a normal form submission.
      */
-    private function respondWith(Request $request, Carbon $date): RedirectResponse|JsonResponse
+    private function respondWith(Request $request, Carbon $date, ?Tarefa $created = null): RedirectResponse|JsonResponse
     {
         if (! $request->wantsJson()) {
             return back();
         }
 
         $user = $request->user();
-        $dayTasks = $user->tarefas()->whereDate('date', $date)->orderBy('id')->get();
+        $dayTasks = $this->tasksBetween($user, $date, $date)->with('category')->orderBy('id')->get();
 
         return response()->json([
             'day' => view('partials.tarefa-day', ['date' => $date, 'tasks' => $dayTasks])->render(),
@@ -303,6 +350,7 @@ class TarefaController extends Controller
             'week' => $this->weekPartial($user, $date),
             'calendar' => $this->largeCalendarPartial($user, $date),
             'overview' => view('partials.tarefa-overview', $this->overview($user))->render(),
+            'created_task_url' => $created ? route('tarefas.show', $created, absolute: false) : null,
             'date' => $date->toDateString(),
             'summary' => [
                 'completed' => $dayTasks->where('completed', true)->count(),
@@ -320,8 +368,7 @@ class TarefaController extends Controller
     private function weekDays(User $user, Carbon $selected): array
     {
         $start = $selected->copy()->startOfWeek(Carbon::MONDAY);
-        $tasks = $user->tarefas()->whereBetween('date', $this->dateRange($start, $start->copy()->addDays(6)))
-            ->orderBy('start_time')->orderBy('id')->get()->groupBy(fn (Tarefa $task): string => $task->date->toDateString());
+        $tasks = $this->groupTasksByDay($user, $start, $start->copy()->addDays(6));
         $days = [];
         for ($index = 0; $index < 7; $index++) {
             $date = $start->copy()->addDays($index);
@@ -332,9 +379,12 @@ class TarefaController extends Controller
             $groupEnd = 0;
             foreach ($timed as $task) {
                 $parts = explode(':', $task->start_time);
-                $minutes = (int) $parts[0] * 60 + (int) $parts[1];
+                $minutes = $task->date->isSameDay($date) ? (int) $parts[0] * 60 + (int) $parts[1] : 0;
                 $endParts = $task->end_time ? explode(':', $task->end_time) : null;
                 $end = $endParts ? (int) $endParts[0] * 60 + (int) $endParts[1] : min(1440, $minutes + 60);
+                if (($task->end_date ?? $task->date)->gt($date)) {
+                    $end = 1440;
+                }
                 $end = max($end, min(1440, $minutes + 24));
                 if ($group !== [] && $minutes >= $groupEnd) {
                     $groups[] = $group;

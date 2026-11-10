@@ -18,7 +18,7 @@
 
             <div class="flex max-w-full flex-wrap items-center gap-2">
                 <div class="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-slate-900/70 p-1 shadow-xl shadow-black/30 backdrop-blur">
-                    @foreach (['calendar' => 'Minimalista', 'week' => 'Semana', 'month' => 'Calendário amplo', 'dashboard' => 'Dashboard'] as $key => $label)
+                    @foreach (['week' => 'Semana', 'calendar' => 'Minimalista', 'month' => 'Calendário amplo', 'dashboard' => 'Dashboard'] as $key => $label)
                         <a href="{{ route('tarefas', ['date' => $selected->toDateString(), 'view' => $key], absolute: false) }}" data-view-tab="{{ $key }}" aria-current="{{ $view === $key ? 'page' : 'false' }}" aria-selected="{{ $view === $key ? 'true' : 'false' }}" class="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm {{ $view === $key ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:text-white' }}">{{ $label }}</a>
                     @endforeach
                 </div>
@@ -131,11 +131,13 @@
                                                     : 'text-slate-300 hover:bg-white/5')) }}"
                                 >
                                     {{ $day['date']->day }}
+                                    @if ($day['inMonth'] && \App\Support\CalendarioFeriados::on($day['date']))<span class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-rose-400" aria-label="Feriado nacional"></span>@endif
                                     <span data-day-dot class="h-1 w-1 rounded-full {{ $dotClass }}"></span>
                                 </button>
                             @endforeach
                         @endforeach
                     </div>
+                    <div class="mt-4 border-t border-white/10 pt-3"><p class="text-xs font-semibold text-rose-200">Feriados nacionais neste mês</p><ul class="mt-2 grid gap-2 text-xs text-slate-400">@forelse (array_filter(\App\Support\CalendarioFeriados::year($month->year), fn ($key) => str_starts_with($key, $month->format('Y-m')), ARRAY_FILTER_USE_KEY) as $holidayDate => $holidayName)<li><span class="font-medium text-slate-200">{{ substr($holidayDate, 8, 2) }}/{{ $month->format('m') }}</span> · {{ $holidayName }}</li>@empty<li>Sem feriados nacionais neste mês.</li>@endforelse</ul></div>
                 </div>
 
                 <div class="lg:col-span-2">
@@ -169,4 +171,5 @@
             @include('partials.tarefa-charts', ['daily' => $daily, 'weekly' => $weekly, 'monthly' => $monthly])
         </div>
     </div>
+    <dialog id="task-details-modal" aria-labelledby="task-detail-title" class="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-lg overflow-y-auto rounded-2xl border border-white/15 bg-slate-900 p-5 text-slate-200 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm sm:p-6"><div data-task-detail-body></div></dialog>
 </x-layout>

@@ -17,6 +17,9 @@
         </p>
     </div>
 
+    @if ($holiday = \App\Support\CalendarioFeriados::on($date))
+        <div class="mb-4 rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200"><span class="text-xs font-semibold">Feriado nacional</span><p class="mt-1">{{ $holiday }}</p></div>
+    @endif
     @if ($tasks->isNotEmpty())
         <ul class="max-h-96 space-y-2 overflow-y-auto pr-1">
             @foreach ($tasks as $task)
@@ -40,7 +43,8 @@
                     @endif
                     <button
                         type="button"
-                        data-task-edit-trigger
+                        data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}"
+                        aria-haspopup="dialog"
                         data-task-edit-url="{{ route('tarefas.update', $task, absolute: false) }}"
                         class="shrink-0 text-slate-500 transition hover:text-indigo-300"
                         aria-label="Editar tarefa"
@@ -62,24 +66,23 @@
                         </svg>
                     </button>
                 </li>
-                <li class="px-1">
-                    @if ($task->start_time)<p class="mb-1 text-[10px] text-slate-500">{{ substr($task->start_time, 0, 5) }}{{ $task->end_time ? ' — '.substr($task->end_time, 0, 5) : '' }}</p>@endif
-                    <details class="text-xs" data-task-schedule><summary class="cursor-pointer text-slate-500 hover:text-indigo-300">Editar tipo e horário</summary>
-                        <form data-task-schedule-form action="{{ route('tarefas.update', $task, absolute: false) }}" method="POST" class="mt-3 rounded-lg border border-white/10 p-3">@csrf @method('PATCH')
-                            @include('partials.tarefa-schedule-fields', ['task' => $task])
-                            <button type="submit" class="mt-3 rounded-lg bg-indigo-500 px-3 py-2 text-xs text-white">Salvar horário</button>
-                        </form>
-                    </details>
+                <li class="flex flex-wrap items-center justify-between gap-2 px-2 pb-2 text-xs">
+                    <span class="text-slate-400">{{ $task->start_time ? substr($task->start_time, 0, 5).($task->end_time ? ' — '.substr($task->end_time, 0, 5) : '') : 'Dia todo' }}{{ $task->category ? ' · '.$task->category->name : '' }}</span>
+                    <button type="button" data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}" aria-haspopup="dialog" class="rounded-lg border border-indigo-400/20 px-3 py-2 font-medium text-indigo-200 hover:bg-indigo-500/10">Ver detalhes e anexos</button>
                 </li>
             @endforeach
         </ul>
     @endif
 
-    <form data-add-tarefa-form action="{{ route('tarefas.store', absolute: false) }}" method="POST" class="mt-3">
+    <form data-add-tarefa-form action="{{ route('tarefas.store', absolute: false) }}" method="POST" class="mt-5 rounded-xl border border-indigo-400/20 bg-indigo-500/5 p-4">
+        <h3 class="mb-1 text-sm font-semibold text-white">Adicionar tarefa</h3>
+        <p class="mb-4 text-xs text-slate-400">Dê um título e preencha apenas as opções que precisar.</p>
         @csrf
-        <input type="hidden" name="date" value="{{ $date->toDateString() }}">
+
+        <label class="mb-1.5 block text-xs font-medium text-slate-300" for="task-create-title">Título da tarefa</label>
         <div class="flex items-center gap-2">
             <input
+                id="task-create-title"
                 type="text"
                 name="title"
                 required
@@ -87,18 +90,16 @@
                 placeholder="Nova tarefa para o dia"
                 class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
             >
-            <button type="submit" class="shrink-0 rounded-lg bg-indigo-500/90 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500">
-                Adicionar
-            </button>
         </div>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+            <label class="grid gap-1.5 text-xs text-slate-300">Data de início<input type="date" name="date" required value="{{ $date->toDateString() }}" class="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white scheme-dark"></label>
+            <label class="grid gap-1.5 text-xs text-slate-300">Data de fim (opcional)<input type="date" name="end_date" class="w-full min-w-0 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white scheme-dark"></label>
+        </div>
+        <div data-new-task-schedule class="mt-4">@include('partials.tarefa-schedule-fields', ['task' => null])</div>
+        <label class="mt-4 grid gap-1.5 text-xs text-slate-300">Observações (opcional)<textarea name="notes" rows="2" maxlength="10000" placeholder="O que você precisa lembrar?" class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-400"></textarea></label>
 
-        <details data-new-task-schedule class="mt-3 rounded-lg border border-white/10 p-3"><summary class="cursor-pointer text-xs text-indigo-300">Tipo e horário (opcional)</summary><div class="mt-3">@include('partials.tarefa-schedule-fields', ['task' => null])</div></details>
-
-        <details class="group mt-2" data-repeat>
-            <summary class="cursor-pointer list-none text-xs text-slate-400 transition hover:text-indigo-300 [&::-webkit-details-marker]:hidden">
-                <span class="inline-block transition group-open:rotate-90">›</span>
-                Repetir esta tarefa
-            </summary>
+        <section class="mt-4 border-t border-white/10 pt-4" data-repeat>
+            <h4 class="text-xs font-semibold text-slate-200">Repetição (opcional)</h4><p class="mt-1 text-[11px] text-slate-500">Selecione os dias para repetir ou deixe sem seleção para uma tarefa única.</p>
 
             <div class="mt-2 space-y-3 rounded-lg border border-white/10 bg-slate-950/40 p-3">
                 <div>
@@ -138,6 +139,10 @@
                     >
                 </div>
             </div>
-        </details>
+        </section>
+        <div class="mt-5 flex flex-wrap gap-2">
+            <button type="submit" class="rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-50">Adicionar tarefa</button>
+            <button type="submit" data-task-create-details class="rounded-lg border border-indigo-400/30 px-4 py-2.5 text-sm font-semibold text-indigo-200 hover:bg-indigo-500/10 disabled:opacity-50">Adicionar com anexos</button>
+        </div>
     </form>
 </div>

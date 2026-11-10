@@ -243,7 +243,7 @@ function enhance(select) {
         list.setAttribute('role', 'listbox');
         if (select.multiple) list.setAttribute('aria-multiselectable', 'true');
         panel.append(search, list);
-        document.body.append(panel);
+        (select.closest('dialog[open]') || document.body).append(panel);
         active = { panel, button, close, position };
         button.setAttribute('aria-expanded', 'true');
         search.addEventListener('input', render);

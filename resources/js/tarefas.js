@@ -1,5 +1,6 @@
-import { htmlToElement, postJson, setupInlineTaskEdit } from './board';
+import { htmlToElement, postJson, postForm, setupInlineTaskEdit } from './board';
 import { alertDialog, choiceDialog, confirmDialog } from './dialog';
+import { toast } from './selects';
 
 const RING_BASE_CLASSES = ['ring-1', 'ring-inset'];
 const SELECTED_CLASSES = ['bg-indigo-500/25', 'text-indigo-100', 'ring-indigo-400/40'];
@@ -36,6 +37,29 @@ export function setupTarefas() {
     if (!page || !calendar) {
         return;
     }
+
+    document.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-task-category-add]');
+        if (!button) return;
+        const picker = button.closest('[data-task-category-picker]');
+        const input = picker.querySelector('[data-task-category-name]');
+        const error = picker.querySelector('[data-task-category-error]');
+        const name = input.value.trim();
+        error.classList.add('hidden');
+        if (!name) { input.focus(); error.textContent = 'Informe o nome da categoria.'; error.classList.remove('hidden'); return; }
+        button.disabled = true;
+        try {
+            const category = await postJson(button.dataset.taskCategoryAdd, 'POST', { name });
+            document.querySelectorAll('[data-task-category-picker] select').forEach((select) => {
+                if (![...select.options].some((option) => option.value === String(category.id))) select.add(new Option(category.name, category.id));
+            });
+            const select = picker.querySelector('select');
+            select.value = String(category.id);
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            input.value = '';
+        } catch (exception) { error.textContent = exception.message; error.classList.remove('hidden'); }
+        finally { button.disabled = false; }
+    });
 
     const hiddenKinds = new Set();
     const filterWeek = () => {
@@ -172,12 +196,157 @@ export function setupTarefas() {
         updateDot(data.date, data.summary);
     };
 
+    const detailModal = document.getElementById('task-details-modal');
+    const detailBody = detailModal.querySelector('[data-task-detail-body]');
+    let detailVersion = 0;
+    const applyDetailUpdate = async (data) => {
+        if (data.date !== page.dataset.selectedDate) {
+            data = await postJson(`/tarefas?date=${page.dataset.selectedDate}`, 'GET');
+        }
+        applyDayUpdate(data);
+    };
+    const detailError = (error) => {
+        const message = detailBody.querySelector('[data-task-detail-error]');
+        if (message) { message.textContent = error.message; message.classList.remove('hidden'); }
+        else alertDialog(error.message);
+    };
+    const openDetails = async (url) => {
+        const version = ++detailVersion;
+        try {
+            const data = await postJson(url, 'GET');
+            if (version !== detailVersion) return;
+            detailBody.innerHTML = data.html;
+            if (!detailModal.open) detailModal.showModal();
+        } catch (error) { if (detailModal.open) detailError(error); else alertDialog(error.message); }
+    };
+    const openCreate = async (date, minute = null) => {
+        const version = ++detailVersion;
+        try {
+            const data = await postJson(`/tarefas?date=${encodeURIComponent(date)}`, 'GET');
+            if (version !== detailVersion) return;
+            const form = htmlToElement(data.day).querySelector('[data-add-tarefa-form]');
+            form.className = 'mt-4';
+            form.querySelector('h3')?.remove();
+            form.querySelectorAll('[id]').forEach((field) => {
+                const label = form.querySelector(`label[for="${field.id}"]`);
+                field.id += '-modal';
+                if (label) label.htmlFor = field.id;
+            });
+            if (minute !== null) {
+                const formatTime = (value) => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+                form.elements.namedItem('start_time').value = formatTime(minute);
+                form.elements.namedItem('end_time').value = formatTime(Math.min(1439, minute + 60));
+            }
+            detailBody.innerHTML = '<div class="flex items-center justify-between gap-4"><h2 id="task-detail-title" class="text-xl font-semibold text-white">Nova tarefa</h2><button type="button" data-task-detail-close aria-label="Fechar cadastro" class="rounded-full border border-white/10 px-3 py-1.5 text-slate-300">✕</button></div><p data-task-detail-error role="alert" class="mt-3 hidden text-sm text-rose-300"></p>';
+            detailBody.append(form);
+            detailModal.scrollTop = 0;
+            if (!detailModal.open) detailModal.showModal();
+            form.elements.namedItem('title').focus();
+        } catch (error) { if (detailModal.open) detailError(error); else alertDialog(error.message); }
+    };
+
+    detailModal.addEventListener('close', () => { ++detailVersion; });
+    detailModal.addEventListener('click', async (event) => {
+        if (event.target.closest('[data-task-detail-close]') || event.target === detailModal) { detailModal.close(); return; }
+        const deleteTask = event.target.closest('[data-task-detail-delete]');
+        if (deleteTask) {
+            detailModal.close();
+            const scope = deleteTask.hasAttribute('data-task-series')
+                ? await choiceDialog('Esta tarefa se repete. Os anexos das tarefas excluídas também serão removidos. O que deseja excluir?', [
+                    { label: 'Só esta tarefa', value: 'one', danger: true },
+                    { label: 'Esta e as próximas', value: 'series', danger: true },
+                ])
+                : await confirmDialog('Excluir esta tarefa e seus anexos?', { confirmLabel: 'Excluir tarefa', danger: true }) && 'one';
+            if (!scope) { detailModal.showModal(); return; }
+            try {
+                const url = deleteTask.dataset.taskDetailDelete;
+                await applyDetailUpdate(await postJson(scope === 'series' ? `${url}?scope=series` : url, 'DELETE'));
+                toast('Tarefa excluída.');
+            } catch (error) { detailModal.showModal(); detailError(error); }
+            return;
+        }
+        const button = event.target.closest('[data-task-file-delete]');
+        if (!button) return;
+        detailModal.close();
+        const confirmed = await confirmDialog('Remover este anexo?', { confirmLabel: 'Remover', danger: true });
+        detailModal.showModal();
+        if (!confirmed) return;
+        button.disabled = true;
+        try {
+            const form = detailBody.querySelector('[data-task-detail-form]');
+            if (!form.reportValidity()) return;
+            await applyDetailUpdate(await postJson(form.action, 'PATCH', Object.fromEntries(new FormData(form))));
+            detailBody.innerHTML = (await postJson(button.dataset.taskFileDelete, 'DELETE')).html;
+        } catch (error) { detailError(error); }
+        finally { button.disabled = false; }
+    });
+    detailModal.addEventListener('input', () => {
+        const form = detailBody.querySelector('[data-task-detail-form]');
+        if (form) form.elements.namedItem('end_date').min = form.elements.namedItem('date').value;
+    });
+    detailModal.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.target;
+        if (form.matches('[data-add-tarefa-form]')) {
+            if (!form.reportValidity()) return;
+            const buttons = form.querySelectorAll('button[type="submit"]');
+            const withAttachments = event.submitter?.hasAttribute('data-task-create-details');
+            buttons.forEach((button) => { button.disabled = true; });
+            try {
+                const fields = new FormData(form);
+                const payload = Object.fromEntries(fields);
+                payload.weekdays = fields.getAll('weekdays[]');
+                if (payload.weekdays.length === 0) { delete payload.weekdays; delete payload.repeat_until; }
+                delete payload['weekdays[]'];
+                const data = await postJson(form.action, 'POST', payload);
+                await applyDetailUpdate(data);
+                if (withAttachments && data.created_task_url) await openDetails(data.created_task_url);
+                else {
+                    detailModal.close();
+                    const [year, month, day] = fields.get('date').split('-');
+                    toast(`Tarefa adicionada em ${day}/${month}/${year}.`);
+                }
+            } catch (error) { detailError(error); }
+            finally { buttons.forEach((button) => { button.disabled = false; }); }
+            return;
+        }
+        const details = detailBody.querySelector('[data-task-detail-form]');
+        if (!details.reportValidity() || !form.reportValidity()) return;
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        const url = detailBody.querySelector('[data-task-detail-content]').dataset.taskUrl;
+        try {
+            const data = await postJson(details.action, 'PATCH', Object.fromEntries(new FormData(details)));
+            await applyDetailUpdate(data);
+            if (form.matches('[data-task-file-form]')) detailBody.innerHTML = (await postForm(form.action, 'POST', new FormData(form))).html;
+            else await openDetails(url);
+        } catch (error) { detailError(error); }
+        finally { button.disabled = false; }
+    });
+    page.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-task-details-url]');
+        if (trigger) openDetails(trigger.dataset.taskDetailsUrl);
+    });
+
+    const requestedTask = new URLSearchParams(window.location.search).get('task_id');
+    if (requestedTask && /^\d+$/.test(requestedTask)) {
+        openDetails(`/tarefas/${requestedTask}`);
+        const address = new URL(window.location.href);
+        address.searchParams.delete('task_id');
+        window.history.replaceState({}, '', address);
+    }
+
     let selectionVersion = 0;
     calendar.addEventListener('click', async (event) => {
-        const button = event.target.closest('[data-calendar-day], [data-calendar-open], [data-week-slot]');
+        if (event.target.closest('[data-task-details-url], [data-calendar-task]')) return;
+        const button = event.target.closest('[data-calendar-day], [data-calendar-open], [data-week-slot], [data-calendar-create]');
         if (!button || button.disabled) return;
-        const date = button.dataset.calendarDay || button.dataset.calendarOpen || button.dataset.weekSlot;
+        const date = button.dataset.calendarDay || button.dataset.calendarOpen || button.dataset.weekSlot || button.dataset.calendarCreate;
         const slotMinute = button.hasAttribute('data-week-slot') ? Math.min(1410, Math.max(0, Math.floor((event.clientY - button.getBoundingClientRect().top) / 30) * 30)) : null;
+        if (['week', 'month'].includes(page.dataset.view) && !button.hasAttribute('data-calendar-more')) {
+            await openCreate(date, slotMinute);
+            return;
+        }
         if (button.hasAttribute('data-outside-month')) {
             window.location.assign(`?date=${date}&view=month`);
             return;
@@ -227,7 +396,7 @@ export function setupTarefas() {
 
         try {
             const data = await postJson(checkbox.dataset.taskToggleUrl, 'PATCH', { completed: checkbox.checked });
-            applyDayUpdate(data);
+            await applyDetailUpdate(data);
         } catch (error) {
             checkbox.checked = !checkbox.checked;
             checkbox.disabled = false;
@@ -289,7 +458,7 @@ export function setupTarefas() {
         }
     });
 
-    page.addEventListener('click', (event) => {
+    document.addEventListener('click', (event) => {
         const preset = event.target.closest('[data-repeat-preset]');
 
         if (!preset) {
@@ -338,13 +507,15 @@ export function setupTarefas() {
             return;
         }
 
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
+        const submitButton = event.submitter || form.querySelector('button[type="submit"]');
+        const openCreated = submitButton.hasAttribute('data-task-create-details');
+        const submitButtons = form.querySelectorAll('button[type="submit"]');
+        submitButtons.forEach((button) => { button.disabled = true; });
 
         try {
             const formData = new FormData(form);
-            const repeats = form.querySelector('[data-repeat]')?.open;
-            const payload = { title, date: formData.get('date'), kind: formData.get('kind'), start_time: formData.get('start_time'), end_time: formData.get('end_time') };
+            const repeats = formData.getAll('weekdays[]').length > 0;
+            const payload = { title, date: formData.get('date'), end_date: formData.get('end_date'), notes: formData.get('notes'), category_id: formData.get('category_id'), start_time: formData.get('start_time'), end_time: formData.get('end_time') };
 
             if (repeats) {
                 payload.weekdays = formData.getAll('weekdays[]');
@@ -360,16 +531,24 @@ export function setupTarefas() {
             // A repetition adds tasks to other days too, whose calendar
             // dots only a full render refreshes.
             if (repeats) {
+                if (openCreated && data.created_task_url) {
+                    const taskId = data.created_task_url.split('/').pop();
+                    window.location.assign(`?date=${data.date}&view=${page.dataset.view || 'calendar'}&task_id=${encodeURIComponent(taskId)}`);
+                    return;
+                }
                 window.location.reload();
 
                 return;
             }
 
             applyDayUpdate(data);
+            applySelection(data.date);
+            page.dataset.selectedDate = data.date;
+            if (openCreated && data.created_task_url) await openDetails(data.created_task_url);
         } catch (error) {
             alertDialog(error.message);
         } finally {
-            submitButton.disabled = false;
+            submitButtons.forEach((button) => { button.disabled = false; });
         }
     });
 }

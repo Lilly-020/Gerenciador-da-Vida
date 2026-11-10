@@ -19,6 +19,7 @@ use App\Http\Controllers\ProjetoTaskController;
 use App\Http\Controllers\SonhoController;
 use App\Http\Controllers\SonhoTaskController;
 use App\Http\Controllers\TarefaController;
+use App\Http\Controllers\TarefaFileController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -108,6 +109,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/tarefas', [TarefaController::class, 'index'])->name('tarefas');
     Route::get('/tarefas/buscar', [TarefaController::class, 'buscar'])->name('tarefas.buscar');
     Route::post('/tarefas', [TarefaController::class, 'store'])->name('tarefas.store');
+    Route::post('/tarefas/categorias', [TarefaController::class, 'storeCategory'])->name('tarefas.categorias.store');
+    Route::get('/tarefas/{tarefa}', [TarefaController::class, 'show'])->name('tarefas.show');
+    Route::post('/tarefas/{tarefa}/arquivos', [TarefaFileController::class, 'store'])->name('tarefas.arquivos.store');
+    Route::get('/tarefas/{tarefa}/arquivos/{arquivo}', [TarefaFileController::class, 'show'])->name('tarefas.arquivos.show');
+    Route::delete('/tarefas/{tarefa}/arquivos/{arquivo}', [TarefaFileController::class, 'destroy'])->name('tarefas.arquivos.destroy');
     Route::patch('/tarefas/{tarefa}', [TarefaController::class, 'update'])->name('tarefas.update');
     Route::delete('/tarefas/{tarefa}', [TarefaController::class, 'destroy'])->name('tarefas.destroy');
 

@@ -26,8 +26,11 @@ class StoreTarefaRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'category_id' => ['nullable', 'integer', Rule::exists('tarefa_categorias', 'id')->where('user_id', $this->user()->id)],
             'start_time' => ['nullable', 'required_with:end_time', 'date_format:H:i'],
-            'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
+            'end_time' => ['nullable', 'date_format:H:i'],
+            'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date'],
+            'notes' => ['nullable', 'string', 'max:10000'],
             'kind' => ['sometimes', 'required', Rule::in(array_keys(Tarefa::KINDS))],
             'title' => ['required', 'string', 'max:255'],
             'date' => ['required', 'date'],
@@ -46,6 +49,9 @@ class StoreTarefaRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
+                if ($validator->errors()->isEmpty() && $this->filled('start_time') && $this->filled('end_time') && (! $this->filled('end_date') || $this->input('end_date') === $this->input('date')) && $this->input('end_time') <= $this->input('start_time')) {
+                    $validator->errors()->add('end_time', 'O término deve ser depois do início, no mesmo dia.');
+                }
                 if ($validator->errors()->isNotEmpty() || empty($this->input('weekdays'))) {
                     return;
                 }
@@ -69,6 +75,10 @@ class StoreTarefaRequest extends FormRequest
             'start_time.date_format' => 'Informe um horário de início válido.',
             'end_time.date_format' => 'Informe um horário de término válido.',
             'end_time.after' => 'O término deve ser depois do início, no mesmo dia.',
+            'end_date.after_or_equal' => 'A data de fim deve ser igual ou posterior ao início.',
+            'end_date.date_format' => 'Informe uma data de fim válida.',
+            'notes.max' => 'As observações podem ter até 10.000 caracteres.',
+            'category_id.exists' => 'Selecione uma categoria sua ou crie uma nova.',
             'title.required' => 'Dê um nome para a tarefa.',
             'title.max' => 'O nome pode ter no máximo 255 caracteres.',
             'date.required' => 'Informe o dia da tarefa.',

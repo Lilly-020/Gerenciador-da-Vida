@@ -9,9 +9,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
 
-#[Fillable(['title', 'date', 'completed', 'series_id', 'start_time', 'end_time', 'kind'])]
+#[Fillable(['title', 'date', 'completed', 'series_id', 'start_time', 'end_time', 'kind', 'end_date', 'notes', 'category_id'])]
 class Tarefa extends Model
 {
     /** @use HasFactory<TarefaFactory> */
@@ -50,6 +51,7 @@ class Tarefa extends Model
     {
         return [
             'date' => 'date',
+            'end_date' => 'date',
             'completed' => 'boolean',
         ];
     }
@@ -77,6 +79,18 @@ class Tarefa extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<TarefaCategoria, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(TarefaCategoria::class, 'category_id');
+    }
+
+    /** @return HasMany<TarefaFile, $this> */
+    public function files(): HasMany
+    {
+        return $this->hasMany(TarefaFile::class);
     }
 
     /**
