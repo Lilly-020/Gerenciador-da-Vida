@@ -20,7 +20,7 @@
             <div class="week-header">
                 <div class="week-corner"></div>
                 @foreach ($weekDays as $day)
-                    <button type="button" data-calendar-open="{{ $day['date']->toDateString() }}" @if ($day['date']->month !== $selected->month) data-week-day @endif class="week-heading {{ $day['date']->isSameDay($selected) ? 'week-selected' : '' }}"><span>{{ mb_strtoupper(mb_substr(\App\Models\Tarefa::weekdayLabel($day['date']), 0, 3)) }}</span><strong @class(['week-today' => $day['date']->isToday()])>{{ $day['date']->day }}</strong></button>
+                    <button type="button" data-calendar-open="{{ $day['date']->toDateString() }}" data-calendar-more @if ($day['date']->month !== $selected->month) data-week-day @endif class="week-heading {{ $day['date']->isSameDay($selected) ? 'week-selected' : '' }}"><span>{{ mb_strtoupper(mb_substr(\App\Models\Tarefa::weekdayLabel($day['date']), 0, 3)) }}</span><strong @class(['week-today' => $day['date']->isToday()])>{{ $day['date']->day }}</strong></button>
                 @endforeach
             </div>
             <div class="week-all-day">

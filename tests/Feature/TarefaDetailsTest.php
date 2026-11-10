@@ -19,7 +19,18 @@ class TarefaDetailsTest extends TestCase
         $task = Tarefa::factory()->for($user)->create(['title' => 'Estudar', 'date' => '2026-11-10', 'notes' => '<script>unsafe</script>']);
         $this->actingAs($user)->get('/tarefas?date=2026-11-10&view=month')->assertOk()
             ->assertSee('data-task-details-url', false)->assertSee('task-details-modal', false);
-        $html = $this->getJson(route('tarefas.show', $task))->assertOk()->json('html');
+        $response = $this->getJson(route('tarefas.show', $task))->assertOk();
+        $html = $response->json('html');
+        $summary = $response->json('summary');
+        $this->assertStringContainsString('Estudar', $summary);
+        $this->assertStringContainsString('10/11/2026', $summary);
+        $this->assertStringContainsString('data-task-info-edit', $summary);
+        $this->assertStringContainsString('data-task-info-delete', $summary);
+        $this->assertStringContainsString('data-task-info-toggle', $summary);
+        $this->assertStringContainsString('&lt;script&gt;unsafe&lt;/script&gt;', $summary);
+        $this->assertStringNotContainsString('<form', $summary);
+        $this->assertStringNotContainsString('<textarea', $summary);
+        $this->assertStringNotContainsString('name="title"', $summary);
         $this->assertStringContainsString('Data de início', $html);
         $this->assertStringContainsString('Data de fim', $html);
         $this->assertStringContainsString('data-task-detail-delete', $html);

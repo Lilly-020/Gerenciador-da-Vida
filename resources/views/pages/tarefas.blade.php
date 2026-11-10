@@ -150,6 +150,9 @@
 
         <div data-view-panel="week" @class(['hidden' => $view !== 'week'])>
             @if ($view === 'week')
+                <div class="mb-6">
+                    @include('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])
+                </div>
                 @include('partials.tarefa-week')
             @endif
         </div>
@@ -169,5 +172,6 @@
             @include('partials.tarefa-charts', ['daily' => $daily, 'weekly' => $weekly, 'monthly' => $monthly])
         </div>
     </div>
+    <div id="task-info-popover" popover="manual" role="dialog" aria-labelledby="task-info-title" class="fixed inset-auto m-0 max-h-[75dvh] w-[calc(100%_-_2rem)] max-w-md overflow-y-auto rounded-2xl border border-indigo-300/20 bg-slate-900 p-4 text-slate-200 shadow-2xl shadow-black/40 sm:p-5"></div>
     <dialog id="task-details-modal" aria-labelledby="task-detail-title" class="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-lg overflow-y-auto rounded-2xl border border-white/15 bg-slate-900 p-5 text-slate-200 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm sm:p-6"><div data-task-detail-body></div></dialog>
 </x-layout>

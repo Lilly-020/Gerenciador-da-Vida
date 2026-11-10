@@ -156,7 +156,12 @@ class TarefaController extends Controller
 
     public function show(Tarefa $tarefa): JsonResponse
     {
-        return response()->json(['html' => view('partials.tarefa-details', ['task' => $tarefa->load(['files', 'category'])])->render()]);
+        $tarefa->load(['files', 'category']);
+
+        return response()->json([
+            'html' => view('partials.tarefa-details', ['task' => $tarefa])->render(),
+            'summary' => view('partials.tarefa-info', ['task' => $tarefa])->render(),
+        ]);
     }
 
     /**

@@ -43,7 +43,7 @@
                     @endif
                     <button
                         type="button"
-                        data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}"
+                        data-task-editor-url="{{ route('tarefas.show', $task, absolute: false) }}"
                         aria-haspopup="dialog"
                         data-task-edit-url="{{ route('tarefas.update', $task, absolute: false) }}"
                         class="shrink-0 text-slate-500 transition hover:text-indigo-300"

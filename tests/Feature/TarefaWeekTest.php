@@ -23,7 +23,8 @@ class TarefaWeekTest extends TestCase
         $response->assertSee('Reunião da equipe')->assertSee('Compromisso do domingo')->assertSee('Dia todo')
             ->assertSee('07:00')->assertSee('23:00')->assertSee('Semana anterior')->assertSee('Próxima semana')->assertDontSee('Fora desta semana');
         $response->assertViewHas('weekDays', fn (array $days): bool => count($days) === 7 && $days[0]['date']->toDateString() === '2026-11-09' && $days[6]['date']->toDateString() === '2026-11-15');
-        $this->assertSame(0, substr_count($response->getContent(), 'id="tarefas-day"'));
+        $this->assertSame(1, substr_count($response->getContent(), 'id="tarefas-day"'));
+        $response->assertViewHas('dayTasks', fn ($tasks): bool => $tasks->pluck('title')->all() === ['Reunião da equipe']);
     }
 
     public function test_overlapping_appointments_are_assigned_separate_lanes(): void

@@ -196,6 +196,53 @@ export function setupTarefas() {
         updateDot(data.date, data.summary);
     };
 
+    const infoPopover = document.getElementById('task-info-popover');
+    let infoAnchor = null;
+    let infoRect = null;
+    let infoVersion = 0;
+    const closeInfo = (restoreFocus = false) => {
+        ++infoVersion;
+        if (infoPopover.matches(':popover-open')) infoPopover.hidePopover();
+        if (restoreFocus && infoAnchor?.isConnected) infoAnchor.focus();
+    };
+    const positionInfo = () => {
+        if (!infoPopover.matches(':popover-open')) return;
+        if (infoAnchor?.isConnected) infoRect = infoAnchor.getBoundingClientRect();
+        if (!infoRect) return;
+        const box = infoPopover.getBoundingClientRect();
+        const left = Math.max(16, Math.min(infoRect.left, window.innerWidth - box.width - 16));
+        const below = infoRect.bottom + 10;
+        const top = below + box.height <= window.innerHeight - 16 ? below : Math.max(16, Math.min(infoRect.top - box.height - 10, window.innerHeight - box.height - 16));
+        infoPopover.style.left = `${left}px`;
+        infoPopover.style.top = `${top}px`;
+    };
+    const openInfo = async (url, anchor) => {
+        const version = ++infoVersion;
+        try {
+            const data = await postJson(url, 'GET');
+            if (version !== infoVersion) return;
+            infoAnchor = anchor;
+            infoRect = anchor.getBoundingClientRect();
+            infoPopover.innerHTML = data.summary;
+            if (!infoPopover.matches(':popover-open')) infoPopover.showPopover();
+            positionInfo();
+            infoPopover.querySelector('[data-task-info-close]').focus({ preventScroll: true });
+        } catch (error) { alertDialog(error.message); }
+    };
+    document.addEventListener('click', (event) => {
+        if (!infoPopover.contains(event.target) && !event.target.closest('[data-task-details-url]')) closeInfo();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && infoPopover.matches(':popover-open')) {
+            closeInfo(true);
+            event.stopPropagation();
+        }
+    });
+    window.addEventListener('resize', positionInfo);
+    window.addEventListener('scroll', (event) => {
+        if (!infoPopover.contains(event.target)) closeInfo();
+    }, true);
+
     const detailModal = document.getElementById('task-details-modal');
     const detailBody = detailModal.querySelector('[data-task-detail-body]');
     let detailVersion = 0;
@@ -211,6 +258,7 @@ export function setupTarefas() {
         else alertDialog(error.message);
     };
     const openDetails = async (url) => {
+        closeInfo();
         const version = ++detailVersion;
         try {
             const data = await postJson(url, 'GET');
@@ -220,6 +268,7 @@ export function setupTarefas() {
         } catch (error) { if (detailModal.open) detailError(error); else alertDialog(error.message); }
     };
     const openCreate = async (date, minute = null) => {
+        closeInfo();
         const version = ++detailVersion;
         try {
             const data = await postJson(`/tarefas?date=${encodeURIComponent(date)}`, 'GET');
@@ -245,26 +294,67 @@ export function setupTarefas() {
         } catch (error) { if (detailModal.open) detailError(error); else alertDialog(error.message); }
     };
 
+    const deleteTaskWithConfirmation = async (button, isInfo = false) => {
+        const restore = () => {
+            if (isInfo) { infoPopover.showPopover(); positionInfo(); }
+            else detailModal.showModal();
+        };
+        if (isInfo) closeInfo(); else detailModal.close();
+        const scope = button.hasAttribute('data-task-series')
+            ? await choiceDialog('Esta tarefa se repete. Os anexos das tarefas excluídas também serão removidos. O que deseja excluir?', [
+                { label: 'Só esta tarefa', value: 'one', danger: true },
+                { label: 'Esta e as próximas', value: 'series', danger: true },
+            ])
+            : await confirmDialog('Excluir esta tarefa e seus anexos?', { confirmLabel: 'Excluir tarefa', danger: true }) && 'one';
+        if (!scope) { restore(); return; }
+        try {
+            const url = button.dataset.taskDetailDelete || button.dataset.taskInfoDelete;
+            await applyDetailUpdate(await postJson(scope === 'series' ? `${url}?scope=series` : url, 'DELETE'));
+            toast('Tarefa excluída.');
+        } catch (error) {
+            restore();
+            if (isInfo) {
+                const message = infoPopover.querySelector('[data-task-info-error]');
+                message.textContent = error.message;
+                message.classList.remove('hidden');
+            } else detailError(error);
+        }
+    };
+    infoPopover.addEventListener('click', async (event) => {
+        if (event.target.closest('[data-task-info-close]')) { closeInfo(true); return; }
+        const edit = event.target.closest('[data-task-info-edit]');
+        if (edit) { await openDetails(edit.dataset.taskInfoEdit); return; }
+        const remove = event.target.closest('[data-task-info-delete]');
+        if (remove) await deleteTaskWithConfirmation(remove, true);
+    });
+    infoPopover.addEventListener('change', async (event) => {
+        const checkbox = event.target.closest('[data-task-info-toggle]');
+        if (!checkbox) return;
+        checkbox.disabled = true;
+        const url = infoPopover.querySelector('[data-task-info-content]').dataset.taskUrl;
+        try {
+            const data = await postJson(checkbox.dataset.taskInfoToggle, 'PATCH', { completed: checkbox.checked });
+            await applyDetailUpdate(data);
+            const updated = await postJson(url, 'GET');
+            if (infoPopover.matches(':popover-open') && infoPopover.querySelector('[data-task-info-content]')?.dataset.taskUrl === url) {
+                infoPopover.innerHTML = updated.summary;
+                positionInfo();
+                infoPopover.querySelector('[data-task-info-toggle]').focus({ preventScroll: true });
+            }
+        } catch (error) {
+            checkbox.checked = !checkbox.checked;
+            checkbox.disabled = false;
+            const message = infoPopover.querySelector('[data-task-info-error]');
+            message.textContent = error.message;
+            message.classList.remove('hidden');
+        }
+    });
+
     detailModal.addEventListener('close', () => { ++detailVersion; });
     detailModal.addEventListener('click', async (event) => {
         if (event.target.closest('[data-task-detail-close]') || event.target === detailModal) { detailModal.close(); return; }
         const deleteTask = event.target.closest('[data-task-detail-delete]');
-        if (deleteTask) {
-            detailModal.close();
-            const scope = deleteTask.hasAttribute('data-task-series')
-                ? await choiceDialog('Esta tarefa se repete. Os anexos das tarefas excluídas também serão removidos. O que deseja excluir?', [
-                    { label: 'Só esta tarefa', value: 'one', danger: true },
-                    { label: 'Esta e as próximas', value: 'series', danger: true },
-                ])
-                : await confirmDialog('Excluir esta tarefa e seus anexos?', { confirmLabel: 'Excluir tarefa', danger: true }) && 'one';
-            if (!scope) { detailModal.showModal(); return; }
-            try {
-                const url = deleteTask.dataset.taskDetailDelete;
-                await applyDetailUpdate(await postJson(scope === 'series' ? `${url}?scope=series` : url, 'DELETE'));
-                toast('Tarefa excluída.');
-            } catch (error) { detailModal.showModal(); detailError(error); }
-            return;
-        }
+        if (deleteTask) { await deleteTaskWithConfirmation(deleteTask); return; }
         const button = event.target.closest('[data-task-file-delete]');
         if (!button) return;
         detailModal.close();
@@ -324,8 +414,10 @@ export function setupTarefas() {
         finally { button.disabled = false; }
     });
     page.addEventListener('click', (event) => {
+        const editor = event.target.closest('[data-task-editor-url]');
+        if (editor) { openDetails(editor.dataset.taskEditorUrl); return; }
         const trigger = event.target.closest('[data-task-details-url]');
-        if (trigger) openDetails(trigger.dataset.taskDetailsUrl);
+        if (trigger) openInfo(trigger.dataset.taskDetailsUrl, trigger);
     });
 
     const requestedTask = new URLSearchParams(window.location.search).get('task_id');
