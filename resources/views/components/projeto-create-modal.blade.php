@@ -70,6 +70,15 @@
                     </div>
                 </div>
 
+                <label class="grid gap-1.5 text-sm text-slate-300">Descrição complementar
+                    <textarea name="details" rows="3" maxlength="10000" class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-white"></textarea>
+                </label>
+                <label class="grid gap-1.5 text-sm text-slate-300">Prioridade
+                    <select name="priority" class="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-white">
+                        <option value="low">Baixa</option><option value="medium" selected>Média</option><option value="high">Alta</option>
+                    </select>
+                </label>
+
                 <div class="flex justify-end gap-2 pt-2">
                     <button
                         type="button"

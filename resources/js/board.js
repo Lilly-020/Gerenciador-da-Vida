@@ -86,6 +86,12 @@ export function setupBoard({ gridId, statsId, modalId, openButtonId, formId }) {
             const existing = document.getElementById(newCard.id);
 
             if (existing) {
+                existing.querySelectorAll('details[data-details-key][open]').forEach((details) => {
+                    newCard.querySelector(`details[data-details-key="${details.dataset.detailsKey}"]`)?.setAttribute('open', '');
+                });
+                if (existing.querySelector('[data-sonho-details]')?.open) {
+                    newCard.querySelector('[data-sonho-details]')?.setAttribute('open', '');
+                }
                 existing.replaceWith(newCard);
             } else {
                 document.getElementById(gridId)?.prepend(newCard);

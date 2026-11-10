@@ -1,8 +1,8 @@
 @php
     $totalAportado = $investimento->totalAportado();
     $rendimento = $investimento->rendimentoEstimado();
-    $patrimonio = $totalAportado + $rendimento;
-    $aportadoPct = $patrimonio > 0 ? (int) round($totalAportado / $patrimonio * 100) : 100;
+    $patrimonio = $investimento->patrimonioEstimado();
+    $aportadoPct = $patrimonio > 0 ? min(100, (int) round(max(0, $totalAportado - $investimento->totalResgatado()) / $patrimonio * 100)) : 100;
     $rendimentoPct = 100 - $aportadoPct;
     $rateDisplay = rtrim(rtrim(number_format((float) $investimento->rate, 2, ',', '.'), '0'), ',');
 
@@ -30,7 +30,7 @@
                 @if ($investimento->institution)
                     · {{ $investimento->institution }}
                 @endif
-                · {{ $rateDisplay }}% {{ $investimento->rate_period === 'anual' ? 'a.a.' : 'a.m.' }}
+                · {{ $rateDisplay }}{{ $investimento->rate_mode === 'cdi' ? '% do CDI' : ($investimento->rate_mode === 'ipca' ? '% a.a. + IPCA' : '% '.($investimento->rate_period === 'anual' ? 'a.a.' : 'a.m.')) }}
                 @if ($investimento->rate_reference)
                     ({{ $investimento->rate_reference }})
                 @endif
@@ -42,6 +42,13 @@
                 type="button"
                 data-investimento-edit-trigger
                 data-investimento-edit-url="{{ route('financeiro.investimentos.update', $investimento, absolute: false) }}"
+                data-rate-mode="{{ $investimento->rate_mode }}"
+                data-reference-rate="{{ $investimento->reference_rate }}"
+                data-ir-rate="{{ $investimento->ir_rate }}"
+                data-iof-rate="{{ $investimento->iof_rate }}"
+                data-estimated-fees="{{ $investimento->estimated_fees }}"
+                data-reported-value="{{ $investimento->reported_value }}"
+                data-reported-at="{{ $investimento->reported_at?->format('Y-m-d') }}"
                 data-name="{{ $investimento->name }}"
                 data-institution="{{ $investimento->institution }}"
                 data-type="{{ $investimento->type }}"
@@ -85,7 +92,7 @@
             <p class="mt-1 text-sm font-semibold text-emerald-300">@money($rendimento)</p>
         </div>
         <div>
-            <p class="text-xs text-slate-400">Patrimônio</p>
+            <p class="text-xs text-slate-400">Valor estimado</p>
             <p class="mt-1 text-sm font-semibold text-white">@money($patrimonio)</p>
         </div>
     </div>
@@ -117,16 +124,21 @@
         </p>
     @endif
 
+    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+        <span>Total resgatado: @money($investimento->totalResgatado())</span>
+        <span>Valor líquido estimado: @money($investimento->estimativaLiquida())</span>
+        @if ($investimento->reported_value !== null)<span class="text-sky-300">Extrato em {{ $investimento->reported_at?->format('d/m/Y') }}: @money($investimento->reported_value)</span>@endif
+    </div>
     <details class="group mt-4">
         <summary class="cursor-pointer list-none text-xs font-medium text-indigo-300 transition hover:text-indigo-200">
-            <span class="group-open:hidden">Ver aportes ({{ $investimento->aportes->count() }})</span>
-            <span class="hidden group-open:inline">Ocultar aportes</span>
+            <span class="group-open:hidden">Ver movimentações ({{ $investimento->aportes->count() }})</span>
+            <span class="hidden group-open:inline">Ocultar movimentações</span>
         </summary>
 
         <div class="mt-3 space-y-2">
             @forelse ($investimento->aportes->sortByDesc('date') as $aporte)
                 <div class="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2 text-sm">
-                    <span class="text-slate-300">{{ $aporte->date->format('d/m/Y') }}</span>
+                    <span class="text-slate-300">{{ $aporte->kind === 'resgate' ? 'Resgate' : 'Aporte' }} · {{ $aporte->date->format('d/m/Y') }}</span>
                     <span class="text-white">@money($aporte->amount)</span>
                     <form
                         action="{{ route('financeiro.investimentos.aportes.destroy', [$investimento, $aporte], absolute: false) }}"
@@ -153,7 +165,7 @@
             >
                 @csrf
                 <div>
-                    <label for="aporte-amount-{{ $investimento->id }}" class="mb-1 block text-xs text-slate-400">Novo aporte</label>
+                    <label for="aporte-amount-{{ $investimento->id }}" class="mb-1 block text-xs text-slate-400">Valor da movimentação</label>
                     <input
                         id="aporte-amount-{{ $investimento->id }}"
                         type="number"
@@ -173,6 +185,8 @@
                     value="{{ now()->toDateString() }}"
                     class="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20 scheme-dark"
                 >
+                <label class="grid gap-1 text-xs text-slate-400">Movimentação<select name="kind" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"><option value="aporte">Aporte</option><option value="resgate">Resgate</option></select></label>
+                <label class="grid gap-1 text-xs text-slate-400">Conta<select name="account_id" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"><option value="">Sem conta definida</option>@foreach (($accounts ?? []) as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></label>
                 <button type="submit" class="rounded-lg bg-indigo-500/90 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500">
                     Adicionar
                 </button>

@@ -1,6 +1,6 @@
 <div
     id="edit-sonho-modal"
-    class="board-modal fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm"
+    class="board-modal fixed inset-0 z-50 hidden overflow-y-auto bg-black/60 backdrop-blur-sm"
     aria-hidden="true"
 >
     <div class="flex min-h-full items-center justify-center px-4 py-8">
@@ -32,6 +32,7 @@
                     >
                 </div>
 
+                <details class="rounded-lg border border-white/10 p-3 text-sm text-slate-300"><summary class="cursor-pointer">Planejamento e detalhes opcionais</summary><div class="mt-4 grid gap-4"><label class="grid gap-1.5">Data-alvo<input type="date" name="target_date"  class="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"></label><label class="grid gap-1.5">Meta financeira (R$)<input type="number" name="financial_goal" min="0.01" step="0.01" max="999999999999.99" class="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"></label><label class="grid gap-1.5">Valor economizado (R$)<input type="number" name="saved_amount" min="0" step="0.01" max="999999999999.99" class="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"></label><label class="grid gap-1.5">Imagem do sonho (URL HTTPS)<input type="url" name="image_url" maxlength="2048" class="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"></label><label class="grid gap-1.5">Prioridade<select name="priority" class="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"><option value="low">Baixa</option><option value="medium" selected>Média</option><option value="high">Alta</option></select></label><label class="grid gap-1.5">Anotações<textarea name="notes" maxlength="10000" rows="3" class="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"></textarea></label></div></details>
                 <div class="flex justify-end gap-2 pt-2">
                     <button
                         type="button"

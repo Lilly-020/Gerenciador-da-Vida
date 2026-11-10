@@ -11,7 +11,11 @@
         ['route' => 'financeiro.investimentos', 'label' => 'Investimentos', 'section' => 'investimentos'],
     ])->filter(fn (array $item): bool => Carteira::canSee($item['section']));
 
-    if (Carteira::isOwn()) {
+    if (Carteira::canSee('entradas') || Carteira::canSee('saidas')) {
+        $items->push(['route' => 'financeiro.contas', 'label' => 'Contas e categorias']);
+    }
+
+    if (Carteira::canManage() && ! Carteira::hasRestrictions()) {
         $items->push(['route' => 'financeiro.participantes', 'label' => 'Participantes']);
     }
 

@@ -10,11 +10,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['path', 'original_name', 'size'])]
+#[Fillable(['path', 'original_name', 'size', 'kind'])]
 class CursoFile extends Model
 {
     /** @use HasFactory<CursoFileFactory> */
     use HasFactory;
+
+    protected $attributes = ['kind' => 'material'];
 
     /**
      * @return BelongsTo<Curso, $this>

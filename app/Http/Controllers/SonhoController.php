@@ -19,8 +19,19 @@ class SonhoController extends Controller
     {
         $sonhos = $request->user()->sonhos()->with('tasks')->latest()->get();
 
+        $status = $request->string('status')->toString();
+        $sort = $request->string('sort')->toString();
+        $visible = $sonhos->filter(fn (Sonho $sonho): bool => $status === 'archived'
+            ? $sonho->archived
+            : ! $sonho->archived && (! in_array($status, ['not_started', 'in_progress', 'completed'], true) || $sonho->status === $status));
+        $visible = match ($sort) {
+            'priority' => $visible->sortBy(fn (Sonho $sonho): int => array_search($sonho->priority, ['high', 'medium', 'low'], true)),
+            'target_date' => $visible->sortBy(fn (Sonho $sonho): string => $sonho->target_date?->format('Y-m-d') ?? '9999-12-31'),
+            default => $visible,
+        };
+
         return view('pages.sonhos', [
-            'sonhos' => $sonhos,
+            'sonhos' => $visible,
             'stats' => Sonho::summarize($sonhos),
         ]);
     }

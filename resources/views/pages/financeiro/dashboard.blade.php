@@ -3,12 +3,12 @@
         ['label' => 'Entradas', 'value' => $cards['entradas'], 'accent' => 'text-emerald-300'],
         ['label' => 'Saídas', 'value' => $cards['saidas'], 'accent' => 'text-rose-300'],
         ['label' => 'Investido', 'value' => $cards['investido'], 'accent' => 'text-sky-300'],
-        ['label' => 'Saldo disponível', 'value' => $cards['saldo'], 'accent' => $cards['saldo'] >= 0 ? 'text-white' : 'text-rose-300'],
+        ['label' => 'Resultado do período', 'value' => $cards['saldo'], 'accent' => $cards['saldo'] >= 0 ? 'text-white' : 'text-rose-300'],
     ];
 
     $investmentCards = [
-        ['label' => 'Patrimônio investido', 'value' => $cards['patrimonio_investido']],
-        ['label' => 'Rendimento acumulado', 'value' => $cards['rendimento_acumulado']],
+        ['label' => 'Patrimônio investido (estimado)', 'value' => $cards['patrimonio_investido']],
+        ['label' => 'Rendimento acumulado (estimado)', 'value' => $cards['rendimento_acumulado']],
         ['label' => 'Rendimento no mês', 'value' => $cards['rendimento_mes']],
         ['label' => 'Rendimento no ano', 'value' => $cards['rendimento_ano']],
     ];
@@ -71,6 +71,9 @@
             </form>
         </div>
 
+        @include('partials.financeiro.planning-overview')
+
+        <h2 class="mb-3 text-sm font-medium text-slate-300">Movimentos do período</h2>
         <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             @foreach ($mainCards as $card)
                 <div class="rounded-xl border border-white/10 bg-gradient-to-b from-slate-900/70 to-slate-900/40 p-4">
@@ -100,6 +103,8 @@
             </div>
         @endif
 
+        @if (\App\Support\Carteira::canSee('investimentos'))
+        <h2 class="mb-3 text-sm font-medium text-slate-300">Investimentos acumulados · independente do período</h2>
         <div class="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             @foreach ($investmentCards as $card)
                 <div class="rounded-xl border border-white/10 bg-gradient-to-b from-slate-900/70 to-slate-900/40 p-4">
@@ -108,6 +113,7 @@
                 </div>
             @endforeach
         </div>
+        @endif
 
         <div class="mb-4">
             @include('partials.financeiro.categorias-chart', [

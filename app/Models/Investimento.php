@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 #[Fillable([
     'name', 'institution', 'type', 'rate', 'rate_reference',
     'rate_period', 'liquidity', 'maturity_date', 'notes', 'status',
+    'rate_mode', 'reference_rate', 'ir_rate', 'iof_rate', 'estimated_fees', 'reported_value', 'reported_at',
 ])]
 class Investimento extends Model
 {
@@ -54,7 +55,9 @@ class Investimento extends Model
     {
         return [
             'rate' => 'decimal:4',
-            'maturity_date' => 'date',
+            'maturity_date' => 'date', 'reference_rate' => 'decimal:4',
+            'ir_rate' => 'decimal:2', 'iof_rate' => 'decimal:2', 'estimated_fees' => 'decimal:2',
+            'reported_value' => 'decimal:2', 'reported_at' => 'date',
         ];
     }
 
@@ -98,7 +101,7 @@ class Investimento extends Model
      */
     public function totalAportado(): float
     {
-        return (float) $this->aportes->sum('amount');
+        return (float) $this->aportes->where('kind', '!=', 'resgate')->filter(fn (InvestimentoAporte $aporte): bool => $aporte->date->lte(today()))->sum('amount');
     }
 
     /**
@@ -108,7 +111,7 @@ class Investimento extends Model
      */
     public function rendimentoEstimado(?Carbon $asOf = null): float
     {
-        return round($this->aportesWithParentLoaded()->sum(fn (InvestimentoAporte $aporte): float => $aporte->estimatedYield($asOf)), 2);
+        return round($this->aportesWithParentLoaded()->sum(fn (InvestimentoAporte $aporte): float => ($aporte->kind === 'resgate' ? -1 : 1) * $aporte->estimatedYield($asOf)), 2);
     }
 
     /**
@@ -119,7 +122,7 @@ class Investimento extends Model
     {
         return round(
             $this->aportesWithParentLoaded()->sum(
-                fn (InvestimentoAporte $aporte): float => $aporte->estimatedYield($end) - $aporte->estimatedYield($start->copy()->subDay())
+                fn (InvestimentoAporte $aporte): float => ($aporte->kind === 'resgate' ? -1 : 1) * ($aporte->estimatedYield($end) - $aporte->estimatedYield($start->copy()->subDay()))
             ),
             2
         );
@@ -145,6 +148,32 @@ class Investimento extends Model
 
     public function patrimonioEstimado(?Carbon $asOf = null): float
     {
-        return $this->totalAportado() + $this->rendimentoEstimado($asOf);
+        return round($this->aportes->filter(fn (InvestimentoAporte $aporte): bool => $aporte->date->lte($asOf ?? today()))->sum(fn (InvestimentoAporte $aporte): float => ($aporte->kind === 'resgate' ? -1 : 1) * (float) $aporte->amount) + $this->rendimentoEstimado($asOf), 2);
+    }
+
+    public function effectiveRate(): float
+    {
+        $rate = (float) $this->rate;
+        $reference = (float) $this->reference_rate;
+
+        return match ($this->rate_mode) {
+            'cdi' => (((1 + (((1 + $reference / 100) ** (1 / 252) - 1) * $rate / 100)) ** 252) - 1) * 100,
+            'ipca' => ((1 + $reference / 100) * (1 + $rate / 100) - 1) * 100,
+            default => $rate,
+        };
+    }
+
+    public function totalResgatado(): float
+    {
+        return (float) $this->aportes->where('kind', 'resgate')->filter(fn (InvestimentoAporte $row): bool => $row->date->lte(today()))->sum('amount');
+    }
+
+    public function estimativaLiquida(): float
+    {
+        $yield = max(0, $this->rendimentoEstimado());
+        $iof = $yield * (float) $this->iof_rate / 100;
+        $ir = ($yield - $iof) * (float) $this->ir_rate / 100;
+
+        return round(max(0, $this->patrimonioEstimado() - $iof - $ir - (float) $this->estimated_fees), 2);
     }
 }

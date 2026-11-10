@@ -23,7 +23,16 @@ class CursoFileController extends Controller
             'path' => $file->store('curso-files', 'public'),
             'original_name' => $file->getClientOriginalName(),
             'size' => $file->getSize(),
+            'kind' => $request->input('kind', 'material'),
         ]);
+
+        return $this->respondWith($request, $curso);
+    }
+
+    public function update(Request $request, Curso $curso, CursoFile $arquivo): RedirectResponse|JsonResponse
+    {
+        abort_unless($arquivo->curso_id === $curso->id, 404);
+        $arquivo->update($request->validate(['kind' => ['required', 'in:material,certificate']]));
 
         return $this->respondWith($request, $curso);
     }

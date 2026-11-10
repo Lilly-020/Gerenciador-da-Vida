@@ -31,6 +31,7 @@
                 </label>
                 <label for="report-month">Mês</label>
                 <input id="report-month" type="month" name="mes" value="{{ $month->format('Y-m') }}" required class="rounded-lg border border-white/20 bg-slate-900 px-3 py-2 text-white">
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="comparar" value="1" @checked($comparison !== null) class="accent-indigo-500">Comparar com o mês anterior</label>
                 <fieldset class="w-full rounded-lg border border-white/20 p-4">
                     <legend class="px-2 font-semibold">Informações do relatório</legend>
                     <p class="mb-3 text-sm">Marque os campos desejados e clique em Gerar relatório. Você também pode ocultar a identificação e o cálculo final.</p>
@@ -95,7 +96,7 @@
                                         @case('id') #{{ $item->id }} @break
                                         @case('date') {{ $item->date->format('d/m/Y') }} @break
                                         @case('type') {{ $item->type === 'entrada' ? 'Entrada' : 'Saída' }} @break
-                                        @case('status') {{ $item->status === 'realizado' ? 'Realizado' : 'Previsto' }} @break
+                                        @case('status') {{ $item->status === 'cancelado' ? 'Cancelado' : ($item->status === 'realizado' ? 'Realizado' : 'Previsto') }} @break
                                         @case('owner') {{ $item->user->handle() }} @break
                                         @case('shares')
                                             @foreach ($item->partes as $parte)
@@ -161,6 +162,14 @@
             </table>
             <p class="mt-3 text-sm">{{ $reportType === 'geral' ? 'Saldo = entradas − saídas. ' : '' }}O total projetado soma realizados e previstos; não representa saldo bancário acumulado.</p>
         </section>
+        @endif
+        @if ($comparison !== null)
+            <section class="rounded-xl border border-white/10 p-4">
+                <h2 class="font-semibold">Comparativo de valores realizados · {{ $comparison['month'] }} × {{ $monthTitle }}</h2>
+                <div class="mt-4 overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="p-2 text-left">Indicador</th><th class="p-2 text-right">Mês anterior</th><th class="p-2 text-right">Mês selecionado</th><th class="p-2 text-right">Variação em R$</th></tr></thead><tbody>
+                    @foreach ($summaryColumns as $key => $label)<tr><td class="p-2">{{ $label }}</td><td class="p-2 text-right">@money($comparison[$key])</td><td class="p-2 text-right">@money($totals['realizado'][$key])</td><td class="p-2 text-right">@money($totals['realizado'][$key] - $comparison[$key])</td></tr>@endforeach
+                </tbody></table></div>
+            </section>
         @endif
     </main>
     @if ($printReport)

@@ -1,183 +1,41 @@
-@props(['type', 'categories', 'mes', 'membros'])
-
+@props(['type', 'categories', 'mes', 'membros', 'accounts' => []])
 @php
     $isEntrada = $type === 'entrada';
+    $fieldClass = 'w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-400';
 @endphp
-
 <div id="new-lancamento-modal" class="board-modal fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm" aria-hidden="true">
-    <div class="flex min-h-full items-center justify-center px-4 py-8">
-        <div class="modal-panel w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/95 p-6 shadow-2xl shadow-black/40">
-            <div class="mb-5 flex items-start justify-between gap-4">
-                <h2 class="text-lg font-semibold text-white">Nova {{ $isEntrada ? 'entrada' : 'saída' }}</h2>
-                <button
-                    type="button"
-                    data-modal-close
-                    class="shrink-0 rounded-full p-1 text-slate-400 transition hover:text-white"
-                    aria-label="Fechar"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414Z" clip-rule="evenodd" />
-                    </svg>
-                </button>
+    <div class="flex min-h-full items-center justify-center px-4 py-8"><div class="modal-panel w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+        <div class="mb-5 flex items-center justify-between gap-4"><h2 class="text-lg font-semibold text-white">Nova {{ $isEntrada ? 'entrada' : 'saída' }}</h2><button type="button" data-modal-close aria-label="Fechar" class="text-slate-400">×</button></div>
+        <form id="new-lancamento-form" action="{{ route('financeiro.lancamentos.store', ['mes' => $mes], absolute: false) }}" method="POST" class="grid gap-4">@csrf
+            <input type="hidden" name="type" value="{{ $type }}">
+            <label class="grid gap-1.5 text-sm text-slate-300">Descrição<input name="description" required maxlength="255" class="{{ $fieldClass }}"></label>
+            <div class="grid grid-cols-2 gap-3">
+                <label class="grid gap-1.5 text-sm text-slate-300">Valor total (R$)<input name="amount" type="number" step="0.01" min="0.01" data-money required class="{{ $fieldClass }}"></label>
+                <label class="grid gap-1.5 text-sm text-slate-300">Data / primeiro vencimento<input name="date" type="date" value="{{ today()->toDateString() }}" required class="{{ $fieldClass }} scheme-dark"></label>
             </div>
-
-            <form id="new-lancamento-form" action="{{ route('financeiro.lancamentos.store', ['mes' => $mes], absolute: false) }}" method="POST" class="space-y-4">
-                @csrf
-                <input type="hidden" name="type" value="{{ $type }}">
-
-                <div>
-                    <label for="lancamento-description" class="mb-1.5 block text-sm font-medium text-slate-300">Descrição</label>
-                    <input
-                        id="lancamento-description"
-                        type="text"
-                        name="description"
-                        required
-                        maxlength="255"
-                        placeholder="{{ $isEntrada ? 'Ex: Salário de setembro' : 'Ex: Supermercado' }}"
-                        class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-                    >
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label for="lancamento-amount" class="mb-1.5 block text-sm font-medium text-slate-300">Valor</label>
-                        <input
-                            id="lancamento-amount"
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            name="amount"
-                            data-money
-                            required
-                            placeholder="0,00"
-                            class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-                        >
-                    </div>
-                    <div>
-                        <label for="lancamento-date" class="mb-1.5 block text-sm font-medium text-slate-300">Data</label>
-                        <input
-                            id="lancamento-date"
-                            type="date"
-                            name="date"
-                            required
-                            value="{{ now()->toDateString() }}"
-                            class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20 scheme-dark"
-                        >
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label for="lancamento-category" class="mb-1.5 block text-sm font-medium text-slate-300">Categoria</label>
-                        <select
-                            id="lancamento-category"
-                            name="category"
-                            required
-                            class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-                        >
-                            @foreach ($categories as $category)
-                                <option value="{{ $category }}">{{ $category }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    @unless ($isEntrada)
-                        <div>
-                            <label for="lancamento-subcategory" class="mb-1.5 block text-sm font-medium text-slate-300">Subcategoria</label>
-                            <input
-                                id="lancamento-subcategory"
-                                type="text"
-                                name="subcategory"
-                                maxlength="255"
-                                placeholder="Opcional"
-                                class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-                            >
-                        </div>
-                    @endunless
-                </div>
-
-                @unless ($isEntrada)
-                    <div>
-                        <label for="lancamento-payment-method" class="mb-1.5 block text-sm font-medium text-slate-300">Forma de pagamento</label>
-                        <input
-                            id="lancamento-payment-method"
-                            type="text"
-                            name="payment_method"
-                            maxlength="255"
-                            placeholder="Ex: Cartão, Pix, Dinheiro"
-                            class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-                        >
-                    </div>
-                @endunless
-
-                <div>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-300">
-                        <input
-                            type="checkbox"
-                            name="is_recurring_template"
-                            value="1"
-                            data-recurring-toggle
-                            class="h-4 w-4 rounded border-white/20 bg-slate-950/60 text-indigo-500 focus:ring-indigo-400/40"
-                        >
-                        Lançamento recorrente
-                    </label>
-                </div>
-
-                <div data-recurring-fields class="hidden grid-cols-2 gap-3">
-                    <div>
-                        <label for="lancamento-recurrence-period" class="mb-1.5 block text-sm font-medium text-slate-300">Periodicidade</label>
-                        <select
-                            id="lancamento-recurrence-period"
-                            name="recurrence_period"
-                            class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-                        >
-                            <option value="mensal">Mensal</option>
-                            <option value="semanal">Semanal</option>
-                            <option value="anual">Anual</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="lancamento-recurrence-day" class="mb-1.5 block text-sm font-medium text-slate-300">Dia esperado</label>
-                        <input
-                            id="lancamento-recurrence-day"
-                            type="number"
-                            name="recurrence_day"
-                            min="1"
-                            max="31"
-                            placeholder="Ex: 5"
-                            class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-                        >
-                    </div>
-                </div>
-
-                <div>
-                    <label for="lancamento-notes" class="mb-1.5 block text-sm font-medium text-slate-300">Observação</label>
-                    <textarea
-                        id="lancamento-notes"
-                        name="notes"
-                        rows="2"
-                        maxlength="2000"
-                        class="w-full resize-none rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-                    ></textarea>
-                </div>
-
+            <label class="grid gap-1.5 text-sm text-slate-300">Categoria<input name="category" required maxlength="255" list="new-finance-categories" class="{{ $fieldClass }}"><datalist id="new-finance-categories">@foreach ($categories as $category)<option value="{{ $category }}">@endforeach</datalist></label>
+            <label class="grid gap-1.5 text-sm text-slate-300">Situação<select name="status" class="{{ $fieldClass }}"><option value="previsto">Previsto — {{ $isEntrada ? 'a receber' : 'a pagar' }}</option><option value="realizado">{{ $isEntrada ? 'Recebido' : 'Pago' }}</option></select></label>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" name="is_recurring_template" value="1" data-recurring-toggle class="h-4 w-4 accent-indigo-500">Repetir este lançamento</label>
+            <div data-recurring-fields class="hidden grid-cols-2 gap-3 rounded-xl border border-white/10 p-3">
+                <label class="grid gap-1 text-xs text-slate-400">Frequência<select name="recurrence_period" class="{{ $fieldClass }}"><option value="mensal">Mensal</option><option value="semanal">Semanal</option><option value="anual">Anual</option></select></label>
+                <label class="grid gap-1 text-xs text-slate-400">Dia de vencimento<input type="number" name="recurrence_day" min="1" max="31" class="{{ $fieldClass }}"></label>
+                <label class="grid gap-1 text-xs text-slate-400">Término (opcional)<input type="date" name="recurrence_end" class="{{ $fieldClass }} scheme-dark"></label>
+                <label class="grid gap-1 text-xs text-slate-400">Repetições, incluindo a primeira<input type="number" name="recurrence_count" min="1" max="1000" class="{{ $fieldClass }}"></label>
+                <label class="grid gap-1 text-xs text-slate-400 col-span-2">Gerar próximas como<select name="recurrence_status" class="{{ $fieldClass }}"><option value="previsto">Previsto (confirmar depois)</option><option value="realizado">Realizado (confirmação automática)</option></select></label>
+                <p class="col-span-2 text-xs text-slate-500">Semanal repete a data inicial a cada 7 dias. Nos meses mais curtos, o vencimento usa o último dia.</p>
+            </div>
+            <details class="rounded-xl border border-white/10 p-3"><summary class="cursor-pointer text-sm text-indigo-300">Mais opções: conta, parcelas e observações</summary><div class="mt-4 grid gap-3">
+                <label class="grid gap-1 text-xs text-slate-400">Conta<select name="account_id" class="{{ $fieldClass }}"><option value="">Sem conta definida</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select></label>
+                <label class="grid gap-1 text-xs text-slate-400">Tipo de gasto<select name="expense_kind" class="{{ $fieldClass }}"><option value="variavel">Variável</option><option value="fixo">Fixo</option></select></label>
+                <label class="grid gap-1 text-xs text-slate-400">Forma de pagamento<select name="payment_method" class="{{ $fieldClass }}"><option value="">Não informada</option>@foreach (['Pix', 'Débito', 'Crédito', 'Dinheiro', 'Boleto', 'Transferência'] as $method)<option>{{ $method }}</option>@endforeach</select></label>
+                <label class="grid gap-1 text-xs text-slate-400">Número de parcelas<input name="installments" type="number" min="1" max="120" value="1" required class="{{ $fieldClass }}"></label>
+                <p class="text-xs text-slate-500">O valor total será dividido em parcelas mensais. As próximas ficam previstas. Use parcelas ou recorrência.</p>
+                <label class="grid gap-1 text-xs text-slate-400">Subcategoria<input name="subcategory" maxlength="255" class="{{ $fieldClass }}"></label>
+                <label class="grid gap-1 text-xs text-slate-400">Observações<textarea name="notes" rows="2" maxlength="2000" class="{{ $fieldClass }}"></textarea></label>
                 @include('partials.financeiro.partes-fields', ['prefix' => 'lancamento', 'membros' => $membros, 'isEntrada' => $isEntrada])
-
-                <div class="flex justify-end gap-2 pt-2">
-                    <button
-                        type="button"
-                        data-modal-close
-                        class="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:text-white"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="submit"
-                        class="rounded-full bg-indigo-500/90 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-900/40 transition hover:bg-indigo-500"
-                    >
-                        Adicionar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+                <p class="text-xs text-slate-500">Comprovantes podem ser anexados após salvar o lançamento.</p>
+            </div></details>
+            <div class="flex justify-end gap-2"><button type="button" data-modal-close class="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300">Cancelar</button><button type="submit" class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white">Adicionar {{ $isEntrada ? 'entrada' : 'saída' }}</button></div>
+        </form>
+    </div></div>
 </div>

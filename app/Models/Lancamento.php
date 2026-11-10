@@ -7,11 +7,13 @@ use Carbon\Carbon;
 use Database\Factories\LancamentoFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A single Entrada or Saída (distinguished by `type`). Kept in one table
@@ -22,6 +24,8 @@ use Illuminate\Support\Facades\Auth;
     'type', 'category', 'subcategory', 'description', 'amount', 'date',
     'payment_method', 'status', 'is_recurring_template', 'recurrence_period',
     'recurrence_day', 'parent_recurring_id', 'notes', 'partes_conta',
+    'account_id', 'expense_kind', 'recurrence_end', 'recurrence_count', 'recurrence_status', 'recurrence_active',
+    'occurrence_key', 'installment_group', 'installment_number', 'installment_count',
 ])]
 class Lancamento extends Model
 {
@@ -33,6 +37,8 @@ class Lancamento extends Model
     public const TYPE_SAIDA = 'saida';
 
     public const STATUS_PREVISTO = 'previsto';
+
+    public const STATUS_CANCELADO = 'cancelado';
 
     public const STATUS_REALIZADO = 'realizado';
 
@@ -82,6 +88,9 @@ class Lancamento extends Model
             'date' => 'date',
             'amount' => 'decimal:2',
             'is_recurring_template' => 'boolean',
+            'recurrence_end' => 'date',
+            'recurrence_active' => 'boolean',
+            'recurrence_count' => 'integer',
         ];
     }
 
@@ -90,11 +99,34 @@ class Lancamento extends Model
         static::addGlobalScope('owner', function (Builder $builder): void {
             if (Auth::check()) {
                 $builder->where('user_id', Carteira::ownerId());
+                Carteira::scopeLancamentos($builder);
             }
         });
 
         static::creating(function (Lancamento $lancamento): void {
             $lancamento->user_id ??= Carteira::ownerId();
+        });
+    }
+
+    /** @return BelongsTo<ContaFinanceira, $this> */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(ContaFinanceira::class, 'account_id');
+    }
+
+    /** @return HasMany<LancamentoFile, $this> */
+    public function files(): HasMany
+    {
+        return $this->hasMany(LancamentoFile::class);
+    }
+
+    protected function situation(): Attribute
+    {
+        return Attribute::make(get: fn (): string => match (true) {
+            $this->status === self::STATUS_CANCELADO => 'Cancelado',
+            $this->status === self::STATUS_REALIZADO => $this->type === self::TYPE_ENTRADA ? 'Recebido' : 'Pago',
+            $this->date->lt(today()) => 'Atrasado',
+            default => 'Pendente',
         });
     }
 
@@ -242,39 +274,50 @@ class Lancamento extends Model
      */
     public function generateUpcomingOccurrences(int $months = 12): void
     {
-        if (! $this->is_recurring_template || ! $this->recurrence_day) {
+        if (! $this->is_recurring_template || ! $this->recurrence_day || $this->recurrence_active === false || $this->status === self::STATUS_CANCELADO) {
             return;
         }
 
-        $latest = $this->occurrences()->orderByDesc('date')->first()?->date ?? $this->date;
-        $cursor = $latest->copy();
+        DB::transaction(function () use ($months): void {
+            self::withoutGlobalScope('owner')->whereKey($this->id)->lockForUpdate()->firstOrFail();
+            $latest = $this->occurrences()->orderByDesc('date')->first()?->date ?? $this->date;
+            $generated = $this->occurrences()->count();
+            $cursor = $latest->copy();
+            $limit = today()->addYear()->endOfDay()->max($this->date->copy()->addYear());
 
-        for ($i = 0; $i < $months; $i++) {
-            $cursor = match ($this->recurrence_period) {
-                'semanal' => $cursor->copy()->addWeek(),
-                'anual' => $cursor->copy()->addYear()->day(min($this->recurrence_day, $cursor->copy()->addYear()->daysInMonth)),
-                default => $cursor->copy()->addMonthNoOverflow()->day(min($this->recurrence_day, $cursor->copy()->addMonthNoOverflow()->daysInMonth)),
-            };
-
-            // Built via make() + explicit property assignment (not create())
-            // because `user_id` isn't mass-assignable, and this needs to
-            // work even when called outside an authenticated request (e.g.
-            // a future scheduled job) where the model's own creating()
-            // hook has no Auth::id() to fall back on.
-            $occurrence = $this->occurrences()->make([
-                'type' => $this->type,
-                'category' => $this->category,
-                'subcategory' => $this->subcategory,
-                'description' => $this->description,
-                'amount' => $this->amount,
-                'date' => $cursor->toDateString(),
-                'payment_method' => $this->payment_method,
-                'status' => self::STATUS_PREVISTO,
-                'notes' => $this->notes,
-            ]);
-            $occurrence->user_id = $this->user_id;
-            $occurrence->save();
-        }
+            for ($index = 0; $index < $months; $index++) {
+                if ($generated >= $months || ($this->recurrence_count && $generated >= $this->recurrence_count - 1)) {
+                    break;
+                }
+                $cursor = match ($this->recurrence_period) {
+                    'semanal' => $cursor->copy()->addWeek(),
+                    'anual' => $cursor->copy()->addYearNoOverflow()->month($this->date->month)->day(1),
+                    default => $cursor->copy()->startOfMonth()->addMonth(),
+                };
+                if ($this->recurrence_period !== 'semanal') {
+                    $cursor->day(min($this->recurrence_day, $cursor->daysInMonth));
+                }
+                if ($cursor->gt($limit) || ($this->recurrence_end && $cursor->gt($this->recurrence_end))) {
+                    break;
+                }
+                $date = $cursor->toDateString();
+                $exists = $this->occurrences()->whereDate('date', $date)->exists();
+                if ($exists) {
+                    continue;
+                }
+                $occurrence = $this->occurrences()->make([
+                    'type' => $this->type, 'category' => $this->category, 'subcategory' => $this->subcategory,
+                    'description' => $this->description, 'amount' => $this->amount, 'date' => $date,
+                    'payment_method' => $this->payment_method, 'status' => $this->recurrence_status ?? self::STATUS_PREVISTO,
+                    'notes' => $this->notes, 'account_id' => $this->account_id, 'expense_kind' => $this->expense_kind ?? 'fixo',
+                    'partes_conta' => $this->partes_conta, 'occurrence_key' => $this->id.':'.$date,
+                ]);
+                $occurrence->user_id = $this->user_id;
+                $occurrence->save();
+                $occurrence->syncPartes($this->partes->pluck('amount', 'user_id')->all());
+                $generated++;
+            }
+        });
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContaFinanceira;
 use App\Models\Investimento;
 use App\Models\Lancamento;
 use App\Models\User;
@@ -30,6 +31,9 @@ class FinanceiroDashboardController extends Controller
     {
         $user = Carteira::owner();
         $period = $request->query('period', 'mes_atual');
+        if (! array_key_exists($period, self::PERIODS)) {
+            $period = 'mes_atual';
+        }
         [$start, $end] = $this->resolvePeriod($period, $request);
 
         $lancamentos = $user->lancamentos()
@@ -64,11 +68,11 @@ class FinanceiroDashboardController extends Controller
         // their own, and what is spent together (at its full value).
         $temDivisao = $membros->count() > 1 || $compartilhados->isNotEmpty();
 
-        $investimentos = $user->investimentos()->with('aportes')->get();
+        $investimentos = Carteira::canSee('investimentos') ? $user->investimentos()->with('aportes')->get() : collect();
         $investido = (float) $investimentos
             ->flatMap(fn (Investimento $i) => $i->aportes)
             ->filter(fn ($aporte) => $aporte->date->between($start, $end))
-            ->sum('amount');
+            ->sum(fn ($aporte): float => ($aporte->kind === 'resgate' ? -1 : 1) * (float) $aporte->amount);
 
         $today = Carbon::today();
 
@@ -84,7 +88,48 @@ class FinanceiroDashboardController extends Controller
             'rendimento_ano' => $investimentos->sum(fn (Investimento $i): float => $i->rendimentoEntre($today->copy()->startOfYear(), $today)),
         ];
 
+        $accounts = ContaFinanceira::with('user')->get();
+        $asOf = $end->copy()->min(today()->endOfDay());
+        $available = $cards['saldo'];
+        if ($viewer->is($user)) {
+            $available = $accounts->sum(fn ($account): float => $account->balanceAsOf($asOf));
+            $baseline = $accounts->min('opening_date') ?? Carbon::create(1900, 1, 1);
+            $unassigned = $user->lancamentos()->with('partes')->whereNull('account_id')->where('status', 'realizado')->whereDate('date', '>=', $baseline)->whereDate('date', '<=', $asOf)->get();
+            $available += $unassigned->sum(fn (Lancamento $row): float => $row->entradaFor($viewer) - $row->saidaFor($viewer));
+            if (Carteira::isOwn()) {
+                $available -= Lancamento::sharedWith($viewer)->with('partes')->where('status', 'realizado')->whereDate('date', '>=', $baseline)->whereDate('date', '<=', $asOf)->get()->sum(fn (Lancamento $row): float => $row->saidaFor($viewer));
+            }
+            $available -= $investimentos->flatMap(fn (Investimento $investment) => $investment->aportes)->filter(fn ($row): bool => ! $row->account_id && $row->date->gte($baseline) && $row->date->lte($asOf))
+                ->sum(fn ($row): float => ($row->kind === 'resgate' ? -1 : 1) * (float) $row->amount);
+        }
+        $pending = $user->lancamentos()->with('partes')->where('status', 'previsto')->whereDate('date', '<=', $end)->get();
+        if (Carteira::isOwn()) {
+            $pending = $pending->concat(Lancamento::sharedWith($viewer)->with('partes')->where('status', 'previsto')->whereDate('date', '<=', $end)->get());
+        }
+        $pending = $pending->filter(fn (Lancamento $row): bool => $row->entradaFor($viewer) > 0 || $row->saidaFor($viewer) > 0);
+        $toPay = $pending->sum(fn (Lancamento $row): float => $row->saidaFor($viewer));
+        $toReceive = $pending->sum(fn (Lancamento $row): float => $row->entradaFor($viewer));
+        $cards['saldo_disponivel'] = round($available, 2);
+        $cards['a_pagar'] = round($toPay, 2);
+        $cards['a_receber'] = round($toReceive, 2);
+        $cards['saldo_projetado'] = round($available + $toReceive - $toPay, 2);
+        $timelineStart = $end->copy()->subMonthsNoOverflow(5)->startOfMonth();
+        $timelineRows = $user->lancamentos()->with('partes')->where('status', 'realizado')->whereBetween('date', Lancamento::dateRange($timelineStart, $end))->get();
+        if (Carteira::isOwn()) {
+            $timelineRows = $timelineRows->concat(Lancamento::sharedWith($viewer)->with('partes')->where('status', 'realizado')->whereBetween('date', Lancamento::dateRange($timelineStart, $end))->get());
+        }
+        $timeline = collect(range(0, 5))->map(function (int $index) use ($timelineStart, $timelineRows, $viewer): array {
+            $month = $timelineStart->copy()->addMonthsNoOverflow($index);
+            $rows = $timelineRows->filter(fn (Lancamento $row): bool => $row->date->format('Y-m') === $month->format('Y-m'));
+            $income = $rows->sum(fn (Lancamento $row): float => $row->entradaFor($viewer));
+            $expense = $rows->sum(fn (Lancamento $row): float => $row->saidaFor($viewer));
+
+            return ['month' => $month->format('m/Y'), 'income' => $income, 'expense' => $expense, 'balance' => $income - $expense];
+        });
+
         return view('pages.financeiro.dashboard', [
+            'accounts' => $accounts, 'timeline' => $timeline,
+            'upcoming' => $pending->sortBy('date')->take(10),
             'period' => $period,
             'periods' => self::PERIODS,
             'periodStart' => $start,

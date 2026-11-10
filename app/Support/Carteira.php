@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Participacao;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
@@ -68,6 +69,28 @@ class Carteira
     public static function canEdit(): bool
     {
         return self::participacao()?->canEdit() ?? true;
+    }
+
+    public static function canManage(): bool
+    {
+        return self::isOwn() || self::participacao()?->permission === Participacao::PERMISSION_ADMIN;
+    }
+
+    public static function hasRestrictions(): bool
+    {
+        $invite = self::participacao();
+
+        return $invite && ($invite->allowed_accounts !== null || $invite->allowed_categories !== null || $invite->allowed_lancamentos !== null || ! in_array('entradas', $invite->sections ?? [], true) || ! in_array('saidas', $invite->sections ?? [], true));
+    }
+
+    public static function scopeLancamentos(Builder $query): void
+    {
+        $invite = self::participacao();
+        foreach (['allowed_accounts' => 'account_id', 'allowed_categories' => 'category', 'allowed_lancamentos' => 'id'] as $field => $column) {
+            if ($invite?->$field !== null) {
+                $query->whereIn($column, $invite->$field);
+            }
+        }
     }
 
     public static function canSee(string $section): bool

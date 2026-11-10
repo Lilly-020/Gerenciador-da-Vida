@@ -19,11 +19,12 @@ class CursoController extends Controller
      */
     public function index(Request $request): View
     {
-        $cursos = $request->user()->cursos()->with('files')->latest()->get()->groupBy('status');
+        $cursos = $request->user()->cursos()->with('files')->latest()->get();
 
         return view('pages.cursos', [
             'columns' => Curso::STATUSES,
-            'cursos' => $cursos,
+            'cursos' => $cursos->groupBy('status'),
+            'stats' => Curso::summarize($cursos),
         ]);
     }
 
@@ -72,7 +73,7 @@ class CursoController extends Controller
             return back();
         }
 
-        return response()->json(['deleted' => true]);
+        return response()->json(['deleted' => true, 'stats' => $this->statsFor($request)]);
     }
 
     /**
@@ -86,7 +87,13 @@ class CursoController extends Controller
         }
 
         return response()->json([
+            'stats' => $this->statsFor($request),
             'card' => view('partials.curso-card', ['curso' => $curso->load('files')])->render(),
         ]);
+    }
+
+    private function statsFor(Request $request): string
+    {
+        return view('partials.curso-stats', ['stats' => Curso::summarize($request->user()->cursos()->get())])->render();
     }
 }

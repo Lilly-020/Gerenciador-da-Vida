@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
-#[Fillable(['title', 'description', 'starts_at', 'due_at'])]
+#[Fillable(['title', 'description', 'starts_at', 'due_at', 'details', 'priority', 'archived'])]
 class Projeto extends Model
 {
     /** @use HasFactory<ProjetoFactory> */
@@ -24,7 +24,9 @@ class Projeto extends Model
      *
      * @var array<int, string>
      */
-    public const CARD_RELATIONS = ['tasks', 'user', 'participacoes.participant'];
+    public const CARD_RELATIONS = ['tasks.assignee', 'user', 'participacoes.participant', 'comments.user', 'comments.task', 'activities.user', 'files'];
+
+    protected $attributes = ['priority' => 'medium', 'archived' => false];
 
     /**
      * @return array<string, string>
@@ -34,6 +36,7 @@ class Projeto extends Model
         return [
             'starts_at' => 'date',
             'due_at' => 'date',
+            'archived' => 'boolean',
         ];
     }
 
@@ -80,9 +83,6 @@ class Projeto extends Model
     }
 
     /**
-     * Percentage of tasks completed, from 0 to 100.
-     */
-    /**
      * @return HasMany<Participacao, $this>
      */
     public function participacoes(): HasMany
@@ -108,17 +108,72 @@ class Projeto extends Model
         );
     }
 
+    public function canBeManagedBy(User $user): bool
+    {
+        return $this->isOwnedBy($user) || $this->participacoes->contains(
+            fn (Participacao $participacao): bool => (int) $participacao->participant_id === (int) $user->id
+                && $participacao->status === Participacao::STATUS_ACEITO
+                && $participacao->permission === Participacao::PERMISSION_ADMIN,
+        );
+    }
+
+    /** @return HasMany<ProjetoComment, $this> */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ProjetoComment::class)->latest('id')->limit(30);
+    }
+
+    /** @return HasMany<ProjetoActivity, $this> */
+    public function activities(): HasMany
+    {
+        return $this->hasMany(ProjetoActivity::class)->latest('id')->limit(50);
+    }
+
+    /** @return HasMany<ProjetoFile, $this> */
+    public function files(): HasMany
+    {
+        return $this->hasMany(ProjetoFile::class);
+    }
+
+    public function recordActivity(string $description): void
+    {
+        $this->activities()->create(['description' => $description, 'user_id' => Auth::id()]);
+    }
+
+    protected function overdue(): Attribute
+    {
+        return Attribute::make(get: fn (): bool => ! $this->archived && $this->status !== 'completed'
+            && $this->due_at !== null && $this->due_at->lt(today()));
+    }
+
+    protected function financialSaved(): Attribute
+    {
+        return Attribute::make(get: fn (): float => (float) $this->tasks->where('goal_type', 'financial')
+            ->sum(fn (ProjetoTask $task): float => min((float) $task->current_value, (float) $task->target_value)));
+    }
+
+    protected function financialProgress(): Attribute
+    {
+        return Attribute::make(get: function (): int {
+            $tasks = $this->tasks->where('goal_type', 'financial');
+            $target = $tasks->sum('target_value');
+
+            return $target > 0 ? (int) floor($this->financial_saved / $target * 100) : 0;
+        });
+    }
+
     protected function progress(): Attribute
     {
         return Attribute::make(
             get: function (): int {
-                $total = $this->tasks->count();
+                $tasks = $this->tasks->where('goal_type', '!=', 'financial');
+                $total = $tasks->count();
 
                 if ($total === 0) {
                     return 0;
                 }
 
-                return (int) round($this->tasks->where('completed', true)->count() / $total * 100);
+                return (int) floor($tasks->avg('execution_progress'));
             },
         );
     }
@@ -130,8 +185,8 @@ class Projeto extends Model
     {
         return Attribute::make(
             get: fn (): string => match (true) {
-                $this->progress === 100 && $this->tasks->isNotEmpty() => 'completed',
-                $this->progress > 0 => 'in_progress',
+                $this->tasks->isNotEmpty() && $this->tasks->every(fn (ProjetoTask $task): bool => $task->is_finished) => 'completed',
+                $this->tasks->contains(fn (ProjetoTask $task): bool => $task->execution_progress > 0) => 'in_progress',
                 default => 'not_started',
             },
         );
@@ -159,6 +214,8 @@ class Projeto extends Model
      */
     public static function summarize(Collection $projetos): array
     {
+        $projetos = $projetos->where('archived', false);
+
         return [
             'total' => $projetos->count(),
             'em_andamento' => $projetos->where('status', 'in_progress')->count(),

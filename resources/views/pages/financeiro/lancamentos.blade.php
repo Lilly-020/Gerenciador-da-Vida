@@ -66,7 +66,7 @@
     </div>
 
     <x-slot:modals>
-        <x-lancamento-create-modal :type="$type" :categories="$categories" :mes="$mes" :membros="$membros" />
-        <x-lancamento-edit-modal :type="$type" :categories="$categories" :membros="$membros" />
+        <x-lancamento-create-modal :type="$type" :categories="$categories" :mes="$mes" :membros="$membros" :accounts="$accounts" />
+        <x-lancamento-edit-modal :type="$type" :categories="$categories" :membros="$membros" :accounts="$accounts" />
     </x-slot:modals>
 </x-layout>

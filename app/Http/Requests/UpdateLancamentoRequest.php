@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesPartes;
 use App\Models\Lancamento;
+use App\Support\Carteira;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -35,11 +36,14 @@ class UpdateLancamentoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['sometimes', 'required', Rule::in([Lancamento::STATUS_PREVISTO, Lancamento::STATUS_REALIZADO])],
+            'recurrence_active' => ['sometimes', 'boolean'],
+            'status' => ['sometimes', 'required', Rule::in([Lancamento::STATUS_PREVISTO, Lancamento::STATUS_REALIZADO, Lancamento::STATUS_CANCELADO])],
+            'account_id' => ['nullable', 'integer', Rule::exists('contas_financeiras', 'id')->where('user_id', Carteira::ownerId())],
+            'expense_kind' => ['sometimes', 'required', 'in:fixo,variavel'],
             'category' => ['sometimes', 'required', 'string', 'max:255'],
             'subcategory' => ['sometimes', 'nullable', 'string', 'max:255'],
             'description' => ['sometimes', 'required', 'string', 'max:255'],
-            'amount' => ['sometimes', 'required', 'numeric', 'min:0.01'],
+            'amount' => ['sometimes', 'required', 'numeric', 'min:0.01', 'max:999999999999.99'],
             'date' => ['sometimes', 'required', 'date'],
             'payment_method' => ['sometimes', 'nullable', 'string', 'max:255'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
@@ -52,10 +56,28 @@ class UpdateLancamentoRequest extends FormRequest
      */
     public function after(): array
     {
-        return [fn (Validator $validator) => $this->validatePartes(
-            $validator,
-            $this->input('amount', $this->route('lancamento')->amount),
-        )];
+        return [function (Validator $validator): void {
+            $this->validatePartes($validator, $this->input('amount', $this->route('lancamento')->amount));
+            $this->validateVisibility($validator);
+        }];
+    }
+
+    private function validateVisibility(Validator $validator): void
+    {
+        $invite = Carteira::participacao();
+        if (! $invite) {
+            return;
+        }
+        $row = $this->route('lancamento');
+        foreach (['allowed_accounts' => 'account_id', 'allowed_categories' => 'category'] as $scope => $field) {
+            $value = $this->input($field, $row?->$field);
+            if ($invite->$scope !== null && ! in_array((string) $value, array_map('strval', $invite->$scope), true)) {
+                $validator->errors()->add($field, 'Este valor não faz parte do compartilhamento.');
+            }
+        }
+        if (! $row && $invite->allowed_lancamentos !== null) {
+            $validator->errors()->add('description', 'Este acesso permite editar apenas os lançamentos selecionados.');
+        }
     }
 
     /**

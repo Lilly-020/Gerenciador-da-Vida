@@ -34,3 +34,37 @@
 .board-modal.is-open .modal-panel {
     transform: scale(1);
 }
+
+.course-board {
+    scrollbar-width: thin;
+    scrollbar-color: #6366f1 #0f172a;
+}
+
+.course-board.course-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: visible;
+}
+
+.course-list .course-column,
+.course-list [data-column-cards] {
+    display: contents;
+}
+
+.course-list [data-column-header] {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .course-list .course-overview {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .course-list .course-progress,
+    .course-list .course-dates {
+        margin-top: 0;
+    }
+}

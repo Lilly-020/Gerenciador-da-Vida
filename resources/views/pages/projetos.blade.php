@@ -18,16 +18,16 @@
             @include('partials.projeto-stats', ['stats' => $stats])
         </div>
 
-        <x-filtros alvo="projetos-grid" data-label="Período" />
+        <x-filtros alvo="projetos-grid" data-label="Prazo" :projetos="true" />
 
-        <div id="projetos-grid" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            @forelse ($projetos as $projeto)
+        <div id="projetos-grid" class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            @foreach ($projetos as $projeto)
                 @include('partials.projeto-card', ['projeto' => $projeto])
-            @empty
-                <div class="col-span-full rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-400">
-                    Você ainda não adicionou nenhum projeto. Clique em "Adicionar projeto" para começar.
-                </div>
-            @endforelse
+            @endforeach
+            <div data-board-empty @class(['col-span-full rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-400', 'hidden' => $projetos->where('archived', false)->isNotEmpty()])>
+                Nenhum projeto nesta situação. Clique em “Adicionar projeto” para começar.
+            </div>
+
         </div>
     </div>
 

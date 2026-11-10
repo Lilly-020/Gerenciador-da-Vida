@@ -1,4 +1,4 @@
-@props(['type', 'categories', 'membros'])
+@props(['type', 'categories', 'membros', 'accounts' => []])
 
 @php
     $isEntrada = $type === 'entrada';
@@ -116,6 +116,10 @@
 
                 @include('partials.financeiro.partes-fields', ['prefix' => 'edit-lancamento', 'membros' => $membros, 'isEntrada' => $isEntrada])
 
+                <label class="grid gap-1.5 text-sm text-slate-300">Conta
+                    <select name="account_id" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"><option value="">Sem conta definida</option>@foreach ($accounts as $account)<option value="{{ $account->id }}">{{ $account->name }}</option>@endforeach</select>
+                </label>
+                <label class="grid gap-1.5 text-sm text-slate-300">Tipo de gasto<select name="expense_kind" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white"><option value="variavel">Variável</option><option value="fixo">Fixo</option></select></label>
                 <div class="flex justify-end gap-2 pt-2">
                     <button
                         type="button"

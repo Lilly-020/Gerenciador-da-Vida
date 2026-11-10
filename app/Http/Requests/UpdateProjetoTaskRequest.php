@@ -2,40 +2,23 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-
-class UpdateProjetoTaskRequest extends FormRequest
+class UpdateProjetoTaskRequest extends StoreProjetoTaskRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true;
+        abort_unless($this->route('tarefa')->projeto_id === $this->route('projeto')->id, 404);
+
+        return parent::authorize();
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, array<int, string>>
-     */
+    /** @return array<string, mixed> */
     public function rules(): array
     {
-        return [
-            'completed' => ['sometimes', 'required', 'boolean'],
-            'title' => ['sometimes', 'required', 'string', 'max:255'],
-        ];
-    }
+        $rules = parent::rules();
+        $rules['title'] = ['sometimes', 'required', 'string', 'max:255'];
+        $rules['completed'] = ['sometimes', 'required', 'boolean'];
+        $rules['parent_id'] = ['prohibited'];
 
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'completed.required' => 'Informe se a tarefa está concluída.',
-            'completed.boolean' => 'Valor inválido para o estado da tarefa.',
-            'title.required' => 'Informe o nome da tarefa.',
-        ];
+        return $rules;
     }
 }

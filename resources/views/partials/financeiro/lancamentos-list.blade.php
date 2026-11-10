@@ -19,13 +19,18 @@
         >
             <div class="flex min-w-0 flex-1 items-center gap-3">
                 @unless ($isForeign)
+                <span class="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
                 <input
                     type="checkbox"
                     data-lancamento-toggle-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}"
                     @checked($lancamento->status === 'realizado')
+                    @disabled($lancamento->status === 'cancelado' || ! \App\Support\Carteira::canEdit())
                     title="Marcar como {{ $lancamento->status === 'previsto' ? 'realizado' : 'previsto' }}"
-                    class="h-4 w-4 shrink-0 rounded border-white/20 bg-slate-950/60 text-indigo-500 focus:ring-indigo-400/40"
+                    aria-label="Confirmar {{ $isEntrada ? 'recebimento' : 'pagamento' }} de {{ $lancamento->description }}"
+                    class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-600 bg-slate-950 checked:border-indigo-400 checked:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 disabled:cursor-default disabled:opacity-60"
                 >
+                <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" class="pointer-events-none absolute h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100"><path d="m4 10 4 4 8-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </span>
                 @endunless
 
                 <div class="min-w-0">
@@ -55,7 +60,13 @@
                             <span class="text-indigo-300">Gerado por recorrência</span>
                         @endif
                         <span class="h-1 w-1 rounded-full bg-slate-600"></span>
-                        @if ($lancamento->status === 'previsto')
+                        @if ($lancamento->account)<span>{{ $lancamento->account->name }}</span>@endif
+                        <span>{{ $lancamento->expense_kind === 'fixo' ? 'Fixo' : 'Variável' }}</span>
+                        @if ($lancamento->installment_count)<span>Parcela {{ $lancamento->installment_number }}/{{ $lancamento->installment_count }}</span>@endif
+                        <span class="{{ $lancamento->situation === 'Atrasado' ? 'text-rose-300' : 'text-slate-400' }}">{{ $lancamento->situation }}</span>
+                        @if ($lancamento->status === 'cancelado')
+                            <span class="text-slate-500">Cancelado</span>
+                        @elseif ($lancamento->status === 'previsto')
                             <span class="inline-flex items-center gap-1 text-amber-300">
                                 <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
                                 Previsto
@@ -84,6 +95,24 @@
                     @if ($lancamento->notes)
                         <p class="wrap-break-word mt-1.5 text-xs whitespace-pre-line text-slate-500">{{ $lancamento->notes }}</p>
                     @endif
+                    @unless ($isForeign)
+                        <details class="mt-2 text-xs text-slate-400">
+                            <summary class="cursor-pointer text-indigo-300">Comprovantes e opções</summary>
+                            <div class="mt-3 grid gap-2">
+                                @foreach ($lancamento->files as $file)
+                                    <a href="{{ route('financeiro.comprovantes.download', [$lancamento, $file], absolute: false) }}" class="wrap-anywhere text-indigo-200 underline">{{ $file->original_name }}</a>
+                                    @if (\App\Support\Carteira::canEdit())<form method="POST" action="{{ route('financeiro.comprovantes.destroy', [$lancamento, $file], absolute: false) }}">@csrf @method('DELETE')<button class="text-rose-300">Remover comprovante</button></form>@endif
+                                @endforeach
+                                @if (\App\Support\Carteira::canEdit())
+                                    <form method="POST" enctype="multipart/form-data" action="{{ route('financeiro.comprovantes.store', $lancamento, absolute: false) }}" class="flex flex-wrap items-center gap-2">@csrf<input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp" aria-label="Comprovante" class="min-w-0 max-w-full text-xs text-slate-400"><button class="text-indigo-300">Anexar</button></form>
+                                    <button type="button" data-lancamento-state-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}" data-state="{{ $lancamento->status === 'cancelado' ? 'previsto' : 'cancelado' }}" class="justify-self-start text-rose-300">{{ $lancamento->status === 'cancelado' ? 'Restaurar como previsto' : 'Cancelar lançamento' }}</button>
+                                    @if ($lancamento->is_recurring_template)
+                                        <button type="button" data-recurrence-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}" data-active="{{ $lancamento->recurrence_active ? 0 : 1 }}" class="justify-self-start text-indigo-300">{{ $lancamento->recurrence_active ? 'Pausar geração de novas ocorrências' : 'Retomar recorrência' }}</button>
+                                    @endif
+                                @endif
+                            </div>
+                        </details>
+                    @endunless
                 </div>
             </div>
 
@@ -91,11 +120,13 @@
                 <span class="text-sm font-semibold {{ $isEntrada ? 'text-emerald-300' : 'text-rose-300' }}">
                     {{ $isEntrada ? '+' : '−' }} @money($isForeign ? $lancamento->saidaFor(auth()->user()) : $lancamento->amount)
                 </span>
-                @unless ($isForeign)
+                @if (! $isForeign && \App\Support\Carteira::canEdit())
                 <button
                     type="button"
                     data-lancamento-edit-trigger
                     data-lancamento-edit-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}"
+                    data-account-id="{{ $lancamento->account_id }}"
+                    data-expense-kind="{{ $lancamento->expense_kind }}"
                     data-description="{{ $lancamento->description }}"
                     data-amount="{{ $lancamento->amount }}"
                     data-date="{{ $lancamento->date->toDateString() }}"
@@ -127,7 +158,7 @@
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414Z" clip-rule="evenodd" />
                     </svg>
                 </button>
-                @endunless
+                @endif
             </div>
         </div>
     @empty

@@ -249,4 +249,71 @@ class SonhoTest extends TestCase
         $response->assertNotFound();
         $this->assertDatabaseHas('sonhos', ['id' => $sonho->id]);
     }
+
+    public function test_planning_details_are_saved_and_finances_stay_separate_from_tasks(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->postJson('/sonhos', [
+            'title' => 'Comprar carro', 'financial_goal' => 45000, 'saved_amount' => 12000,
+            'target_date' => '2027-12-31', 'priority' => 'high', 'notes' => 'Pesquisar modelos',
+            'image_url' => 'https://example.com/car.jpg',
+        ])->assertOk();
+        $sonho = $user->sonhos()->firstOrFail();
+        SonhoTask::factory()->for($sonho)->completed()->create();
+
+        $this->actingAs($user)->get('/')->assertSee('27%')->assertSee('33.000,00');
+
+        $this->assertSame(100, $sonho->progress);
+        $this->assertSame('in_progress', $sonho->status);
+        $this->assertDatabaseHas('sonhos', ['id' => $sonho->id, 'priority' => 'high', 'saved_amount' => 12000, 'notes' => 'Pesquisar modelos']);
+    }
+
+    public function test_archived_dreams_can_be_restored_and_are_excluded_from_active_list(): void
+    {
+        $user = User::factory()->create();
+        $sonho = Sonho::factory()->for($user)->create(['title' => 'Viagem antiga']);
+
+        $this->actingAs($user)->putJson('/sonhos/'.$sonho->id, ['title' => $sonho->title, 'archived' => true])->assertOk();
+
+        $this->assertDatabaseHas('sonhos', ['id' => $sonho->id, 'archived' => true]);
+        $this->get('/')->assertDontSee('Viagem antiga');
+        $this->get('/?status=archived')->assertSee('Viagem antiga');
+        $this->putJson('/sonhos/'.$sonho->id, ['title' => $sonho->title, 'archived' => false])->assertOk();
+        $this->get('/')->assertSee('Viagem antiga');
+    }
+
+    public function test_planning_rejects_invalid_values_without_creating_a_dream(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->postJson('/sonhos', [
+            'title' => 'Inválido', 'financial_goal' => -1, 'saved_amount' => -10,
+            'priority' => 'urgent', 'target_date' => 'invalid', 'image_url' => 'javascript:alert(1)',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['financial_goal', 'saved_amount', 'priority', 'target_date', 'image_url']);
+
+        $this->assertDatabaseMissing('sonhos', ['title' => 'Inválido']);
+    }
+
+    public function test_status_filters_and_priority_ordering(): void
+    {
+        $user = User::factory()->create();
+        $low = Sonho::factory()->for($user)->create(['title' => 'Baixa prioridade', 'priority' => 'low']);
+        Sonho::factory()->for($user)->create(['title' => 'Alta prioridade', 'priority' => 'high']);
+        SonhoTask::factory()->for($low)->completed()->create();
+
+        $this->actingAs($user)->get('/?status=completed')->assertSee('Baixa prioridade')->assertDontSee('Alta prioridade');
+        $this->get('/?sort=priority')->assertSeeInOrder(['Alta prioridade', 'Baixa prioridade']);
+    }
+
+    public function test_rounding_financial_progress_does_not_complete_an_unfunded_dream(): void
+    {
+        $user = User::factory()->create();
+        $sonho = Sonho::factory()->for($user)->create(['financial_goal' => 45000, 'saved_amount' => 44999]);
+
+        $this->actingAs($user)->get('/?status=in_progress')->assertSee($sonho->title);
+
+        $this->assertSame('in_progress', $sonho->status);
+        $this->putJson('/sonhos/'.$sonho->id, ['title' => $sonho->title, 'saved_amount' => 45000])->assertOk();
+        $this->assertSame('completed', $sonho->fresh()->status);
+    }
 }

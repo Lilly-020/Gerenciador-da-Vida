@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProjetoController extends Controller
@@ -33,6 +34,8 @@ class ProjetoController extends Controller
     {
         $projeto = $request->user()->projetos()->create($request->validated());
 
+        $projeto->recordActivity('Criou o projeto.');
+
         return $this->respondWith($request, $projeto);
     }
 
@@ -41,9 +44,10 @@ class ProjetoController extends Controller
      */
     public function update(UpdateProjetoRequest $request, Projeto $projeto): RedirectResponse|JsonResponse
     {
-        abort_unless($projeto->canBeEditedBy($request->user()), 403, 'Você só pode visualizar este projeto.');
+        abort_unless($projeto->canBeManagedBy($request->user()), 403, 'Apenas administradores podem editar os dados do projeto.');
 
         $projeto->update($request->validated());
+        $projeto->recordActivity($projeto->wasChanged('archived') ? ($projeto->archived ? 'Arquivou o projeto.' : 'Restaurou o projeto.') : 'Editou os dados do projeto.');
 
         return $this->respondWith($request, $projeto);
     }
@@ -53,9 +57,10 @@ class ProjetoController extends Controller
      */
     public function destroy(Request $request, Projeto $projeto): RedirectResponse|JsonResponse
     {
-        abort_unless($projeto->isOwnedBy($request->user()), 403, 'Só quem criou o projeto pode excluí-lo.');
+        abort_unless($projeto->canBeManagedBy($request->user()), 403, 'Apenas administradores podem excluir o projeto.');
 
         $projetoId = $projeto->id;
+        Storage::disk('local')->delete($projeto->files->pluck('path')->all());
         $projeto->delete();
 
         if (! $request->wantsJson()) {

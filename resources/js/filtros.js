@@ -28,6 +28,11 @@ function setupBar(bar) {
     const de = bar.querySelector('[data-filtro-de]');
     const ate = bar.querySelector('[data-filtro-ate]');
     const categoria = bar.querySelector('[data-filtro-categoria]');
+    const plataforma = bar.querySelector('[data-filtro-plataforma]');
+    const cursoStatus = bar.querySelector('[data-filtro-curso-status]');
+    const status = bar.querySelector('[data-filtro-status]');
+    const prazo = bar.querySelector('[data-filtro-prazo]');
+    const ordem = bar.querySelector('[data-filtro-ordem]');
     const limpar = bar.querySelector('[data-filtro-limpar]');
     const resumo = bar.querySelector('[data-filtro-resumo]');
 
@@ -60,23 +65,51 @@ function setupBar(bar) {
         const cards = items();
 
         syncCategorias(cards);
+        if (plataforma) {
+            const wanted = [...new Set(cards.map((card) => card.dataset.platform).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            const current = [...plataforma.options].slice(1).map((option) => option.value);
+            if (wanted.join('|') !== current.join('|')) {
+                const selected = plataforma.value;
+                plataforma.replaceChildren(plataforma.options[0], ...wanted.map((value) => new Option(value, value)));
+                plataforma.value = wanted.includes(selected) ? selected : '';
+            }
+        }
 
         const termo = normalize(titulo?.value);
         const inicio = de?.value || '';
         const fim = ate?.value || '';
         const categoriaEscolhida = categoria?.value || '';
-        const ativo = Boolean(termo || inicio || fim || categoriaEscolhida);
+        const ativo = Boolean(termo || inicio || fim || categoriaEscolhida || plataforma?.value || cursoStatus?.value || status?.value || prazo?.value);
+        if (ordem) {
+            const sorted = [...cards].sort((a, b) => {
+                switch (ordem.value) {
+                    case 'due_at': return (a.dataset.dueAt || '9999').localeCompare(b.dataset.dueAt || '9999');
+                    case 'progress': return Number(b.dataset.progress) - Number(a.dataset.progress);
+                    case 'name': return a.dataset.filterTitle.localeCompare(b.dataset.filterTitle, 'pt-BR');
+                    case 'priority': {
+                        const rank = { high: 0, medium: 1, low: 2 };
+                        return rank[a.dataset.priority] - rank[b.dataset.priority];
+                    }
+                    default: return Number(b.dataset.projetoId) - Number(a.dataset.projetoId);
+                }
+            });
+            if (sorted.some((card, index) => card !== cards[index])) sorted.forEach((card) => card.parentElement.append(card));
+        }
 
         let visiveis = 0;
         let soma = 0;
         let temValor = false;
 
         cards.forEach((card) => {
-            const start = card.dataset.filterStart || '';
-            const end = card.dataset.filterEnd || start;
+            const start = (status ? card.dataset.dueAt : card.dataset.filterStart) || '';
+            const end = status ? start : card.dataset.filterEnd || start;
             const semData = !start && !end;
 
             const matches =
+                (!plataforma?.value || card.dataset.platform === plataforma.value) &&
+                (!cursoStatus?.value || card.dataset.status === cursoStatus.value) &&
+                (!status || (status.value ? card.dataset.status === status.value : card.dataset.status !== 'archived')) &&
+                (!prazo?.value || (prazo.value === 'none' ? !card.dataset.dueAt : card.dataset[prazo.value] === 'true')) &&
                 (!termo || normalize(card.dataset.filterTitle).includes(termo)) &&
                 (!categoriaEscolhida || card.dataset.filterCategory === categoriaEscolhida) &&
                 (!inicio || (!semData && (end || start) >= inicio)) &&
@@ -94,6 +127,8 @@ function setupBar(bar) {
             }
         });
 
+        document.getElementById(bar.dataset.filtrosAlvo)?.querySelector('[data-board-empty]')?.classList.toggle('hidden', visiveis > 0 || ativo);
+        document.getElementById(bar.dataset.filtrosAlvo)?.dispatchEvent(new CustomEvent('filters:updated', { detail: { visible: visiveis } }));
         limpar?.classList.toggle('hidden', !ativo);
 
         if (resumo) {
@@ -113,13 +148,13 @@ function setupBar(bar) {
         }
     };
 
-    [titulo, de, ate, categoria].forEach((field) => {
+    [titulo, de, ate, categoria, status, prazo, ordem, plataforma, cursoStatus].forEach((field) => {
         field?.addEventListener('input', apply);
         field?.addEventListener('change', apply);
     });
 
     limpar?.addEventListener('click', () => {
-        [titulo, de, ate, categoria].forEach((field) => {
+        [titulo, de, ate, categoria, status, prazo, ordem, plataforma, cursoStatus].forEach((field) => {
             if (field) {
                 field.value = '';
             }

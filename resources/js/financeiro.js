@@ -45,6 +45,20 @@ export function setupLancamentos() {
     });
 
     page.addEventListener('click', async (event) => {
+        const state = event.target.closest('[data-lancamento-state-url]');
+        const recurrence = event.target.closest('[data-recurrence-url]');
+        if (state || recurrence) {
+            const button = state || recurrence;
+            button.disabled = true;
+            try {
+                applyUpdate(await postJson(state ? state.dataset.lancamentoStateUrl : recurrence.dataset.recurrenceUrl, 'PATCH', state ? { status: state.dataset.state } : { recurrence_active: recurrence.dataset.active === '1' }));
+            } catch (error) {
+                alertDialog(error.message);
+            } finally {
+                button.disabled = false;
+            }
+            return;
+        }
         const deleteButton = event.target.closest('[data-lancamento-delete-url]');
 
         if (!deleteButton) {
@@ -93,10 +107,15 @@ function setupRecurringToggle() {
         return;
     }
 
-    checkbox.addEventListener('change', () => {
+    const sync = () => {
         fields.classList.toggle('hidden', !checkbox.checked);
         fields.classList.toggle('grid', checkbox.checked);
-    });
+        const day = fields.querySelector('[name="recurrence_day"]');
+        if (day) day.required = checkbox.checked;
+    };
+    checkbox.addEventListener('change', sync);
+    checkbox.form?.addEventListener('reset', () => queueMicrotask(sync));
+    sync();
 }
 
 /**

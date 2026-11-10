@@ -3,6 +3,8 @@
     'datas' => true,        // offer the "de / até" date range
     'categorias' => false,  // offer the category select (options come from the cards)
     'dataLabel' => 'Data',
+    'projetos' => false,
+    'cursos' => false,
 ])
 
 {{--
@@ -42,6 +44,36 @@
                 <option value="">Todas as categorias</option>
             </select>
         </div>
+    @endif
+
+    @if ($cursos)
+        <label class="grid gap-1 text-xs text-slate-400">Plataforma
+            <select data-filtro-plataforma class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"><option value="">Todas as plataformas</option></select>
+        </label>
+        <label class="grid gap-1 text-xs text-slate-400">Situação
+            <select data-filtro-curso-status class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white">
+                <option value="">Todas as situações</option>
+                @foreach (\App\Models\Curso::STATUSES as $value => $statusMeta)<option value="{{ $value }}">{{ $statusMeta['label'] }}</option>@endforeach
+            </select>
+        </label>
+    @endif
+
+    @if ($projetos)
+        <label class="grid gap-1 text-xs text-slate-400">Situação
+            <select data-filtro-status class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white">
+                <option value="">Todos</option><option value="not_started">Não iniciados</option><option value="in_progress">Em andamento</option><option value="completed">Concluídos</option><option value="archived">Arquivados</option>
+            </select>
+        </label>
+        <label class="grid gap-1 text-xs text-slate-400">Prazo
+            <select data-filtro-prazo class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white">
+                <option value="">Todos os prazos</option><option value="overdue">Atrasados</option><option value="soon">Próximos 7 dias</option><option value="none">Sem prazo</option>
+            </select>
+        </label>
+        <label class="grid gap-1 text-xs text-slate-400">Ordenar por
+            <select data-filtro-ordem class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white">
+                <option value="">Mais recentes</option><option value="due_at">Prazo mais próximo</option><option value="progress">Maior progresso</option><option value="name">Nome</option><option value="priority">Prioridade</option>
+            </select>
+        </label>
     @endif
 
     <button

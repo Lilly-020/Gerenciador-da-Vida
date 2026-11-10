@@ -13,12 +13,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * need to read it, so the controllers check who is asking.
  */
 #[Table('participacoes')]
-#[Fillable(['owner_id', 'participant_id', 'tipo', 'projeto_id', 'permission', 'sections', 'status'])]
+#[Fillable(['owner_id', 'participant_id', 'tipo', 'projeto_id', 'permission', 'sections', 'status', 'allowed_accounts', 'allowed_categories', 'allowed_lancamentos'])]
 class Participacao extends Model
 {
     public const TIPO_PROJETO = 'projeto';
 
     public const TIPO_FINANCAS = 'financas';
+
+    public const PERMISSION_ADMIN = 'admin';
+
+    public const PROJECT_PERMISSIONS = ['admin' => 'Administrador', 'editar' => 'Editor', 'ver' => 'Visualizador'];
 
     public const PERMISSION_VER = 'ver';
 
@@ -28,8 +32,9 @@ class Participacao extends Model
      * @var array<string, string>
      */
     public const PERMISSIONS = [
-        self::PERMISSION_EDITAR => 'Pode editar',
-        self::PERMISSION_VER => 'Só ver',
+        self::PERMISSION_ADMIN => 'Administrador',
+        self::PERMISSION_EDITAR => 'Editor',
+        self::PERMISSION_VER => 'Visualizador',
     ];
 
     public const STATUS_PENDENTE = 'pendente';
@@ -57,6 +62,9 @@ class Participacao extends Model
     {
         return [
             'sections' => 'array',
+            'allowed_accounts' => 'array',
+            'allowed_categories' => 'array',
+            'allowed_lancamentos' => 'array',
         ];
     }
 
@@ -87,9 +95,14 @@ class Participacao extends Model
         return $this->belongsTo(Projeto::class)->withoutGlobalScope('owner');
     }
 
+    public function permissionLabel(): string
+    {
+        return ($this->tipo === self::TIPO_PROJETO ? self::PROJECT_PERMISSIONS : self::PERMISSIONS)[$this->permission];
+    }
+
     public function canEdit(): bool
     {
-        return $this->permission === self::PERMISSION_EDITAR;
+        return $this->permission === self::PERMISSION_EDITAR || $this->permission === self::PERMISSION_ADMIN;
     }
 
     /**

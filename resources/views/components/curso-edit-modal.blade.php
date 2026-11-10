@@ -86,6 +86,8 @@
                     ></textarea>
                 </div>
 
+                @include('partials.curso-learning-fields')
+
                 <div class="flex justify-end gap-2 pt-2">
                     <button
                         type="button"

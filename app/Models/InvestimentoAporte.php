@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['amount', 'date', 'rate_override', 'notes'])]
+#[Fillable(['amount', 'date', 'rate_override', 'notes', 'kind', 'account_id'])]
 class InvestimentoAporte extends Model
 {
     /** @use HasFactory<InvestimentoAporteFactory> */
@@ -42,6 +42,9 @@ class InvestimentoAporte extends Model
     public function daysInvested(?Carbon $asOf = null): int
     {
         $asOf = $asOf ?? Carbon::today();
+        if ($this->investimento->maturity_date && $asOf->gt($this->investimento->maturity_date)) {
+            $asOf = $this->investimento->maturity_date;
+        }
 
         if ($this->date->gt($asOf)) {
             return 0;
@@ -81,8 +84,8 @@ class InvestimentoAporte extends Model
      */
     private function dailyRate(): float
     {
-        $rate = (float) ($this->rate_override ?? $this->investimento->rate);
-        $periodDays = $this->investimento->rate_period === 'mensal' ? 30 : 365;
+        $rate = (float) ($this->rate_override ?? $this->investimento->effectiveRate());
+        $periodDays = ($this->investimento->rate_mode ?? 'fixed') === 'fixed' && $this->investimento->rate_period === 'mensal' ? 30 : 365;
 
         return (1 + $rate / 100) ** (1 / $periodDays) - 1;
     }

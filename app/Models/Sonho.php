@@ -13,11 +13,24 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
-#[Fillable(['title'])]
+#[Fillable(['title', 'target_date', 'financial_goal', 'saved_amount', 'priority', 'notes', 'image_url', 'archived'])]
 class Sonho extends Model
 {
     /** @use HasFactory<SonhoFactory> */
     use HasFactory;
+
+    protected $attributes = ['priority' => 'medium', 'archived' => false];
+
+    protected function casts(): array
+    {
+        return ['target_date' => 'date', 'financial_goal' => 'decimal:2', 'saved_amount' => 'decimal:2', 'archived' => 'boolean'];
+    }
+
+    protected function financialProgress(): Attribute
+    {
+        return Attribute::make(get: fn (): int => $this->financial_goal > 0
+            ? min(100, (int) round(($this->saved_amount ?? 0) / $this->financial_goal * 100)) : 0);
+    }
 
     /**
      * Scope every query to the authenticated user's own dreams, and default
@@ -78,8 +91,8 @@ class Sonho extends Model
     {
         return Attribute::make(
             get: fn (): string => match (true) {
-                $this->progress === 100 && $this->tasks->isNotEmpty() => 'completed',
-                $this->progress > 0 => 'in_progress',
+                ($this->tasks->isNotEmpty() || $this->financial_goal > 0) && ($this->tasks->isEmpty() || $this->progress === 100) && (! $this->financial_goal || (float) $this->saved_amount >= (float) $this->financial_goal) => 'completed',
+                $this->progress > 0 || $this->saved_amount > 0 => 'in_progress',
                 default => 'not_started',
             },
         );
@@ -107,6 +120,8 @@ class Sonho extends Model
      */
     public static function summarize(Collection $sonhos): array
     {
+        $sonhos = $sonhos->where('archived', false);
+
         return [
             'total' => $sonhos->count(),
             'em_andamento' => $sonhos->where('status', 'in_progress')->count(),

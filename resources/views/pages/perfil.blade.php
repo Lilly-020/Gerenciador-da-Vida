@@ -113,7 +113,7 @@
                                     convidou você para participar d{{ $convite->subject() }}.
                                 </p>
                                 <p class="mt-0.5 text-xs text-slate-400">
-                                    {{ \App\Models\Participacao::PERMISSIONS[$convite->permission] }}
+                                    {{ $convite->permissionLabel() }}
                                     @if ($convite->sectionLabels())
                                         · {{ implode(', ', $convite->sectionLabels()) }}
                                     @endif
@@ -146,7 +146,7 @@
                                     <span class="font-semibold text-white">{{ $participacao->owner->handle() }}</span>
                                 </p>
                                 <p class="mt-0.5 text-xs text-slate-400">
-                                    {{ \App\Models\Participacao::PERMISSIONS[$participacao->permission] }}
+                                    {{ $participacao->permissionLabel() }}
                                     @if ($participacao->sectionLabels())
                                         · {{ implode(', ', $participacao->sectionLabels()) }}
                                     @endif
@@ -176,7 +176,7 @@
                                 </p>
                                 <p class="mt-0.5 text-xs text-slate-400">
                                     <span class="{{ $statusColor }}">{{ $statusLabel }}</span>
-                                    · {{ \App\Models\Participacao::PERMISSIONS[$participacao->permission] }}
+                                    · {{ $participacao->permissionLabel() }}
                                 </p>
                             </div>
                             <form method="POST" action="{{ route('participacoes.destroy', $participacao, absolute: false) }}">

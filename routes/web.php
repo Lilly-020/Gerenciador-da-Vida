@@ -5,12 +5,15 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CarteiraController;
 use App\Http\Controllers\CursoController;
 use App\Http\Controllers\CursoFileController;
+use App\Http\Controllers\FinanceiroContaController;
 use App\Http\Controllers\FinanceiroDashboardController;
 use App\Http\Controllers\InvestimentoAporteController;
 use App\Http\Controllers\InvestimentoController;
 use App\Http\Controllers\LancamentoController;
+use App\Http\Controllers\LancamentoFileController;
 use App\Http\Controllers\ParticipacaoController;
 use App\Http\Controllers\PerfilController;
+use App\Http\Controllers\ProjetoCollaborationController;
 use App\Http\Controllers\ProjetoController;
 use App\Http\Controllers\ProjetoTaskController;
 use App\Http\Controllers\SonhoController;
@@ -45,12 +48,19 @@ Route::middleware('auth')->group(function () {
     Route::patch('/projetos/{projeto}/tarefas/{tarefa}', [ProjetoTaskController::class, 'update'])->name('projetos.tarefas.update');
     Route::delete('/projetos/{projeto}/tarefas/{tarefa}', [ProjetoTaskController::class, 'destroy'])->name('projetos.tarefas.destroy');
 
+    Route::post('/projetos/{projeto}/comentarios', [ProjetoCollaborationController::class, 'comment'])->name('projetos.comentarios.store');
+    Route::delete('/projetos/{projeto}/comentarios/{comentario}', [ProjetoCollaborationController::class, 'destroyComment'])->name('projetos.comentarios.destroy');
+    Route::post('/projetos/{projeto}/arquivos', [ProjetoCollaborationController::class, 'upload'])->name('projetos.arquivos.store');
+    Route::get('/projetos/{projeto}/arquivos/{arquivo}', [ProjetoCollaborationController::class, 'download'])->name('projetos.arquivos.download');
+    Route::delete('/projetos/{projeto}/arquivos/{arquivo}', [ProjetoCollaborationController::class, 'destroyFile'])->name('projetos.arquivos.destroy');
+
     Route::get('/cursos', [CursoController::class, 'index'])->name('cursos');
     Route::post('/cursos', [CursoController::class, 'store'])->name('cursos.store');
     Route::put('/cursos/{curso}', [CursoController::class, 'update'])->name('cursos.update');
     Route::patch('/cursos/{curso}', [CursoController::class, 'move'])->name('cursos.move');
     Route::delete('/cursos/{curso}', [CursoController::class, 'destroy'])->name('cursos.destroy');
     Route::post('/cursos/{curso}/arquivos', [CursoFileController::class, 'store'])->name('cursos.arquivos.store');
+    Route::patch('/cursos/{curso}/arquivos/{arquivo}', [CursoFileController::class, 'update'])->name('cursos.arquivos.update');
     Route::delete('/cursos/{curso}/arquivos/{arquivo}', [CursoFileController::class, 'destroy'])->name('cursos.arquivos.destroy');
 
     Route::get('/financeiro', [FinanceiroDashboardController::class, 'index'])->name('financeiro')->middleware('carteira:dashboard');
@@ -58,6 +68,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/financeiro/custos-fixos', fn () => redirect()->route('financeiro'));
 
     Route::prefix('financeiro')->name('financeiro.')->group(function () {
+        Route::get('/contas', [FinanceiroContaController::class, 'index'])->name('contas')->middleware('carteira:lancamentos');
+        Route::post('/contas', [FinanceiroContaController::class, 'store'])->name('contas.store')->middleware('carteira:lancamentos');
+        Route::put('/contas/{conta}', [FinanceiroContaController::class, 'update'])->name('contas.update')->middleware('carteira:lancamentos');
+        Route::post('/transferencias', [FinanceiroContaController::class, 'transfer'])->name('transferencias.store')->middleware('carteira:lancamentos');
+        Route::post('/categorias', [FinanceiroContaController::class, 'category'])->name('categorias.store')->middleware('carteira:lancamentos');
+        Route::put('/categorias/{categoria}', [FinanceiroContaController::class, 'updateCategory'])->name('categorias.update')->middleware('carteira:lancamentos');
         Route::get('/participantes', [CarteiraController::class, 'participantes'])->name('participantes');
         Route::post('/carteira', [CarteiraController::class, 'trocar'])->name('carteira');
 
@@ -67,6 +83,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/saidas', [LancamentoController::class, 'saidas'])->name('saidas')->middleware('carteira:saidas');
 
         Route::middleware('carteira:lancamentos')->group(function () {
+            Route::post('/lancamentos/{lancamento}/arquivos', [LancamentoFileController::class, 'store'])->name('comprovantes.store');
+            Route::get('/lancamentos/{lancamento}/arquivos/{arquivo}', [LancamentoFileController::class, 'download'])->name('comprovantes.download');
+            Route::delete('/lancamentos/{lancamento}/arquivos/{arquivo}', [LancamentoFileController::class, 'destroy'])->name('comprovantes.destroy');
             Route::post('/lancamentos', [LancamentoController::class, 'store'])->name('lancamentos.store');
             Route::patch('/lancamentos/{lancamento}', [LancamentoController::class, 'update'])->name('lancamentos.update');
             Route::delete('/lancamentos/{lancamento}', [LancamentoController::class, 'destroy'])->name('lancamentos.destroy');
@@ -94,6 +113,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/usuarios/buscar', [PerfilController::class, 'buscar'])->name('usuarios.buscar');
 
     Route::post('/participacoes', [ParticipacaoController::class, 'store'])->name('participacoes.store');
+    Route::put('/participacoes/{participacao}/financeiro', [ParticipacaoController::class, 'updateFinancialAccess'])->name('participacoes.financeiro.update');
+    Route::post('/participacoes/{participacao}/reenviar', [ParticipacaoController::class, 'reenviar'])->name('participacoes.reenviar');
     Route::post('/participacoes/{participacao}/aceitar', [ParticipacaoController::class, 'aceitar'])->name('participacoes.aceitar');
     Route::post('/participacoes/{participacao}/recusar', [ParticipacaoController::class, 'recusar'])->name('participacoes.recusar');
     Route::delete('/participacoes/{participacao}', [ParticipacaoController::class, 'destroy'])->name('participacoes.destroy');

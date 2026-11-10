@@ -47,7 +47,7 @@
     </div>
 
     <x-slot:modals>
-        <x-investimento-create-modal />
-        <x-investimento-edit-modal />
+        <x-investimento-create-modal :accounts="$accounts" />
+        <x-investimento-edit-modal :accounts="$accounts" />
     </x-slot:modals>
 </x-layout>

@@ -109,7 +109,7 @@ class FinanceiroDashboardTest extends TestCase
         $response = $this->actingAs($user)->get('/financeiro?period=mes_atual');
 
         $response->assertOk();
-        $response->assertDontSee("R$\u{00A0}4.000,00", false);
+        $response->assertViewHas('cards', fn (array $cards): bool => $cards['entradas'] === 0.0 && $cards['saldo_disponivel'] === 4000.0);
     }
 
     public function test_previous_month_period_shows_that_months_data(): void

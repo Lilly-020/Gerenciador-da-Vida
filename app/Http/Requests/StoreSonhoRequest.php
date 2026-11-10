@@ -23,6 +23,13 @@ class StoreSonhoRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'target_date' => ['nullable', 'date_format:Y-m-d'],
+            'financial_goal' => ['nullable', 'numeric', 'min:0.01', 'max:999999999999.99'],
+            'saved_amount' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'priority' => ['sometimes', 'required', 'in:low,medium,high'],
+            'notes' => ['nullable', 'string', 'max:10000'],
+            'image_url' => ['nullable', 'url:https', 'max:2048'],
+            'archived' => ['sometimes', 'boolean'],
         ];
     }
 

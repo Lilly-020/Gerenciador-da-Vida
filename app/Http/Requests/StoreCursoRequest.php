@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreCursoRequest extends FormRequest
 {
@@ -23,12 +24,40 @@ class StoreCursoRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'progress_unit' => ['sometimes', 'required', 'in:lessons,modules'],
+            'total_lessons' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'completed_lessons' => ['sometimes', 'required', 'integer', 'min:0', 'max:1000000'],
+            'duration_hours' => ['nullable', 'numeric', 'min:0.01', 'max:999999.99'],
+            'studied_hours' => ['sometimes', 'required', 'numeric', 'min:0', 'max:999999.99'],
+            'notes' => ['nullable', 'string', 'max:50000'],
+            'rating' => ['nullable', 'integer', 'between:1,5'],
+            'next_review_at' => ['nullable', 'date_format:Y-m-d'],
             'platform' => ['nullable', 'string', 'max:255'],
-            'link' => ['nullable', 'url', 'max:2048'],
+            'link' => ['nullable', 'url:http,https', 'max:2048'],
             'objective' => ['nullable', 'string', 'max:2000'],
             'starts_at' => ['nullable', 'date'],
             'due_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
         ];
+    }
+
+    /** @return array<int, \Closure> */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            if ($validator->errors()->hasAny(['total_lessons', 'completed_lessons', 'rating'])) {
+                return;
+            }
+            $curso = $this->route('curso');
+            $total = $this->input('total_lessons', $curso?->total_lessons);
+            $completed = $this->input('completed_lessons', $curso?->completed_lessons ?? 0);
+            if ($completed > 0 && (! $total || $completed > $total)) {
+                $validator->errors()->add('completed_lessons', 'Informe um total igual ou maior que a quantidade concluída.');
+            }
+            if ($this->filled('rating') && ! $curso?->completed_at && (! $total || $completed < $total)) {
+                $validator->errors()->add('rating', 'Finalize o curso antes de avaliá-lo.');
+            }
+        }];
     }
 
     /**

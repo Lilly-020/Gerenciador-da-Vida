@@ -23,6 +23,9 @@ class StoreProjetoRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'details' => ['nullable', 'string', 'max:10000'],
+            'priority' => ['sometimes', 'required', 'in:low,medium,high'],
+            'archived' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string', 'max:2000'],
             'starts_at' => ['nullable', 'date'],
             'due_at' => ['nullable', 'date', 'after_or_equal:starts_at'],

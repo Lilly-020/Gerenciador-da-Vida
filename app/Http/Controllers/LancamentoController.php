@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ResolvesMonth;
 use App\Http\Requests\StoreLancamentoRequest;
 use App\Http\Requests\UpdateLancamentoRequest;
+use App\Models\CategoriaFinanceira;
+use App\Models\ContaFinanceira;
+use App\Models\FinanceiroActivity;
 use App\Models\Lancamento;
 use App\Models\User;
 use App\Support\Carteira;
@@ -14,6 +17,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -49,6 +55,7 @@ class LancamentoController extends Controller
             'created_at' => 'Criado em', 'updated_at' => 'Atualizado em',
         ];
         $request->validate([
+            'comparar' => ['sometimes', 'in:1'],
             'tipo' => ['sometimes', Rule::in(['entrada', 'saida', 'geral'])],
             'mes' => ['sometimes', 'required', 'date_format:Y-m'],
             'personalizar' => ['sometimes', 'in:1'],
@@ -100,7 +107,23 @@ class LancamentoController extends Controller
                 return [$status => ['entrada' => $entrada, 'saida' => $saida, 'saldo' => round($entrada - $saida, 2)]];
             })->all();
 
+        $comparison = null;
+        if ($request->boolean('comparar') && $month) {
+            $previousMonth = $month->copy()->subMonthNoOverflow();
+            $previousRows = new Collection;
+            foreach ([Lancamento::TYPE_ENTRADA => 'entradas', Lancamento::TYPE_SAIDA => 'saidas'] as $type => $section) {
+                if (($reportType === 'geral' || $reportType === $type) && Carteira::canSee($section)) {
+                    $previousRows = $previousRows->concat($this->lancamentosFor($request, $type, $previousMonth));
+                }
+            }
+            $realized = $previousRows->unique('id')->where('status', 'realizado');
+            $income = (float) $realized->sum(fn (Lancamento $row): float => $row->entradaFor($request->user()));
+            $expense = (float) $realized->sum(fn (Lancamento $row): float => $row->saidaFor($request->user()));
+            $comparison = ['month' => self::monthTitle($previousMonth), 'entrada' => $income, 'saida' => $expense, 'saldo' => round($income - $expense, 2)];
+        }
+
         return view('pages.financeiro.relatorio', [
+            'comparison' => $comparison,
             'reportType' => $reportType,
             'summaryColumns' => $summaryColumns,
             'reportTitle' => $request->input('titulo') ?: $defaultTitle,
@@ -124,20 +147,61 @@ class LancamentoController extends Controller
      */
     public function store(StoreLancamentoRequest $request): RedirectResponse|JsonResponse
     {
-        $data = Arr::except($request->validated(), 'partes');
+        $data = Arr::except($request->validated(), ['partes', 'installments']);
         $data['is_recurring_template'] = $request->boolean('is_recurring_template');
-        $data['status'] = Lancamento::STATUS_REALIZADO;
+        $data['status'] ??= $data['is_recurring_template'] ? Lancamento::STATUS_PREVISTO : Lancamento::STATUS_REALIZADO;
 
         $this->ensureSectionShared($data['type']);
 
-        $lancamento = Carteira::owner()->lancamentos()->create($data);
-        $lancamento->syncPartes($request->input('partes', []));
+        DB::transaction(function () use ($request, $data): void {
+            $count = $request->integer('installments', 1);
+            $cents = (int) round((float) $data['amount'] * 100);
+            $group = $count > 1 ? (string) Str::uuid() : null;
+            $anchor = Carbon::parse($data['date']);
+            $partsByInstallment = array_fill(0, $count, []);
+            $capacities = [];
+            for ($index = 0; $index < $count; $index++) {
+                $capacities[$index] = intdiv($cents, $count) + ($index < $cents % $count ? 1 : 0);
+            }
+            foreach ($request->input('partes', []) as $userId => $amount) {
+                if ((int) $userId === (int) Carteira::ownerId()) {
+                    continue;
+                }
+                $remaining = (int) round((float) $amount * 100);
+                $base = intdiv($remaining, $count);
+                for ($index = 0; $index < $count; $index++) {
+                    $assigned = min($base, $capacities[$index]);
+                    $partsByInstallment[$index][$userId] = $assigned;
+                    $capacities[$index] -= $assigned;
+                    $remaining -= $assigned;
+                }
+                for ($index = 0; $index < $count && $remaining > 0; $index++) {
+                    $extra = min($remaining, $capacities[$index]);
+                    $partsByInstallment[$index][$userId] += $extra;
+                    $capacities[$index] -= $extra;
+                    $remaining -= $extra;
+                }
+            }
+            for ($index = 0; $index < $count; $index++) {
+                $installment = $data;
+                $installment['amount'] = (intdiv($cents, $count) + ($index < $cents % $count ? 1 : 0)) / 100;
+                $installment['date'] = $anchor->copy()->addMonthsNoOverflow($index)->toDateString();
+                if ($count > 1) {
+                    $installment['installment_group'] = $group;
+                    $installment['installment_number'] = $index + 1;
+                    $installment['installment_count'] = $count;
+                    $installment['status'] = $index === 0 ? $data['status'] : 'previsto';
+                }
+                $lancamento = Carteira::owner()->lancamentos()->create($installment);
+                $lancamento->syncPartes(array_map(fn (int $amount): float => $amount / 100, $partsByInstallment[$index]));
+                if ($lancamento->is_recurring_template) {
+                    $lancamento->generateUpcomingOccurrences();
+                }
+            }
+            FinanceiroActivity::record('Cadastrou '.$count.' lançamento(s): '.$data['description'].'.');
+        });
 
-        if ($lancamento->is_recurring_template) {
-            $lancamento->generateUpcomingOccurrences();
-        }
-
-        return $this->respondWith($request, $lancamento->type);
+        return $this->respondWith($request, $data['type']);
     }
 
     /**
@@ -148,6 +212,7 @@ class LancamentoController extends Controller
         $this->ensureSectionShared($lancamento->type);
 
         $lancamento->update(Arr::except($request->validated(), 'partes'));
+        FinanceiroActivity::record('Atualizou o lançamento “'.$lancamento->description.'”.');
 
         if ($request->has('partes')) {
             $lancamento->syncPartes($request->input('partes'));
@@ -163,6 +228,8 @@ class LancamentoController extends Controller
     {
         $type = $lancamento->type;
         $this->ensureSectionShared($type);
+        Storage::disk('local')->delete($lancamento->files->pluck('path')->all());
+        FinanceiroActivity::record('Excluiu o lançamento “'.$lancamento->description.'”.');
         $lancamento->delete();
 
         return $this->respondWith($request, $type);
@@ -188,7 +255,8 @@ class LancamentoController extends Controller
 
         return view('pages.financeiro.lancamentos', [
             'type' => $type,
-            'categories' => Lancamento::categoriesFor($type),
+            'categories' => collect(Lancamento::categoriesFor($type))->merge(CategoriaFinanceira::where('type', $type)->pluck('name'))->merge($lancamentos->pluck('category'))->unique()->values()->all(),
+            'accounts' => ContaFinanceira::all(),
             'lancamentos' => $lancamentos,
             ...$this->totals($request, $type, $lancamentos),
             'month' => $month,
@@ -266,14 +334,14 @@ class LancamentoController extends Controller
             Lancamento::dateRange($month, $month->copy()->endOfMonth()),
         ));
 
-        $lancamentos = $inMonth(Carteira::owner()->lancamentos()->with(['partes.user', 'user'])->where('type', $type))->get();
+        $lancamentos = $inMonth(Carteira::owner()->lancamentos()->with(['partes.user', 'user', 'account', 'files'])->where('type', $type))->get();
 
         // In their own carteira the user also sees — read-only — what
         // other carteiras' lançamentos take out of their account: their
         // part of an expense, or of an income its owner received from them.
         if (Carteira::isOwn() && $type === Lancamento::TYPE_SAIDA) {
             $lancamentos = $lancamentos->concat(
-                $inMonth(Lancamento::sharedWith($request->user())->with(['partes.user', 'user']))
+                $inMonth(Lancamento::sharedWith($request->user())->with(['partes.user', 'user', 'account', 'files']))
                     ->get()
                     ->filter(fn (Lancamento $l): bool => $l->saidaFor($request->user()) > 0),
             );

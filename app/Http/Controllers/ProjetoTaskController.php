@@ -19,7 +19,8 @@ class ProjetoTaskController extends Controller
     {
         abort_unless($projeto->canBeEditedBy($request->user()), 403, 'Você só pode visualizar este projeto.');
 
-        $projeto->tasks()->create($request->validated());
+        $task = $projeto->tasks()->create($request->validated());
+        $projeto->recordActivity('Criou a tarefa “'.$task->title.'”.');
 
         return $this->respondWith($request, $projeto);
     }
@@ -33,7 +34,18 @@ class ProjetoTaskController extends Controller
 
         abort_unless($projeto->canBeEditedBy($request->user()), 403, 'Você só pode visualizar este projeto.');
 
-        $tarefa->update($request->validated());
+        $wasFinished = $tarefa->is_finished;
+        $tarefa->fill($request->validated());
+        if ($tarefa->goal_type !== 'checklist') {
+            $tarefa->completed = $tarefa->is_finished;
+        }
+        $tarefa->save();
+        $action = match (true) {
+            ! $wasFinished && $tarefa->is_finished => 'Concluiu',
+            $wasFinished && ! $tarefa->is_finished => 'Reabriu',
+            default => 'Editou',
+        };
+        $projeto->recordActivity($action.' a tarefa “'.$tarefa->title.'”.');
 
         return $this->respondWith($request, $projeto);
     }
@@ -47,6 +59,7 @@ class ProjetoTaskController extends Controller
 
         abort_unless($projeto->canBeEditedBy($request->user()), 403, 'Você só pode visualizar este projeto.');
 
+        $projeto->recordActivity('Excluiu a tarefa “'.$tarefa->title.'” e suas subtarefas.');
         $tarefa->delete();
 
         return $this->respondWith($request, $projeto);

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContaFinanceira;
+use App\Models\FinanceiroActivity;
 use App\Models\Participacao;
 use App\Support\Carteira;
 use Illuminate\Http\RedirectResponse;
@@ -16,8 +18,14 @@ class CarteiraController extends Controller
      */
     public function participantes(Request $request): View
     {
+        $owner = Carteira::canManage() && ! Carteira::hasRestrictions() ? Carteira::owner() : $request->user();
+
         return view('pages.financeiro.participantes', [
-            'participacoes' => $request->user()->participacoesEnviadas()
+            'accounts' => ContaFinanceira::where('user_id', $owner->id)->get(),
+            'categories' => $owner->lancamentos()->select('category')->distinct()->pluck('category'),
+            'lancamentos' => $owner->lancamentos()->latest('date')->limit(200)->get(),
+            'activities' => FinanceiroActivity::with('actor')->where('user_id', $owner->id)->latest('id')->limit(50)->get(),
+            'participacoes' => $owner->participacoesEnviadas()
                 ->with('participant')
                 ->where('tipo', Participacao::TIPO_FINANCAS)
                 ->where('status', '!=', Participacao::STATUS_RECUSADO)

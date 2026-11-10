@@ -22,6 +22,7 @@ class StoreCursoFileRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'kind' => ['sometimes', 'required', 'in:material,certificate'],
             'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
         ];
     }
