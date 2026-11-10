@@ -8,6 +8,10 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
+html {
+    scrollbar-gutter: stable;
+}
+
 /*
  * Modal fade + scale transition (used by the "add sonho"/"add projeto"/
  * "add curso" modals). JS toggles `hidden` for actual visibility and

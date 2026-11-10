@@ -1,5 +1,5 @@
 <x-layout title="Participantes" align="start">
-    <div class="w-full max-w-4xl">
+    <div class="w-full min-w-0 max-w-6xl">
         <x-financeiro-subnav active="financeiro.participantes" />
 
         <div class="mb-8">

@@ -1,5 +1,5 @@
 <x-layout title="Investimentos" align="start">
-    <div class="w-full max-w-5xl">
+    <div class="w-full min-w-0 max-w-6xl">
         <x-financeiro-subnav active="financeiro.investimentos" />
 
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">

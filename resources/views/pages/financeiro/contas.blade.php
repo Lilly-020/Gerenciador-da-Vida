@@ -5,7 +5,7 @@
     $typeLabels = ['banco' => 'Conta bancária', 'dinheiro' => 'Dinheiro em espécie', 'outro' => 'Outra conta'];
 @endphp
 <x-layout title="Contas e categorias" align="start">
-    <div class="w-full min-w-0 max-w-5xl">
+    <div class="w-full min-w-0 max-w-6xl">
         <x-financeiro-subnav active="financeiro.contas" />
         <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div>
