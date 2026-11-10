@@ -150,9 +150,6 @@
 
         <div data-view-panel="week" @class(['hidden' => $view !== 'week'])>
             @if ($view === 'week')
-                <div class="mb-6">
-                    @include('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])
-                </div>
                 @include('partials.tarefa-week')
             @endif
         </div>

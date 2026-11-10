@@ -238,8 +238,8 @@ class TarefaController extends Controller
     {
         $days = collect();
         foreach ($this->tasksBetween($user, $start, $end)->orderBy('start_time')->orderBy('id')->get() as $task) {
-            $cursor = $task->date->copy()->max($start)->startOfDay();
-            $last = ($task->end_date ?? $task->date)->copy()->min($end)->startOfDay();
+            $cursor = $task->date->max($start)->copy()->startOfDay();
+            $last = ($task->end_date ?? $task->date)->min($end)->copy()->startOfDay();
             while ($cursor->lte($last)) {
                 $key = $cursor->toDateString();
                 if (! $days->has($key)) {

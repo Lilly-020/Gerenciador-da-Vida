@@ -11,6 +11,21 @@ class TarefaWeekTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_all_day_tasks_do_not_shift_the_week_or_hide_todays_tasks(): void
+    {
+        $user = User::factory()->create();
+        Tarefa::factory()->for($user)->onDate('2026-11-09')->create(['title' => 'Tarefa de segunda']);
+        $task = Tarefa::factory()->for($user)->onDate('2026-11-10')->create(['title' => 'Ler a Bíblia']);
+
+        $response = $this->actingAs($user)->get('/tarefas?view=week&date=2026-11-10');
+
+        $response->assertSee('Ler a Bíblia');
+        $days = $response->viewData('weekDays');
+        $this->assertSame('2026-11-09', $days[0]['date']->toDateString());
+        $this->assertSame('2026-11-15', $days[6]['date']->toDateString());
+        $this->assertSame([$task->id], $days[1]['allDay']->pluck('id')->all());
+    }
+
     public function test_week_view_has_seven_days_hourly_agenda_and_all_day_tasks(): void
     {
         $user = User::factory()->create();
@@ -23,8 +38,7 @@ class TarefaWeekTest extends TestCase
         $response->assertSee('Reunião da equipe')->assertSee('Compromisso do domingo')->assertSee('Dia todo')
             ->assertSee('07:00')->assertSee('23:00')->assertSee('Semana anterior')->assertSee('Próxima semana')->assertDontSee('Fora desta semana');
         $response->assertViewHas('weekDays', fn (array $days): bool => count($days) === 7 && $days[0]['date']->toDateString() === '2026-11-09' && $days[6]['date']->toDateString() === '2026-11-15');
-        $this->assertSame(1, substr_count($response->getContent(), 'id="tarefas-day"'));
-        $response->assertViewHas('dayTasks', fn ($tasks): bool => $tasks->pluck('title')->all() === ['Reunião da equipe']);
+        $this->assertSame(0, substr_count($response->getContent(), 'id="tarefas-day"'));
     }
 
     public function test_overlapping_appointments_are_assigned_separate_lanes(): void
