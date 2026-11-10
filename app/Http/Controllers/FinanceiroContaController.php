@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class FinanceiroContaController extends Controller
@@ -57,9 +58,24 @@ class FinanceiroContaController extends Controller
             'destination_id' => ['required', 'integer', 'different:source_id', Rule::exists('contas_financeiras', 'id')->where('user_id', Carteira::ownerId())],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:999999999999.99'],
             'date' => ['required', 'date', 'before_or_equal:today'], 'notes' => ['nullable', 'string', 'max:255'],
+        ], [
+            'source_id.required' => 'Escolha a conta de origem.',
+            'source_id.exists' => 'Escolha uma conta de origem válida.',
+            'destination_id.required' => 'Escolha a conta de destino.',
+            'destination_id.exists' => 'Escolha uma conta de destino válida.',
+            'destination_id.different' => 'Escolha uma conta de destino diferente da origem.',
+            'amount.required' => 'Informe o valor da transferência.',
+            'amount.numeric' => 'Informe um valor válido.',
+            'amount.min' => 'O valor da transferência deve ser maior que zero.',
+            'amount.max' => 'O valor da transferência ultrapassa o limite permitido.',
+            'date.required' => 'Informe a data da transferência.',
+            'date.date' => 'Informe uma data válida.',
+            'date.before_or_equal' => 'A data da transferência não pode estar no futuro.',
         ]);
         $accounts = ContaFinanceira::whereIn('id', [$data['source_id'], $data['destination_id']])->get();
-        abort_if($accounts->contains(fn (ContaFinanceira $account): bool => $account->opening_date->gt($data['date'])), 422, 'A transferência deve ocorrer após o saldo inicial das contas.');
+        if ($accounts->contains(fn (ContaFinanceira $account): bool => $account->opening_date->gt($data['date']))) {
+            throw ValidationException::withMessages(['date' => 'Escolha uma data igual ou posterior ao saldo inicial das duas contas.']);
+        }
         DB::transaction(function () use ($data): void {
             TransferenciaFinanceira::create($data);
             FinanceiroActivity::record('Registrou uma transferência entre contas, sem receita ou despesa.');

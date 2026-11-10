@@ -1,6 +1,6 @@
 import { setupCursos } from './cursos';
 import { setupFiltros } from './filtros';
-import { setupInvestimentos, setupLancamentos } from './financeiro';
+import { setupContas, setupInvestimentos, setupLancamentos } from './financeiro';
 import { setupMoneyInputs } from './money';
 import { setupApelidoSearch } from './participantes';
 import { setupProjetos } from './projetos';
@@ -50,6 +50,7 @@ function init() {
     setupProjetos();
     setupCursos();
     setupTarefas();
+    setupContas();
     setupLancamentos();
     setupInvestimentos();
     setupFiltros();

@@ -320,3 +320,24 @@ function setupInvestimentoEditModal() {
         }
     });
 }
+
+export function setupContas() {
+    document.querySelectorAll('[data-account-transfer]').forEach((form) => {
+        const source = form.elements.namedItem('source_id');
+        const destination = form.elements.namedItem('destination_id');
+        const sync = () => {
+            [...destination.options].forEach((option) => {
+                option.disabled = Boolean(option.value && option.value === source.value);
+            });
+            if (source.value && destination.value === source.value) {
+                destination.value = '';
+            }
+        };
+        source.addEventListener('change', sync);
+        form.addEventListener('submit', (event) => {
+            sync();
+            if (!form.reportValidity()) event.preventDefault();
+        });
+        sync();
+    });
+}

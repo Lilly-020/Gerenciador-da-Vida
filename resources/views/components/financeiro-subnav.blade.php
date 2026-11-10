@@ -45,7 +45,7 @@
     </form>
 @endif
 
-<nav class="mb-8 flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-slate-900/70 p-1.5 shadow-xl shadow-black/30 backdrop-blur scrollbar-none">
+<nav class="mb-8 flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-slate-900/70 p-1.5 shadow-xl shadow-black/30 backdrop-blur scrollbar-none">
     @foreach ($items as $item)
         @php $isActive = $active === $item['route']; @endphp
         <a
