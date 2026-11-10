@@ -1,3 +1,4 @@
+import { setupSelects, setupDashboardPeriod } from './selects';
 import { setupCursos } from './cursos';
 import { setupFiltros } from './filtros';
 import { setupContas, setupInvestimentos, setupLancamentos } from './financeiro';
@@ -54,6 +55,8 @@ function init() {
     setupLancamentos();
     setupInvestimentos();
     setupFiltros();
+    setupSelects();
+    setupDashboardPeriod();
 }
 
 if (document.readyState === 'loading') {

@@ -71,7 +71,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/contas', [FinanceiroContaController::class, 'index'])->name('contas')->middleware('carteira:lancamentos');
         Route::post('/contas', [FinanceiroContaController::class, 'store'])->name('contas.store')->middleware('carteira:lancamentos');
         Route::put('/contas/{conta}', [FinanceiroContaController::class, 'update'])->name('contas.update')->middleware('carteira:lancamentos');
+        Route::delete('/contas/{conta}', [FinanceiroContaController::class, 'destroy'])->name('contas.destroy')->middleware('carteira:lancamentos');
+        Route::get('/contas/{conta}/exclusao', [FinanceiroContaController::class, 'deletionImpact'])->name('contas.deletion-impact')->middleware('carteira:lancamentos');
         Route::post('/transferencias', [FinanceiroContaController::class, 'transfer'])->name('transferencias.store')->middleware('carteira:lancamentos');
+        Route::get('/categorias', [FinanceiroContaController::class, 'categories'])->name('categorias.index')->middleware('carteira:lancamentos');
+        Route::delete('/categorias', [FinanceiroContaController::class, 'destroyCategory'])->name('categorias.destroy')->middleware('carteira:lancamentos');
         Route::post('/categorias', [FinanceiroContaController::class, 'category'])->name('categorias.store')->middleware('carteira:lancamentos');
         Route::put('/categorias/{categoria}', [FinanceiroContaController::class, 'updateCategory'])->name('categorias.update')->middleware('carteira:lancamentos');
         Route::get('/participantes', [CarteiraController::class, 'participantes'])->name('participantes');

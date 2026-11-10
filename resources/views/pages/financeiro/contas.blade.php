@@ -32,6 +32,7 @@
                         <p class="mt-1 text-2xl font-semibold text-white">@money($account->balanceAsOf())</p>
                         @if ($canManage)
                             <p class="mt-3 border-t border-white/5 pt-3 text-xs text-slate-500">Começou com @money($account->opening_balance) em {{ $account->opening_date->format('d/m/Y') }}.</p>
+                            <button type="button" data-account-impact-url="{{ route('financeiro.contas.deletion-impact', $account, absolute: false) }}" data-account-delete-url="{{ route('financeiro.contas.destroy', $account, absolute: false) }}" class="mt-3 rounded-lg px-3 py-2 text-xs text-rose-300 transition hover:bg-rose-400/10 focus-visible:outline-2 focus-visible:outline-rose-300">Excluir conta</button>
                             <details class="mt-3 text-xs"><summary class="cursor-pointer text-indigo-300">Renomear conta</summary>
                                 <form method="POST" action="{{ route('financeiro.contas.update', $account, absolute: false) }}" class="mt-3 flex flex-wrap items-center gap-2">@csrf @method('PUT')<input name="name" required maxlength="255" value="{{ $account->name }}" aria-label="Nome da conta" class="{{ $inputClass }} flex-1"><button class="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-indigo-200">Salvar nome</button></form>
                             </details>
@@ -84,7 +85,7 @@
                     </form>
                 @endif
                 @if ($transfers->isNotEmpty())
-                    <details class="mt-5 border-t border-white/10 pt-4"><summary class="cursor-pointer text-xs text-indigo-300">Transferências recentes ({{ $transfers->count() }})</summary><ul class="mt-3 grid gap-3 text-xs text-slate-400">@foreach ($transfers as $transfer)<li class="flex flex-wrap justify-between gap-2"><span>{{ $transfer->date->format('d/m/Y') }} · {{ $accounts->firstWhere('id', $transfer->source_id)?->name }} → {{ $accounts->firstWhere('id', $transfer->destination_id)?->name }}</span><strong class="text-slate-200">@money($transfer->amount)</strong></li>@endforeach</ul></details>
+                    <details class="mt-5 border-t border-white/10 pt-4"><summary class="cursor-pointer text-xs text-indigo-300">Transferências recentes ({{ $transfers->count() }})</summary><ul class="mt-3 grid gap-3 text-xs text-slate-400">@foreach ($transfers as $transfer)<li class="flex flex-wrap justify-between gap-2"><span>{{ $transfer->date->format('d/m/Y') }} · {{ $transfer->source?->name }} → {{ $transfer->destination?->name }}</span><strong class="text-slate-200">@money($transfer->amount)</strong></li>@endforeach</ul></details>
                 @endif
             </section>
         @endif

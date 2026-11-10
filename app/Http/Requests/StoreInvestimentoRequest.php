@@ -27,7 +27,7 @@ class StoreInvestimentoRequest extends FormRequest
         return [
             'initial_amount' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'initial_date' => ['nullable', 'date', 'before_or_equal:today'],
-            'account_id' => ['nullable', 'integer', Rule::exists('contas_financeiras', 'id')->where('user_id', Carteira::ownerId())],
+            'account_id' => ['nullable', 'integer', Rule::exists('contas_financeiras', 'id')->whereNull('deleted_at')->where('user_id', Carteira::ownerId())],
             'rate_mode' => ['sometimes', 'required', 'in:fixed,cdi,ipca'],
             'reference_rate' => ['nullable', 'required_if:rate_mode,cdi,ipca', 'numeric', 'between:0,100'],
             'ir_rate' => ['sometimes', 'required', 'numeric', 'between:0,100'],

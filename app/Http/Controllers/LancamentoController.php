@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class LancamentoController extends Controller
@@ -154,6 +155,10 @@ class LancamentoController extends Controller
         $this->ensureSectionShared($data['type']);
 
         DB::transaction(function () use ($request, $data): void {
+            User::whereKey(Carteira::ownerId())->lockForUpdate()->firstOrFail();
+            if (CategoriaFinanceira::where('type', $data['type'])->where('name', $data['category'])->where('is_deleted', true)->exists()) {
+                throw ValidationException::withMessages(['category' => 'Esta categoria foi excluída. Selecione ou crie outra categoria.']);
+            }
             $count = $request->integer('installments', 1);
             $cents = (int) round((float) $data['amount'] * 100);
             $group = $count > 1 ? (string) Str::uuid() : null;
@@ -211,12 +216,23 @@ class LancamentoController extends Controller
     {
         $this->ensureSectionShared($lancamento->type);
 
-        $lancamento->update(Arr::except($request->validated(), 'partes'));
-        FinanceiroActivity::record('Atualizou o lançamento “'.$lancamento->description.'”.');
+        DB::transaction(function () use ($request, $lancamento): void {
+            User::whereKey(Carteira::ownerId())->lockForUpdate()->firstOrFail();
+            if ($request->has('category') && CategoriaFinanceira::where('type', $lancamento->type)->where('name', $request->input('category'))->where('is_deleted', true)->exists()) {
+                throw ValidationException::withMessages(['category' => 'Esta categoria foi excluída. Selecione ou crie outra categoria.']);
+            }
+            $accountId = $request->input('account_id', $lancamento->account_id);
+            if ($accountId && ContaFinanceira::onlyTrashed()->whereKey($accountId)->exists()) {
+                throw ValidationException::withMessages(['account_id' => 'Esta conta foi excluída. Selecione uma conta ativa para alterar o lançamento.']);
+            }
+            $lancamento->update(Arr::except($request->validated(), 'partes'));
+            FinanceiroActivity::record('Atualizou o lançamento “'.$lancamento->description.'”.');
 
-        if ($request->has('partes')) {
-            $lancamento->syncPartes($request->input('partes'));
-        }
+            if ($request->has('partes')) {
+                $lancamento->syncPartes($request->input('partes'));
+            }
+
+        });
 
         return $this->respondWith($request, $lancamento->type);
     }
@@ -255,7 +271,7 @@ class LancamentoController extends Controller
 
         return view('pages.financeiro.lancamentos', [
             'type' => $type,
-            'categories' => collect(Lancamento::categoriesFor($type))->merge(CategoriaFinanceira::where('type', $type)->pluck('name'))->merge($lancamentos->pluck('category'))->unique()->values()->all(),
+            'categories' => CategoriaFinanceira::namesFor($type),
             'accounts' => ContaFinanceira::all(),
             'lancamentos' => $lancamentos,
             ...$this->totals($request, $type, $lancamentos),

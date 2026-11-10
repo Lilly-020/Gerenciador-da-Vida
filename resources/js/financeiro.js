@@ -1,5 +1,6 @@
 import { htmlToElement, postJson, setupCreateModal, setupRowEditModal, toCamelCase } from './board';
-import { alertDialog, confirmDialog } from './dialog';
+import { alertDialog, confirmDialog, choiceDialog } from './dialog';
+import { toast } from './selects';
 
 /**
  * Entradas / Saídas page: create via modal, toggle previsto↔realizado,
@@ -322,6 +323,35 @@ function setupInvestimentoEditModal() {
 }
 
 export function setupContas() {
+    document.querySelectorAll('[data-account-delete-url]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const mode = await choiceDialog('Como deseja excluir esta conta?', [
+                { label: 'Excluir conta zerada e manter histórico', value: 'normal' },
+                { label: 'Cadastrei por engano: apagar conta e movimentações', value: 'mistake', danger: true },
+            ]);
+            if (!mode) return;
+            button.disabled = true;
+            try {
+                let payload;
+                if (mode === 'mistake') {
+                    const response = await fetch(button.dataset.accountImpactUrl, { headers: { Accept: 'application/json' } });
+                    const impact = await response.json();
+                    if (!response.ok) throw new Error(impact.message || 'Não foi possível consultar as movimentações.');
+                    const warning = `Você declara que esta conta e seus valores foram cadastrados por engano. Serão excluídos definitivamente ${impact.entries} lançamento(s) de entrada e saída, ${impact.transfers} transferência(s), ${impact.investments} aporte(s)/resgate(s) e ${impact.attachments} anexo(s). Qualquer movimentação feita dentro desta conta será deletada junto. Transferências removidas alterarão o saldo das outras contas envolvidas; divisões com participantes e valores de investimentos também serão recalculados. Isso não pode ser desfeito. Deseja apagar a conta e todas essas movimentações?`;
+                    if (!await confirmDialog(warning, { confirmLabel: 'Apagar tudo definitivamente', danger: true })) return;
+                    payload = { delete_movements: true, confirm_mistake: true, impact_token: impact.token };
+                } else if (!await confirmDialog('Excluir esta conta? O histórico será preservado. A exclusão só é permitida com saldo zerado.', { confirmLabel: 'Excluir conta', danger: true })) {
+                    return;
+                }
+                await postJson(button.dataset.accountDeleteUrl, 'DELETE', payload);
+                window.location.reload();
+            } catch (error) {
+                toast(error.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
     document.querySelectorAll('[data-account-transfer]').forEach((form) => {
         const source = form.elements.namedItem('source_id');
         const destination = form.elements.namedItem('destination_id');

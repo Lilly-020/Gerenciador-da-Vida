@@ -36,6 +36,18 @@ class TransferenciaFinanceira extends Model
         return ['amount' => 'decimal:2', 'date' => 'date'];
     }
 
+    /** @return BelongsTo<ContaFinanceira, $this> */
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(ContaFinanceira::class, 'source_id')->withTrashed();
+    }
+
+    /** @return BelongsTo<ContaFinanceira, $this> */
+    public function destination(): BelongsTo
+    {
+        return $this->belongsTo(ContaFinanceira::class, 'destination_id')->withTrashed();
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

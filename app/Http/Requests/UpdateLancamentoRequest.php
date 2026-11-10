@@ -38,7 +38,7 @@ class UpdateLancamentoRequest extends FormRequest
         return [
             'recurrence_active' => ['sometimes', 'boolean'],
             'status' => ['sometimes', 'required', Rule::in([Lancamento::STATUS_PREVISTO, Lancamento::STATUS_REALIZADO, Lancamento::STATUS_CANCELADO])],
-            'account_id' => ['nullable', 'integer', Rule::exists('contas_financeiras', 'id')->where('user_id', Carteira::ownerId())],
+            'account_id' => ['nullable', 'integer', Rule::exists('contas_financeiras', 'id')->whereNull('deleted_at')->where('user_id', Carteira::ownerId())],
             'expense_kind' => ['sometimes', 'required', 'in:fixo,variavel'],
             'category' => ['sometimes', 'required', 'string', 'max:255'],
             'subcategory' => ['sometimes', 'nullable', 'string', 'max:255'],

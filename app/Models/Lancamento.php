@@ -111,7 +111,7 @@ class Lancamento extends Model
     /** @return BelongsTo<ContaFinanceira, $this> */
     public function account(): BelongsTo
     {
-        return $this->belongsTo(ContaFinanceira::class, 'account_id');
+        return $this->belongsTo(ContaFinanceira::class, 'account_id')->withTrashed();
     }
 
     /** @return HasMany<LancamentoFile, $this> */

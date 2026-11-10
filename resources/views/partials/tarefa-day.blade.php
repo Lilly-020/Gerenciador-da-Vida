@@ -22,12 +22,15 @@
             @foreach ($tasks as $task)
                 <li class="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2" data-task-row>
                     <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-sm text-slate-300">
+                        <span class="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
                         <input
                             type="checkbox"
                             data-task-toggle-url="{{ route('tarefas.update', $task, absolute: false) }}"
                             @checked($task->completed)
-                            class="h-4 w-4 shrink-0 rounded border-white/20 bg-slate-950/60 text-indigo-500 focus:ring-indigo-400/40"
+                            class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-600 bg-slate-950 checked:border-indigo-400 checked:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 disabled:opacity-60"
                         >
+                        <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" class="pointer-events-none absolute h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100"><path d="m4 10 4 4 8-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                        </span>
                         <span class="wrap-break-word {{ $task->completed ? 'text-slate-500 line-through' : '' }}" data-task-title>
                             {{ $task->title }}
                         </span>
@@ -59,6 +62,15 @@
                         </svg>
                     </button>
                 </li>
+                <li class="px-1">
+                    @if ($task->start_time)<p class="mb-1 text-[10px] text-slate-500">{{ substr($task->start_time, 0, 5) }}{{ $task->end_time ? ' — '.substr($task->end_time, 0, 5) : '' }}</p>@endif
+                    <details class="text-xs" data-task-schedule><summary class="cursor-pointer text-slate-500 hover:text-indigo-300">Editar tipo e horário</summary>
+                        <form data-task-schedule-form action="{{ route('tarefas.update', $task, absolute: false) }}" method="POST" class="mt-3 rounded-lg border border-white/10 p-3">@csrf @method('PATCH')
+                            @include('partials.tarefa-schedule-fields', ['task' => $task])
+                            <button type="submit" class="mt-3 rounded-lg bg-indigo-500 px-3 py-2 text-xs text-white">Salvar horário</button>
+                        </form>
+                    </details>
+                </li>
             @endforeach
         </ul>
     @endif
@@ -79,6 +91,8 @@
                 Adicionar
             </button>
         </div>
+
+        <details data-new-task-schedule class="mt-3 rounded-lg border border-white/10 p-3"><summary class="cursor-pointer text-xs text-indigo-300">Tipo e horário (opcional)</summary><div class="mt-3">@include('partials.tarefa-schedule-fields', ['task' => null])</div></details>
 
         <details class="group mt-2" data-repeat>
             <summary class="cursor-pointer list-none text-xs text-slate-400 transition hover:text-indigo-300 [&::-webkit-details-marker]:hidden">

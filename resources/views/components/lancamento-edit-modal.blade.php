@@ -65,6 +65,7 @@
                         <label for="edit-lancamento-category" class="mb-1.5 block text-sm font-medium text-slate-300">Categoria</label>
                         <select
                             id="edit-lancamento-category"
+                            data-category-picker data-category-type="{{ $type }}" data-category-url="{{ route('financeiro.categorias.index', absolute: false) }}"
                             name="category"
                             required
                             class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"

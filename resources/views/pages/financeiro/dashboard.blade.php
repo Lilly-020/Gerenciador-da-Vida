@@ -18,60 +18,17 @@
     <div class="w-full min-w-0 max-w-6xl">
         <x-financeiro-subnav active="financeiro" />
 
-        @if (\App\Support\Carteira::canSee('entradas') || \App\Support\Carteira::canSee('saidas'))
-            <a href="{{ route('financeiro.relatorio', ['tipo' => 'geral', 'mes' => $periodStart->format('Y-m')], absolute: false) }}" class="mb-4 inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-indigo-300 transition hover:text-white">Relatório geral de entradas e saídas</a>
-        @endif
-
-        <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-white sm:text-3xl">Financeiro</h1>
-                <p class="mt-1 text-sm text-slate-400">Visão geral — {{ $periods[$period] }}.</p>
-            </div>
-
-            <form method="GET" action="{{ route('financeiro', absolute: false) }}" class="flex flex-wrap items-end gap-2">
-                <div>
-                    <label for="period" class="sr-only">Período</label>
-                    <select
-                        id="period"
-                        name="period"
-                        onchange="this.form.submit()"
-                        class="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-                    >
-                        @foreach ($periods as $key => $label)
-                            <option value="{{ $key }}" @selected($period === $key)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                @if ($period === 'personalizado')
-                    <div>
-                        <label for="start" class="sr-only">De</label>
-                        <input
-                            id="start"
-                            type="date"
-                            name="start"
-                            value="{{ $periodStart->toDateString() }}"
-                            class="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20 scheme-dark"
-                        >
-                    </div>
-                    <div>
-                        <label for="end" class="sr-only">Até</label>
-                        <input
-                            id="end"
-                            type="date"
-                            name="end"
-                            value="{{ $periodEnd->toDateString() }}"
-                            class="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20 scheme-dark"
-                        >
-                    </div>
-                    <button type="submit" class="rounded-lg bg-indigo-500/90 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500">
-                        Aplicar
-                    </button>
-                @endif
-            </form>
+        <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div><p class="mb-1 text-xs font-semibold tracking-widest text-indigo-300 uppercase">Sua visão financeira</p><h1 class="text-2xl font-semibold text-white sm:text-3xl">Financeiro</h1><p class="mt-2 text-sm text-slate-400">{{ $periodStart->format('d/m/Y') }} a {{ $periodEnd->format('d/m/Y') }}</p></div>
+            @if (\App\Support\Carteira::canSee('entradas') || \App\Support\Carteira::canSee('saidas'))<a href="{{ route('financeiro.relatorio', ['tipo' => 'geral', 'mes' => $periodStart->format('Y-m')], absolute: false) }}" class="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5">Relatório geral de entradas e saídas ↗</a>@endif
         </div>
-
-        @include('partials.financeiro.planning-overview')
+        <form data-dashboard-period method="GET" action="{{ route('financeiro', absolute: false) }}" class="mb-6 grid items-end gap-3 rounded-xl border border-white/10 bg-slate-900/40 p-4 sm:grid-cols-[1.2fr_1fr_1fr_auto]">
+            <label class="grid min-w-0 gap-1.5 text-xs text-slate-400">Período<select name="period" id="period">@foreach ($periods as $key => $label)<option value="{{ $key }}" @selected($period === $key)>{{ $label }}</option>@endforeach</select></label>
+            <label class="grid min-w-0 gap-1.5 text-xs text-slate-400">Data de início<input name="start" type="date" value="{{ $periodStart->toDateString() }}" required></label>
+            <label class="grid min-w-0 gap-1.5 text-xs text-slate-400">Data de fim<input name="end" type="date" value="{{ $periodEnd->toDateString() }}" required></label>
+            <button type="submit" class="rounded-lg bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-400">Aplicar filtros</button>
+        </form>
+        @include('partials.financeiro.planning-overview', ['summaryOnly' => true])
 
         <h2 class="mb-3 text-sm font-medium text-slate-300">Movimentos do período</h2>
         <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -82,6 +39,8 @@
                 </div>
             @endforeach
         </div>
+
+        @include('partials.financeiro.planning-overview', ['chartsOnly' => true])
 
         @if ($participantes->isNotEmpty())
             <div class="mb-4 rounded-xl border border-white/10 bg-gradient-to-b from-slate-900/70 to-slate-900/40 p-4">

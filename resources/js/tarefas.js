@@ -31,11 +31,49 @@ function dotClassFor(summary) {
  */
 export function setupTarefas() {
     const page = document.getElementById('tarefas-page');
-    const calendar = document.getElementById('tarefas-calendar');
+    const calendar = page;
 
     if (!page || !calendar) {
         return;
     }
+
+    const hiddenKinds = new Set();
+    const filterWeek = () => {
+        page.querySelectorAll('[data-week-kind-filter]').forEach((button) => button.setAttribute('aria-pressed', String(!hiddenKinds.has(button.dataset.weekKindFilter))));
+        page.querySelectorAll('[data-week-kind]').forEach((item) => { item.hidden = hiddenKinds.has(item.dataset.weekKind); });
+    };
+    const syncWeekNow = () => {
+        const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+        }).formatToParts(new Date()).map(({ type, value }) => [type, value]));
+        const date = `${parts.year}-${parts.month}-${parts.day}`;
+        const minute = Number(parts.hour) * 60 + Number(parts.minute);
+        page.querySelectorAll('[data-week-date]').forEach((column) => {
+            const line = column.querySelector('[data-week-now]');
+            if (line) { line.hidden = column.dataset.weekDate !== date; line.style.top = `${minute}px`; }
+        });
+        return { date, minute };
+    };
+    const prepareWeek = (scroll = null) => {
+        filterWeek();
+        const now = syncWeekNow();
+        const scroller = page.querySelector('[data-week-scroll]');
+        if (!scroller) return;
+        if (scroll) { scroller.scrollTop = scroll.top; scroller.scrollLeft = scroll.left; }
+        else {
+            const currentWeek = Boolean(page.querySelector(`[data-week-date="${now.date}"]`));
+            scroller.scrollTop = currentWeek ? Math.max(0, now.minute - 120) : 420;
+        }
+    };
+    page.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-week-kind-filter]');
+        if (!button) return;
+        const kind = button.dataset.weekKindFilter;
+        if (hiddenKinds.has(kind)) hiddenKinds.delete(kind); else hiddenKinds.add(kind);
+        filterWeek();
+    });
+    setInterval(syncWeekNow, 60000);
 
     const applySelection = (dateStr) => {
         const todayStr = page.dataset.today;
@@ -56,6 +94,11 @@ export function setupTarefas() {
         });
 
         document.getElementById('jump-to-today')?.classList.toggle('hidden', dateStr === todayStr);
+        page.querySelectorAll('a[data-view-tab]').forEach((tab) => {
+            const url = new URL(tab.href);
+            url.searchParams.set('date', dateStr);
+            tab.href = url.href;
+        });
     };
 
     const updateDot = (dateStr, summary) => {
@@ -104,6 +147,15 @@ export function setupTarefas() {
 
     const applyDayUpdate = (data) => {
         document.getElementById('tarefas-day')?.replaceWith(htmlToElement(data.day));
+        if (data.calendar) document.getElementById('tarefas-month-calendar')?.replaceWith(htmlToElement(data.calendar));
+        const previousWeek = document.getElementById('tarefas-week-calendar');
+        if (data.week && previousWeek) {
+            const scroller = previousWeek.querySelector('[data-week-scroll]');
+            const scroll = scroller ? { top: scroller.scrollTop, left: scroller.scrollLeft } : null;
+            previousWeek.replaceWith(htmlToElement(data.week));
+            prepareWeek(scroll);
+        }
+        if (data.overview) document.getElementById('tarefas-overview')?.replaceWith(htmlToElement(data.overview));
         document.getElementById('tarefas-stats')?.replaceWith(htmlToElement(data.stats));
 
         if (data.charts) {
@@ -120,29 +172,49 @@ export function setupTarefas() {
         updateDot(data.date, data.summary);
     };
 
+    let selectionVersion = 0;
     calendar.addEventListener('click', async (event) => {
-        const button = event.target.closest('[data-calendar-day]');
-
-        if (!button || button.disabled) {
+        const button = event.target.closest('[data-calendar-day], [data-calendar-open], [data-week-slot]');
+        if (!button || button.disabled) return;
+        const date = button.dataset.calendarDay || button.dataset.calendarOpen || button.dataset.weekSlot;
+        const slotMinute = button.hasAttribute('data-week-slot') ? Math.min(1410, Math.max(0, Math.floor((event.clientY - button.getBoundingClientRect().top) / 30) * 30)) : null;
+        if (button.hasAttribute('data-outside-month')) {
+            window.location.assign(`?date=${date}&view=month`);
             return;
         }
-
-        const date = button.dataset.calendarDay;
-
-        if (date === page.dataset.selectedDate) {
-            return;
-        }
-
+        const focusDay = () => {
+            if (button.hasAttribute('data-calendar-open') || slotMinute !== null) {
+                document.getElementById('tarefas-day')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+                if (button.hasAttribute('data-calendar-add') || slotMinute !== null) {
+                    const form = document.querySelector('#tarefas-day [data-add-tarefa-form]');
+                    if (form && slotMinute !== null) {
+                        const formatTime = (minute) => `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+                        form.elements.namedItem('start_time').value = formatTime(slotMinute);
+                        form.elements.namedItem('end_time').value = formatTime(Math.min(1439, slotMinute + 60));
+                        form.querySelector('[data-new-task-schedule]').open = true;
+                    } else if (form && button.hasAttribute('data-week-all-day')) {
+                        form.elements.namedItem('start_time').value = '';
+                        form.elements.namedItem('end_time').value = '';
+                    }
+                    form?.querySelector('input[name="title"]')?.focus({ preventScroll: true });
+                }
+            }
+        };
+        if (date === page.dataset.selectedDate) { focusDay(); return; }
+        const version = ++selectionVersion;
         try {
             const data = await postJson(`/tarefas?date=${date}`, 'GET');
+            if (version !== selectionVersion) return;
             applyDayUpdate(data);
             applySelection(date);
             page.dataset.selectedDate = date;
-            window.history.pushState({}, '', `?date=${date}`);
+            window.history.pushState({}, '', `?date=${date}&view=${page.dataset.view || 'calendar'}`);
+            focusDay();
         } catch (error) {
             alertDialog(error.message);
         }
     });
+    window.addEventListener('popstate', () => window.location.reload());
 
     page.addEventListener('change', async (event) => {
         const checkbox = event.target.closest('[data-task-toggle-url]');
@@ -167,6 +239,7 @@ export function setupTarefas() {
         const viewTab = event.target.closest('[data-view-tab]');
 
         if (viewTab) {
+            if (viewTab.tagName === 'A') return;
             selectView(viewTab.dataset.viewTab);
 
             return;
@@ -233,6 +306,21 @@ export function setupTarefas() {
     setupInlineTaskEdit(page, applyDayUpdate);
 
     setupTarefaBusca(page);
+    selectView(page.dataset.view || 'calendar');
+    prepareWeek();
+
+    page.addEventListener('submit', async (event) => {
+        const form = event.target.closest('[data-task-schedule-form]');
+        if (!form) return;
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+            applyDayUpdate(await postJson(form.action, 'PATCH', Object.fromEntries(new FormData(form))));
+        } catch (error) { alertDialog(error.message); }
+        finally { button.disabled = false; }
+    });
 
     page.addEventListener('submit', async (event) => {
         const form = event.target.closest('[data-add-tarefa-form]');
@@ -256,7 +344,7 @@ export function setupTarefas() {
         try {
             const formData = new FormData(form);
             const repeats = form.querySelector('[data-repeat]')?.open;
-            const payload = { title, date: formData.get('date') };
+            const payload = { title, date: formData.get('date'), kind: formData.get('kind'), start_time: formData.get('start_time'), end_time: formData.get('end_time') };
 
             if (repeats) {
                 payload.weekdays = formData.getAll('weekdays[]');

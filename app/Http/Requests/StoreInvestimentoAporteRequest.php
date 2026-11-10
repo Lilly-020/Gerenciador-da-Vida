@@ -25,7 +25,7 @@ class StoreInvestimentoAporteRequest extends FormRequest
     {
         return [
             'kind' => ['sometimes', 'required', 'in:aporte,resgate'],
-            'account_id' => ['nullable', 'integer', Rule::exists('contas_financeiras', 'id')->where('user_id', Carteira::ownerId())],
+            'account_id' => ['nullable', 'integer', Rule::exists('contas_financeiras', 'id')->whereNull('deleted_at')->where('user_id', Carteira::ownerId())],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:999999999999.99'],
             'date' => ['required', 'date', 'before_or_equal:today'],
             'rate_override' => ['nullable', 'numeric', 'min:0', 'max:1000'],

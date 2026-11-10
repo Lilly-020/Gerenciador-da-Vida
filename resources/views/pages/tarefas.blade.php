@@ -5,9 +5,10 @@
 <x-layout title="Tarefas" align="start">
     <div
         id="tarefas-page"
+        data-view="{{ $view }}"
         data-selected-date="{{ $selected->toDateString() }}"
         data-today="{{ \Carbon\Carbon::today()->toDateString() }}"
-        class="w-full max-w-5xl"
+        class="w-full min-w-0 max-w-6xl"
     >
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -15,29 +16,16 @@
                 <p class="mt-1 text-sm text-slate-400">Suas tarefas do dia, e como está o seu progresso.</p>
             </div>
 
-            <div class="flex items-center gap-2">
-                <div class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-slate-900/70 p-1 shadow-xl shadow-black/30 backdrop-blur">
-                    <button
-                        type="button"
-                        data-view-tab="calendar"
-                        aria-selected="true"
-                        class="rounded-full px-4 py-2 text-sm font-semibold transition bg-indigo-500/25 text-indigo-100"
-                    >
-                        Calendário
-                    </button>
-                    <button
-                        type="button"
-                        data-view-tab="dashboard"
-                        aria-selected="false"
-                        class="rounded-full px-4 py-2 text-sm font-semibold transition text-slate-300 hover:text-white"
-                    >
-                        Dashboard
-                    </button>
+            <div class="flex max-w-full flex-wrap items-center gap-2">
+                <div class="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-slate-900/70 p-1 shadow-xl shadow-black/30 backdrop-blur">
+                    @foreach (['calendar' => 'Minimalista', 'week' => 'Semana', 'month' => 'Calendário amplo', 'dashboard' => 'Dashboard'] as $key => $label)
+                        <a href="{{ route('tarefas', ['date' => $selected->toDateString(), 'view' => $key], absolute: false) }}" data-view-tab="{{ $key }}" aria-current="{{ $view === $key ? 'page' : 'false' }}" aria-selected="{{ $view === $key ? 'true' : 'false' }}" class="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm {{ $view === $key ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:text-white' }}">{{ $label }}</a>
+                    @endforeach
                 </div>
 
                 <a
                     id="jump-to-today"
-                    href="{{ route('tarefas', absolute: false) }}"
+                    href="{{ route('tarefas', ['view' => $view], absolute: false) }}"
                     class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-300 transition hover:text-white {{ $selected->isToday() ? 'hidden' : '' }}"
                 >
                     Hoje
@@ -77,7 +65,7 @@
             <div data-tarefa-busca-resultados class="mt-3 empty:hidden"></div>
         </div>
 
-        <div data-view-panel="calendar">
+        <div data-view-panel="calendar" @class(['hidden' => $view !== 'calendar'])>
             <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-5">
                 <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-lg shadow-black/20 sm:p-5 lg:col-span-3">
                     <div class="mb-4 flex items-center justify-between">
@@ -86,7 +74,7 @@
                         </h2>
                         <div class="flex items-center gap-1">
                             <a
-                                href="{{ route('tarefas', ['date' => $month->copy()->subMonth()->startOfMonth()->toDateString()], absolute: false) }}"
+                                href="{{ route('tarefas', ['date' => $month->copy()->subMonth()->startOfMonth()->toDateString(), 'view' => 'calendar'], absolute: false) }}"
                                 class="rounded-full p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white"
                                 aria-label="Mês anterior"
                             >
@@ -95,7 +83,7 @@
                                 </svg>
                             </a>
                             <a
-                                href="{{ route('tarefas', ['date' => $month->copy()->addMonth()->startOfMonth()->toDateString()], absolute: false) }}"
+                                href="{{ route('tarefas', ['date' => $month->copy()->addMonth()->startOfMonth()->toDateString(), 'view' => 'calendar'], absolute: false) }}"
                                 class="rounded-full p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white"
                                 aria-label="Próximo mês"
                             >
@@ -133,7 +121,7 @@
                                     @else
                                         disabled
                                     @endif
-                                    class="relative flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg text-sm transition
+                                    class="relative flex min-h-10 aspect-[1.4] flex-col items-center justify-center gap-0.5 rounded-lg text-sm transition
                                         {{ ! $day['inMonth']
                                             ? 'cursor-default text-slate-700'
                                             : ($isSelected
@@ -151,12 +139,29 @@
                 </div>
 
                 <div class="lg:col-span-2">
-                    @include('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])
+                    @if (! in_array($view, ['month', 'week'], true))
+                        @include('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])
+                    @endif
                 </div>
             </div>
         </div>
 
-        <div data-view-panel="dashboard" class="hidden">
+        <div data-view-panel="week" @class(['hidden' => $view !== 'week'])>
+            @if ($view === 'week')
+                @include('partials.tarefa-week')
+                <div class="mt-4">@include('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])</div>
+            @endif
+        </div>
+        <div data-view-panel="month" @class(['hidden' => $view !== 'month'])>
+            @if ($view === 'month')
+                @include('partials.tarefa-month')
+                <div class="mt-4">@include('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])</div>
+            @endif
+        </div>
+        <div data-view-panel="dashboard" @class(['hidden' => $view !== 'dashboard'])>
+            @if ($view === 'dashboard')
+                @include('partials.tarefa-overview', $overview)
+            @endif
             <div class="mb-8">
                 @include('partials.tarefa-stats', ['stats' => $stats])
             </div>

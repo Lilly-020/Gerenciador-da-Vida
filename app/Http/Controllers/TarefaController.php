@@ -32,6 +32,7 @@ class TarefaController extends Controller
     {
         $user = $request->user();
         $selected = $this->resolveDate($request->query('date'));
+        $view = in_array($request->query('view'), ['calendar', 'month', 'week', 'dashboard'], true) ? $request->query('view') : 'calendar';
 
         $dayTasks = $user->tarefas()->whereDate('date', $selected)->orderBy('id')->get();
 
@@ -40,6 +41,9 @@ class TarefaController extends Controller
                 'day' => view('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])->render(),
                 'stats' => view('partials.tarefa-stats', ['stats' => $this->stats($user)])->render(),
                 'charts' => $this->chartsPartial($user),
+                'week' => $this->weekPartial($user, $selected),
+                'calendar' => $this->largeCalendarPartial($user, $selected),
+                'overview' => view('partials.tarefa-overview', $this->overview($user))->render(),
                 'date' => $selected->toDateString(),
                 'summary' => [
                     'completed' => $dayTasks->where('completed', true)->count(),
@@ -52,6 +56,9 @@ class TarefaController extends Controller
         $monthTasks = $this->monthTasks($user, $month);
 
         return view('pages.tarefas', [
+            'weekDays' => $view === 'week' ? $this->weekDays($user, $selected) : [],
+            'view' => $view,
+            'overview' => $view === 'dashboard' ? $this->overview($user) : [],
             'selected' => $selected,
             'month' => $month,
             'weeks' => $this->buildCalendar($month, $monthTasks),
@@ -105,7 +112,7 @@ class TarefaController extends Controller
         $weekdays = array_map(intval(...), $data['weekdays'] ?? []);
 
         if ($weekdays === []) {
-            $request->user()->tarefas()->create(Arr::only($data, ['title', 'date']));
+            $request->user()->tarefas()->create(Arr::only($data, ['title', 'date', 'start_time', 'end_time', 'kind']));
 
             return $this->respondWith($request, $date);
         }
@@ -125,6 +132,7 @@ class TarefaController extends Controller
             'title' => $data['title'],
             'date' => $day->toDateString(),
             'series_id' => $seriesId,
+            ...Arr::only($data, ['start_time', 'end_time', 'kind']),
         ]));
 
         return $this->respondWith($request, $date);
@@ -188,7 +196,7 @@ class TarefaController extends Controller
     private function monthTasks(User $user, Carbon $month): Collection
     {
         return $user->tarefas()
-            ->whereBetween('date', $this->dateRange($month->copy()->startOfMonth(), $month->copy()->endOfMonth()))
+            ->whereBetween('date', $this->dateRange($month->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY), $month->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY)))
             ->get()
             ->groupBy(fn (Tarefa $tarefa): string => $tarefa->date->toDateString());
     }
@@ -212,7 +220,7 @@ class TarefaController extends Controller
      * including the leading/trailing days needed to fill whole weeks.
      *
      * @param  Collection<string, Collection<int, Tarefa>>  $monthTasks
-     * @return array<int, array<int, array{date: Carbon, inMonth: bool, total: int, completed: int}>>
+     * @return array<int, array<int, array{date: Carbon, inMonth: bool, total: int, completed: int, tasks: Collection<int, Tarefa>}>>
      */
     private function buildCalendar(Carbon $month, Collection $monthTasks): array
     {
@@ -231,6 +239,7 @@ class TarefaController extends Controller
                 $week[] = [
                     'date' => $cursor->copy(),
                     'inMonth' => $cursor->month === $month->month,
+                    'tasks' => $dayTasks,
                     'total' => $dayTasks->count(),
                     'completed' => $dayTasks->where('completed', true)->count(),
                 ];
@@ -291,12 +300,97 @@ class TarefaController extends Controller
             'day' => view('partials.tarefa-day', ['date' => $date, 'tasks' => $dayTasks])->render(),
             'stats' => view('partials.tarefa-stats', ['stats' => $this->stats($user)])->render(),
             'charts' => $this->chartsPartial($user),
+            'week' => $this->weekPartial($user, $date),
+            'calendar' => $this->largeCalendarPartial($user, $date),
+            'overview' => view('partials.tarefa-overview', $this->overview($user))->render(),
             'date' => $date->toDateString(),
             'summary' => [
                 'completed' => $dayTasks->where('completed', true)->count(),
                 'total' => $dayTasks->count(),
             ],
         ]);
+    }
+
+    private function weekPartial(User $user, Carbon $selected): string
+    {
+        return view('partials.tarefa-week', ['selected' => $selected, 'weekDays' => $this->weekDays($user, $selected)])->render();
+    }
+
+    /** @return array<int, array{date: Carbon, allDay: Collection<int, Tarefa>, events: array<int, array{task: Tarefa, start: int, end: int, lane: int, lanes: int}>}> */
+    private function weekDays(User $user, Carbon $selected): array
+    {
+        $start = $selected->copy()->startOfWeek(Carbon::MONDAY);
+        $tasks = $user->tarefas()->whereBetween('date', $this->dateRange($start, $start->copy()->addDays(6)))
+            ->orderBy('start_time')->orderBy('id')->get()->groupBy(fn (Tarefa $task): string => $task->date->toDateString());
+        $days = [];
+        for ($index = 0; $index < 7; $index++) {
+            $date = $start->copy()->addDays($index);
+            $dayTasks = $tasks->get($date->toDateString(), collect());
+            $timed = $dayTasks->filter(fn (Tarefa $task): bool => $task->start_time !== null)->values();
+            $groups = [];
+            $group = [];
+            $groupEnd = 0;
+            foreach ($timed as $task) {
+                $parts = explode(':', $task->start_time);
+                $minutes = (int) $parts[0] * 60 + (int) $parts[1];
+                $endParts = $task->end_time ? explode(':', $task->end_time) : null;
+                $end = $endParts ? (int) $endParts[0] * 60 + (int) $endParts[1] : min(1440, $minutes + 60);
+                $end = max($end, min(1440, $minutes + 24));
+                if ($group !== [] && $minutes >= $groupEnd) {
+                    $groups[] = $group;
+                    $group = [];
+                    $groupEnd = 0;
+                }
+                $group[] = ['task' => $task, 'start' => $minutes, 'end' => $end];
+                $groupEnd = max($groupEnd, $end);
+            }
+            if ($group !== []) {
+                $groups[] = $group;
+            }
+            $events = [];
+            foreach ($groups as $overlap) {
+                $lanes = [];
+                foreach ($overlap as &$event) {
+                    $lane = 0;
+                    while (isset($lanes[$lane]) && $lanes[$lane] > $event['start']) {
+                        $lane++;
+                    }
+                    $event['lane'] = $lane;
+                    $lanes[$lane] = $event['end'];
+                }
+                unset($event);
+                foreach ($overlap as $event) {
+                    $events[] = [...$event, 'lanes' => count($lanes)];
+                }
+            }
+            $days[] = ['date' => $date, 'allDay' => $dayTasks->whereNull('start_time'), 'events' => $events];
+        }
+
+        return $days;
+    }
+
+    private function largeCalendarPartial(User $user, Carbon $selected): string
+    {
+        $month = $selected->copy()->startOfMonth();
+
+        return view('partials.tarefa-month', ['month' => $month, 'selected' => $selected,
+            'weeks' => $this->buildCalendar($month, $this->monthTasks($user, $month))])->render();
+    }
+
+    /** @return array{todayTasks: Collection<int, Tarefa>, overdue: Collection<int, Tarefa>, upcoming: Collection<int, Tarefa>, overdueCount: int, upcomingCount: int} */
+    private function overview(User $user): array
+    {
+        $today = today();
+        $overdue = $user->tarefas()->where('completed', false)->whereDate('date', '<', $today);
+        $upcoming = $user->tarefas()->where('completed', false)->whereBetween('date', $this->dateRange($today->copy()->addDay(), $today->copy()->addDays(7)));
+
+        return [
+            'todayTasks' => $user->tarefas()->whereDate('date', $today)->orderBy('completed')->orderBy('id')->get(),
+            'overdueCount' => (clone $overdue)->count(),
+            'upcomingCount' => (clone $upcoming)->count(),
+            'overdue' => $overdue->orderBy('date')->orderBy('id')->limit(6)->get(),
+            'upcoming' => $upcoming->orderBy('date')->orderBy('id')->limit(8)->get(),
+        ];
     }
 
     /**

@@ -11,11 +11,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 
-#[Fillable(['title', 'date', 'completed', 'series_id'])]
+#[Fillable(['title', 'date', 'completed', 'series_id', 'start_time', 'end_time', 'kind'])]
 class Tarefa extends Model
 {
     /** @use HasFactory<TarefaFactory> */
     use HasFactory;
+
+    public const KINDS = ['reuniao' => 'Reuniões', 'encontro' => 'Encontros', 'atividade' => 'Atividades', 'feriado' => 'Feriados', 'evento' => 'Eventos'];
+
+    protected $attributes = ['kind' => 'atividade'];
 
     private const MONTHS = [
         'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',

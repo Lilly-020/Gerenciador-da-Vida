@@ -10,6 +10,7 @@ use App\Support\Carteira;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class FinanceiroDashboardController extends Controller
@@ -29,12 +30,24 @@ class FinanceiroDashboardController extends Controller
 
     public function index(Request $request): View
     {
+        $request->validate(['start' => ['nullable', 'required_with:end', 'date_format:Y-m-d'], 'end' => ['nullable', 'required_with:start', 'date_format:Y-m-d', 'after_or_equal:start']], [
+            'start.date_format' => 'Informe uma data inicial válida.', 'end.date_format' => 'Informe uma data final válida.',
+            'end.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
+        ]);
         $user = Carteira::owner();
         $period = $request->query('period', 'mes_atual');
         if (! array_key_exists($period, self::PERIODS)) {
             $period = 'mes_atual';
         }
+        [$presetStart, $presetEnd] = $this->resolvePeriod($period, $request);
+        if ($request->filled('start') && ($request->input('start') !== $presetStart->toDateString() || $request->input('end') !== $presetEnd->toDateString())) {
+            $period = 'personalizado';
+        }
         [$start, $end] = $this->resolvePeriod($period, $request);
+        $end = $end->copy()->endOfDay();
+        if ($start->gt($end)) {
+            throw ValidationException::withMessages(['end' => 'A data final deve ser igual ou posterior à data inicial.']);
+        }
 
         $lancamentos = $user->lancamentos()
             ->with('partes')
@@ -88,7 +101,7 @@ class FinanceiroDashboardController extends Controller
             'rendimento_ano' => $investimentos->sum(fn (Investimento $i): float => $i->rendimentoEntre($today->copy()->startOfYear(), $today)),
         ];
 
-        $accounts = ContaFinanceira::with('user')->get();
+        $accounts = ContaFinanceira::withTrashed()->with('user')->get();
         $asOf = $end->copy()->min(today()->endOfDay());
         $available = $cards['saldo'];
         if ($viewer->is($user)) {

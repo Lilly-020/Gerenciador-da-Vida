@@ -35,7 +35,7 @@ class StoreLancamentoRequest extends FormRequest
             'recurrence_count' => ['nullable', 'integer', 'between:1,1000'],
             'recurrence_status' => ['sometimes', 'required', 'in:previsto,realizado'],
             'type' => ['required', Rule::in([Lancamento::TYPE_ENTRADA, Lancamento::TYPE_SAIDA])],
-            'account_id' => ['nullable', 'integer', Rule::exists('contas_financeiras', 'id')->where('user_id', Carteira::ownerId())],
+            'account_id' => ['nullable', 'integer', Rule::exists('contas_financeiras', 'id')->whereNull('deleted_at')->where('user_id', Carteira::ownerId())],
             'expense_kind' => ['sometimes', 'required', 'in:fixo,variavel'],
             'category' => ['required', 'string', 'max:255'],
             'subcategory' => ['nullable', 'string', 'max:255'],
