@@ -3,7 +3,7 @@
     <a href="{{ route($kind, absolute: false) }}" class="text-xs font-semibold text-indigo-300 hover:text-indigo-100">Ver todos <span aria-hidden="true">↗</span></a>
 </div>
 <div class="mt-2 divide-y divide-white/5">
-    @forelse ($items->take(4) as $item)
+    @forelse ($items as $item)
         @php
             $meta = $item->statusMeta();
             $deadline = $kind === 'sonhos' ? $item->target_date : $item->due_at;

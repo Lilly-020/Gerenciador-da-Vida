@@ -38,8 +38,8 @@
         <div data-dashboard-grid class="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-2">
             @foreach ($preferences['widgets'] as $widget)
                 @php($id = $widget['id'])
-                <section data-dashboard-widget="{{ $id }}" data-width="{{ $widget['width'] }}" @if (! $widget['visible']) hidden @endif @class(['dashboard-widget min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/55 shadow-lg shadow-black/10', 'xl:col-span-2' => $widget['width'] === 'wide']) aria-labelledby="dashboard-heading-{{ $id }}">
-                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 px-4 py-4 sm:px-5">
+                <section data-dashboard-widget="{{ $id }}" data-width="{{ $widget['width'] }}" @if (! $widget['visible']) hidden @endif @class(['dashboard-widget flex h-[30rem] min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/55 shadow-lg shadow-black/10', 'xl:col-span-2' => $widget['width'] === 'wide']) aria-labelledby="dashboard-heading-{{ $id }}">
+                    <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/5 px-4 py-4 sm:px-5">
                         <div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-400/15 bg-indigo-500/10 text-indigo-300"><x-dashboard-icon :name="$id" /></span><div><h2 id="dashboard-heading-{{ $id }}" class="text-sm font-semibold text-white">{{ $widgetLabels[$id] }}</h2><p @if ($id === 'tarefas') data-dashboard-task-view-label @endif class="mt-0.5 text-[10px] text-slate-500">{{ ['tarefas' => $taskViews[$taskData['view']], 'financeiro' => 'Seu mês em números', 'sonhos' => 'Pequenos passos, grandes conquistas', 'projetos' => 'Ideias que viram realidade', 'cursos' => 'Aprender também é avançar'][$id] }}</p></div></div>
                         <div class="flex items-center gap-1">
                             @if ($id === 'tarefas')<button type="button" data-dashboard-new-task class="mr-2 rounded-lg border border-indigo-400/25 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/20">+ Nova tarefa</button>@endif
@@ -57,7 +57,7 @@
                             </div>
                         </div>
                     </div>
-                    <div data-dashboard-content="{{ $id }}" class="p-4 sm:p-5">
+                    <div data-dashboard-content="{{ $id }}" tabindex="0" role="region" aria-labelledby="dashboard-heading-{{ $id }}" class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
                         @if ($id === 'tarefas')
                             @include('partials.tarefas-workspace', [...$taskData, 'dashboardEmbedded' => true])
                         @else
