@@ -194,6 +194,7 @@ export function setupTarefas() {
         }
 
         updateDot(data.date, data.summary);
+        if (page.dataset.dashboardEmbedded === 'true') document.dispatchEvent(new CustomEvent('tarefas:updated'));
     };
 
     const infoPopover = document.getElementById('task-info-popover');
@@ -427,6 +428,30 @@ export function setupTarefas() {
         address.searchParams.delete('task_id');
         window.history.replaceState({}, '', address);
     }
+
+    if (page.dataset.dashboardEmbedded === 'true') {
+        page.addEventListener('click', (event) => {
+            const link = event.target.closest('a[href]');
+            if (!link) return;
+            const address = new URL(link.href, window.location.origin);
+            if (address.origin !== window.location.origin || address.pathname !== new URL(page.dataset.tasksUrl, window.location.origin).pathname) return;
+            address.pathname = new URL(page.dataset.dashboardUrl, window.location.origin).pathname;
+            link.href = address.href;
+        }, true);
+    }
+
+    page.addEventListener('tarefas:create', () => openCreate(page.dataset.selectedDate));
+    page.addEventListener('tarefas:view', (event) => {
+        const target = event.detail.view;
+        if (!['calendar', 'week', 'month', 'dashboard'].includes(target)) return;
+        page.dataset.view = target;
+        selectView(target);
+        if (target === 'week') prepareWeek();
+    });
+    page.addEventListener('tarefas:refresh', async () => {
+        try { applyDayUpdate(await postJson(`/tarefas?date=${page.dataset.selectedDate}`, 'GET')); }
+        catch (error) { toast(error.message, true); }
+    });
 
     let selectionVersion = 0;
     calendar.addEventListener('click', async (event) => {

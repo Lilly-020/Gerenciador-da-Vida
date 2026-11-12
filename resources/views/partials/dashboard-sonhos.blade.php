@@ -1,0 +1,1 @@
+@include('partials.dashboard-collection', ['kind' => 'sonhos', 'items' => $sonhos, 'total' => $sonhoStats['total'], 'totalLabel' => 'sonhos ativos', 'emptyLabel' => 'Qual é o seu próximo sonho?', 'emptyDetail' => 'Tire uma ideia do papel e acompanhe cada conquista.', 'createLabel' => 'Novo sonho'])

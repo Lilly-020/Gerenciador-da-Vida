@@ -37,9 +37,9 @@ class TarefaController extends Controller
         $selected = $this->resolveDate($request->query('date'));
         $view = in_array($request->query('view'), ['calendar', 'month', 'week', 'dashboard'], true) ? $request->query('view') : 'calendar';
 
-        $dayTasks = $this->tasksBetween($user, $selected, $selected)->with('category')->orderBy('id')->get();
-
         if ($request->wantsJson()) {
+            $dayTasks = $this->tasksBetween($user, $selected, $selected)->with('category')->orderBy('id')->get();
+
             return response()->json([
                 'day' => view('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])->render(),
                 'stats' => view('partials.tarefa-stats', ['stats' => $this->stats($user)])->render(),
@@ -55,22 +55,28 @@ class TarefaController extends Controller
             ]);
         }
 
+        return view('pages.tarefas', $this->calendarData($user, $selected, $view));
+    }
+
+    /** @return array<string, mixed> */
+    public function calendarData(User $user, Carbon $selected, string $view, bool $allViews = false): array
+    {
         $month = $selected->copy()->startOfMonth();
         $monthTasks = $this->monthTasks($user, $month);
 
-        return view('pages.tarefas', [
-            'weekDays' => $view === 'week' ? $this->weekDays($user, $selected) : [],
+        return [
+            'weekDays' => $allViews || $view === 'week' ? $this->weekDays($user, $selected) : [],
             'view' => $view,
-            'overview' => $view === 'dashboard' ? $this->overview($user) : [],
+            'overview' => $allViews || $view === 'dashboard' ? $this->overview($user) : [],
             'selected' => $selected,
             'month' => $month,
             'weeks' => $this->buildCalendar($month, $monthTasks),
-            'dayTasks' => $dayTasks,
+            'dayTasks' => $this->tasksBetween($user, $selected, $selected)->with('category')->orderBy('id')->get(),
             'stats' => $this->stats($user),
             'daily' => $this->dailySeries($user),
             'weekly' => $this->weeklySeries($user),
             'monthly' => $this->monthlySeries($user),
-        ]);
+        ];
     }
 
     /**

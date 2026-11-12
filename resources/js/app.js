@@ -7,6 +7,7 @@ import { setupApelidoSearch } from './participantes';
 import { setupProjetos } from './projetos';
 import { setupSonhos } from './sonhos';
 import { setupTarefas } from './tarefas';
+import { setupLifeDashboard } from './dashboard';
 
 function setupNavigation() {
     const dialog = document.getElementById('mobile-navigation');
@@ -51,6 +52,7 @@ function init() {
     setupProjetos();
     setupCursos();
     setupTarefas();
+    setupLifeDashboard();
     setupContas();
     setupLancamentos();
     setupInvestimentos();

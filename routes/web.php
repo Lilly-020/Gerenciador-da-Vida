@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CarteiraController;
 use App\Http\Controllers\CursoController;
 use App\Http\Controllers\CursoFileController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinanceiroContaController;
 use App\Http\Controllers\FinanceiroDashboardController;
 use App\Http\Controllers\InvestimentoAporteController;
@@ -28,6 +29,9 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::put('/dashboard/preferences', [DashboardController::class, 'update'])->name('dashboard.preferences');
+
     Route::middleware('can:manage-users')->prefix('admin/usuarios')->name('admin.usuarios.')->group(function () {
         Route::get('/', [AdminUserController::class, 'index'])->name('index');
         Route::post('/', [AdminUserController::class, 'store'])->name('store');

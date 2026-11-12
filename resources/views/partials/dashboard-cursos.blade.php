@@ -1,0 +1,1 @@
+@include('partials.dashboard-collection', ['kind' => 'cursos', 'items' => $cursos->reject(fn ($curso) => $curso->status === 'cancelled'), 'total' => $cursoStats['em_andamento'], 'totalLabel' => 'cursos em andamento', 'emptyLabel' => 'O que você quer aprender?', 'emptyDetail' => 'Reúna seus cursos e acompanhe a sua evolução.', 'createLabel' => 'Novo curso'])

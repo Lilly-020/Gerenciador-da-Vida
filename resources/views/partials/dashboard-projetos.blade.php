@@ -1,0 +1,1 @@
+@include('partials.dashboard-collection', ['kind' => 'projetos', 'items' => $projetos, 'total' => $projetoStats['total'], 'totalLabel' => 'projetos ativos', 'emptyLabel' => 'Espaço para a sua próxima ideia', 'emptyDetail' => 'Organize seus objetivos em projetos e acompanhe o progresso.', 'createLabel' => 'Novo projeto'])
