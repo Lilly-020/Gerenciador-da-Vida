@@ -29,7 +29,9 @@ class AuthenticatedSessionController extends Controller
         // Regenerate the session ID to prevent session fixation attacks.
         $request->session()->regenerate();
 
-        return redirect()->intended(route('sonhos'));
+        $request->session()->forget('url.intended');
+
+        return redirect()->route('dashboard');
     }
 
     /**

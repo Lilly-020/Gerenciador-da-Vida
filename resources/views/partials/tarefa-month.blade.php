@@ -22,9 +22,9 @@
                             <div class="grid max-h-52 gap-1 overflow-y-auto">
                                 @if ($holiday = \App\Support\CalendarioFeriados::on($day['date']))<div class="rounded-md border border-rose-400/20 bg-rose-400/10 px-2 py-1.5 text-[11px] text-rose-200">{{ $holiday }}</div>@endif
                                 @foreach ($day['tasks'] as $task)
-                                    <div data-calendar-task @class(['flex min-w-0 items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px]', 'border-emerald-400/10 bg-emerald-400/10 text-emerald-300' => $task->completed, 'border-indigo-400/10 bg-indigo-400/10 text-indigo-200' => ! $task->completed])>
+                                    <div data-calendar-task data-task-card-url="{{ route('tarefas.show', $task, absolute: false) }}" @class(['flex min-w-0 items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px]', 'border-emerald-400/10 bg-emerald-400/10 text-emerald-300' => $task->completed, 'border-indigo-400/10 bg-indigo-400/10 text-indigo-200' => ! $task->completed])>
                                         @include('partials.tarefa-calendar-check', ['task' => $task])
-                                        <button type="button" data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}" aria-haspopup="dialog" aria-label="Editar ou excluir: {{ $task->title }}" class="min-w-0 flex-1 truncate text-left {{ $task->completed ? 'line-through' : '' }}">{{ $task->title }}</button>
+                                        <button type="button" data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}" aria-haspopup="dialog" aria-label="Editar ou excluir: {{ $task->title }}" class="flex min-w-0 flex-1 items-center gap-1.5 text-left {{ $task->completed ? 'line-through' : '' }}"><span class="min-w-0 flex-1 truncate">{{ $task->title }}</span>@include('partials.tarefa-note-icon', ['task' => $task])</button>
                                     </div>
                                 @endforeach
                                 <button type="button" data-calendar-open="{{ $day['date']->toDateString() }}" @if (! $day['inMonth']) data-outside-month @endif data-calendar-add class="rounded-md px-1 py-1 text-left text-[10px] text-slate-500 hover:bg-white/5 hover:text-indigo-200">+ Adicionar</button>

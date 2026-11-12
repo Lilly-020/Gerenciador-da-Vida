@@ -26,20 +26,22 @@
         <ul class="max-h-96 space-y-2 overflow-y-auto pr-1">
             @foreach ($tasks as $task)
                 <li class="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2" data-task-row>
-                    <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-sm text-slate-300">
+                    <label class="flex shrink-0 cursor-pointer items-center text-sm text-slate-300">
                         <span class="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
                         <input
                             type="checkbox"
                             data-task-toggle-url="{{ route('tarefas.update', $task, absolute: false) }}"
+                            aria-label="Concluir tarefa: {{ $task->title }}"
                             @checked($task->completed)
                             class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-600 bg-slate-950 checked:border-indigo-400 checked:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 disabled:opacity-60"
                         >
                         <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" class="pointer-events-none absolute h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100"><path d="m4 10 4 4 8-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
                         </span>
-                        <span class="wrap-break-word {{ $task->completed ? 'text-slate-500 line-through' : '' }}" data-task-title>
-                            {{ $task->title }}
-                        </span>
                     </label>
+                    <button type="button" data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}" aria-haspopup="dialog" class="flex min-w-0 flex-1 items-center gap-2 text-left text-sm text-slate-300">
+                        <span class="min-w-0 flex-1 wrap-break-word {{ $task->completed ? 'text-slate-500 line-through' : '' }}" data-task-title>{{ $task->title }}</span>
+                        @include('partials.tarefa-note-icon', ['task' => $task])
+                    </button>
                     @if ($task->series_id)
                         <span class="shrink-0 text-xs text-indigo-300" title="Tarefa repetida">↻</span>
                     @endif

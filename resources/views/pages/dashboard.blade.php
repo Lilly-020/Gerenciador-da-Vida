@@ -37,8 +37,11 @@
         </form>
         <div data-dashboard-grid class="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-2">
             @foreach ($preferences['widgets'] as $widget)
-                @php($id = $widget['id'])
-                <section data-dashboard-widget="{{ $id }}" data-width="{{ $widget['width'] }}" @if (! $widget['visible']) hidden @endif @class(['dashboard-widget flex h-[30rem] min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/55 shadow-lg shadow-black/10', 'xl:col-span-2' => $widget['width'] === 'wide']) aria-labelledby="dashboard-heading-{{ $id }}">
+                @php
+                    $id = $widget['id'];
+                    $widgetWidth = $id === 'tarefas' && $taskData['view'] !== 'dashboard' ? 'wide' : $widget['width'];
+                @endphp
+                <section data-dashboard-widget="{{ $id }}" data-width="{{ $widgetWidth }}" @if (! $widget['visible']) hidden @endif @class(['dashboard-widget flex h-[30rem] min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/55 shadow-lg shadow-black/10', 'xl:col-span-2' => $widgetWidth === 'wide']) aria-labelledby="dashboard-heading-{{ $id }}">
                     <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/5 px-4 py-4 sm:px-5">
                         <div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-400/15 bg-indigo-500/10 text-indigo-300"><x-dashboard-icon :name="$id" /></span><div><h2 id="dashboard-heading-{{ $id }}" class="text-sm font-semibold text-white">{{ $widgetLabels[$id] }}</h2><p @if ($id === 'tarefas') data-dashboard-task-view-label @endif class="mt-0.5 text-[10px] text-slate-500">{{ ['tarefas' => $taskViews[$taskData['view']], 'financeiro' => 'Seu mês em números', 'sonhos' => 'Pequenos passos, grandes conquistas', 'projetos' => 'Ideias que viram realidade', 'cursos' => 'Aprender também é avançar'][$id] }}</p></div></div>
                         <div class="flex items-center gap-1">
@@ -49,7 +52,7 @@
                                         @foreach ($taskViews as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach
                                     </select>
                                 @endif
-                                <select data-widget-width aria-label="Largura de {{ $widgetLabels[$id] }}" class="rounded-lg border border-white/10 bg-slate-950 px-2 py-2 text-xs"><option value="normal">Meia largura</option><option value="wide">Largura inteira</option></select>
+                                <span data-widget-width-control @if ($id === 'tarefas' && $taskData['view'] !== 'dashboard') hidden @endif><select data-widget-width aria-label="Largura de {{ $widgetLabels[$id] }}" class="rounded-lg border border-white/10 bg-slate-950 px-2 py-2 text-xs"><option value="normal">Meia largura</option><option value="wide">Largura inteira</option></select></span>
                                 <button type="button" data-widget-drag draggable="true" aria-label="Arrastar {{ $widgetLabels[$id] }}; use as setas ao lado para mover pelo teclado" title="Arrastar bloco" class="cursor-grab rounded-lg px-2 py-2 text-slate-400 hover:bg-white/10 active:cursor-grabbing">⠿</button>
                                 <button type="button" data-widget-move="-1" aria-label="Mover {{ $widgetLabels[$id] }} para cima" class="rounded-lg px-2 py-2 text-slate-400 hover:bg-white/10">↑</button>
                                 <button type="button" data-widget-move="1" aria-label="Mover {{ $widgetLabels[$id] }} para baixo" class="rounded-lg px-2 py-2 text-slate-400 hover:bg-white/10">↓</button>

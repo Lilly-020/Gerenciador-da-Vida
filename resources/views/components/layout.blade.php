@@ -42,5 +42,6 @@
 
     <x-slot:modals>
         {{ $modals ?? '' }}
+        <x-nota-modals />
     </x-slot:modals>
 </x-shell>

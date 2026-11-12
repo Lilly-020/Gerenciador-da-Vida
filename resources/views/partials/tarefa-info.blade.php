@@ -7,6 +7,32 @@
         <div class="min-w-0 flex-1"><p class="text-[11px] font-medium text-indigo-300">{{ $task->category?->name ?? 'Sem categoria' }} · {{ $task->completed ? 'Concluída' : 'Pendente' }}</p><h2 id="task-info-title" class="mt-1 wrap-break-word text-base font-semibold text-white {{ $task->completed ? 'line-through opacity-60' : '' }}">{{ $task->title }}</h2></div>
         <button type="button" data-task-info-close aria-label="Fechar resumo" class="-mr-1 -mt-1 shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-slate-300 hover:bg-white/10">✕</button>
     </div>
+    @if ($task->notas->isNotEmpty())
+        <div class="mt-3 border-t border-white/10 pt-3">
+            <h3 class="mb-2 text-xs font-medium text-slate-400">Notas e listas</h3>
+            <div class="grid gap-3">
+                @foreach ($task->notas as $nota)
+                    <div class="rounded-lg border border-indigo-400/15 p-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <button type="button" data-note-edit="{{ route('notas.show', $nota, absolute: false) }}" class="min-w-0 wrap-anywhere text-left text-xs font-medium text-indigo-200">{{ $nota->title }}</button>
+                            @if ($nota->items->isNotEmpty())<span class="shrink-0 text-[10px] text-slate-500">{{ $nota->items->where('completed', true)->count() }}/{{ $nota->items->count() }} itens</span>@endif
+                        </div>
+                        @if ($nota->content)<p class="app-scroll mt-2 max-h-24 overflow-y-auto whitespace-pre-wrap wrap-anywhere text-xs leading-relaxed text-slate-400">{{ $nota->content }}</p>@endif
+                        @if ($nota->items->isNotEmpty())
+                            <div data-note-preview-items="{{ $nota->id }}" class="app-scroll mt-3 max-h-60 space-y-2 overflow-y-auto overscroll-contain">
+                                @foreach ($nota->items as $item)
+                                    <label class="flex cursor-pointer items-start gap-2 text-xs">
+                                        <x-checkbox data-note-item-toggle="{{ route('notas.itens.update', [$nota, $item], absolute: false) }}" :checked="$item->completed" />
+                                        <span @class(['wrap-anywhere leading-relaxed', 'line-through text-slate-500' => $item->completed, 'text-slate-300' => ! $item->completed])>{{ $item->text }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
     <dl class="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-white/5 bg-slate-950/40 p-3 text-xs">
         <div><dt class="text-slate-500">Início</dt><dd class="mt-1 text-slate-200">{{ $task->date->format('d/m/Y') }}{{ $task->start_time ? ' · '.substr($task->start_time, 0, 5) : ' · Dia todo' }}</dd></div>
         <div><dt class="text-slate-500">Fim</dt><dd class="mt-1 text-slate-200">{{ ($task->end_date ?? $task->date)->format('d/m/Y') }}{{ $task->end_time ? ' · '.substr($task->end_time, 0, 5) : '' }}</dd></div>

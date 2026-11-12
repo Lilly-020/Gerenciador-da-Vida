@@ -12,6 +12,7 @@ use App\Http\Controllers\InvestimentoAporteController;
 use App\Http\Controllers\InvestimentoController;
 use App\Http\Controllers\LancamentoController;
 use App\Http\Controllers\LancamentoFileController;
+use App\Http\Controllers\NotaController;
 use App\Http\Controllers\ParticipacaoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ProjetoCollaborationController;
@@ -109,6 +110,17 @@ Route::middleware('auth')->group(function () {
             Route::delete('/investimentos/{investimento}/aportes/{aporte}', [InvestimentoAporteController::class, 'destroy'])->name('investimentos.aportes.destroy');
         });
     });
+
+    Route::get('/notas', [NotaController::class, 'index'])->name('notas');
+    Route::get('/notas/opcoes', [NotaController::class, 'options'])->name('notas.opcoes');
+    Route::get('/notas/tarefas', [NotaController::class, 'tasks'])->name('notas.tarefas');
+    Route::post('/notas', [NotaController::class, 'store'])->name('notas.store');
+    Route::get('/notas/{nota}', [NotaController::class, 'show'])->name('notas.show');
+    Route::patch('/notas/{nota}', [NotaController::class, 'update'])->name('notas.update');
+    Route::delete('/notas/{nota}', [NotaController::class, 'destroy'])->name('notas.destroy');
+    Route::patch('/notas/{nota}/itens/{item}', [NotaController::class, 'updateItem'])->whereNumber('item')->name('notas.itens.update');
+    Route::put('/notas/{nota}/tarefa', [NotaController::class, 'link'])->name('notas.tarefa');
+    Route::post('/notas/{nota}/agendar', [NotaController::class, 'schedule'])->name('notas.agendar');
 
     Route::get('/tarefas', [TarefaController::class, 'index'])->name('tarefas');
     Route::get('/tarefas/buscar', [TarefaController::class, 'buscar'])->name('tarefas.buscar');

@@ -38,7 +38,7 @@ class TarefaController extends Controller
         $view = in_array($request->query('view'), ['calendar', 'month', 'week', 'dashboard'], true) ? $request->query('view') : 'calendar';
 
         if ($request->wantsJson()) {
-            $dayTasks = $this->tasksBetween($user, $selected, $selected)->with('category')->orderBy('id')->get();
+            $dayTasks = $this->tasksBetween($user, $selected, $selected)->with(['category', 'notas:id,tarefa_id,title'])->orderBy('id')->get();
 
             return response()->json([
                 'day' => view('partials.tarefa-day', ['date' => $selected, 'tasks' => $dayTasks])->render(),
@@ -71,7 +71,7 @@ class TarefaController extends Controller
             'selected' => $selected,
             'month' => $month,
             'weeks' => $this->buildCalendar($month, $monthTasks),
-            'dayTasks' => $this->tasksBetween($user, $selected, $selected)->with('category')->orderBy('id')->get(),
+            'dayTasks' => $this->tasksBetween($user, $selected, $selected)->with(['category', 'notas:id,tarefa_id,title'])->orderBy('id')->get(),
             'stats' => $this->stats($user),
             'daily' => $this->dailySeries($user),
             'weekly' => $this->weeklySeries($user),
@@ -162,11 +162,12 @@ class TarefaController extends Controller
 
     public function show(Tarefa $tarefa): JsonResponse
     {
-        $tarefa->load(['files', 'category']);
+        $tarefa->load(['files', 'category', 'notas.items']);
 
         return response()->json([
             'html' => view('partials.tarefa-details', ['task' => $tarefa])->render(),
             'summary' => view('partials.tarefa-info', ['task' => $tarefa])->render(),
+            'note_section' => view('partials.tarefa-notas', ['task' => $tarefa])->render(),
         ]);
     }
 
@@ -243,7 +244,7 @@ class TarefaController extends Controller
     private function groupTasksByDay(User $user, Carbon $start, Carbon $end): Collection
     {
         $days = collect();
-        foreach ($this->tasksBetween($user, $start, $end)->orderBy('start_time')->orderBy('id')->get() as $task) {
+        foreach ($this->tasksBetween($user, $start, $end)->with('notas:id,tarefa_id,title')->orderBy('start_time')->orderBy('id')->get() as $task) {
             $cursor = $task->date->max($start)->copy()->startOfDay();
             $last = ($task->end_date ?? $task->date)->min($end)->copy()->startOfDay();
             while ($cursor->lte($last)) {
@@ -352,7 +353,7 @@ class TarefaController extends Controller
         }
 
         $user = $request->user();
-        $dayTasks = $this->tasksBetween($user, $date, $date)->with('category')->orderBy('id')->get();
+        $dayTasks = $this->tasksBetween($user, $date, $date)->with(['category', 'notas:id,tarefa_id,title'])->orderBy('id')->get();
 
         return response()->json([
             'day' => view('partials.tarefa-day', ['date' => $date, 'tasks' => $dayTasks])->render(),

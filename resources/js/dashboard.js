@@ -33,13 +33,17 @@ export function setupLifeDashboard() {
         dashboard.querySelector('[data-dashboard-task-view-label]').textContent = [...taskView.options].find((option) => option.value === view).textContent;
     };
     const render = () => {
+        const calendarView = (editing ? draft.task_view : taskPage.dataset.view) !== 'dashboard';
         draft.widgets.forEach((widget) => {
             const block = grid.querySelector(`[data-dashboard-widget="${widget.id}"]`);
             block.hidden = !widget.visible;
-            block.dataset.width = widget.width;
-            block.classList.toggle('xl:col-span-2', widget.width === 'wide');
+            const fullCalendar = widget.id === 'tarefas' && calendarView;
+            const width = fullCalendar ? 'wide' : widget.width;
+            block.dataset.width = width;
+            block.classList.toggle('xl:col-span-2', width === 'wide');
+            block.querySelector('[data-widget-width-control]').hidden = fullCalendar;
             grid.append(block);
-            block.querySelector('[data-widget-width]').value = widget.width;
+            block.querySelector('[data-widget-width]').value = width;
             const toggle = settingsForm.querySelector(`[data-setting-visibility="${widget.id}"]`);
             toggle.setAttribute('aria-pressed', String(widget.visible));
             toggle.classList.toggle('bg-indigo-500/20', widget.visible);

@@ -7,6 +7,7 @@ import { setupApelidoSearch } from './participantes';
 import { setupProjetos } from './projetos';
 import { setupSonhos } from './sonhos';
 import { setupTarefas } from './tarefas';
+import { setupNotas } from './notas';
 import { setupLifeDashboard } from './dashboard';
 
 function setupNavigation() {
@@ -52,6 +53,7 @@ function init() {
     setupProjetos();
     setupCursos();
     setupTarefas();
+    setupNotas();
     setupLifeDashboard();
     setupContas();
     setupLancamentos();

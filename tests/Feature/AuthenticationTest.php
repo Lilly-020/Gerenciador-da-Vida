@@ -21,13 +21,13 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->post('/login', [
+        $response = $this->withSession(['url.intended' => route('notas')])->post('/login', [
             'email' => $user->email,
             'password' => 'password',
         ]);
 
         $this->assertAuthenticatedAs($user);
-        $response->assertRedirect(route('sonhos'));
+        $response->assertRedirect(route('dashboard'))->assertSessionMissing('url.intended');
     }
 
     public function test_users_cannot_authenticate_with_incorrect_password(): void

@@ -107,6 +107,12 @@ class User extends Authenticatable
         return $this->hasMany(Curso::class);
     }
 
+    /** @return HasMany<Nota, $this> */
+    public function notas(): HasMany
+    {
+        return $this->hasMany(Nota::class);
+    }
+
     /**
      * @return HasMany<Tarefa, $this>
      */

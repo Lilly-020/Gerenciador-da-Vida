@@ -39,7 +39,8 @@ html {
     transform: scale(1);
 }
 
-.course-board {
+.course-board,
+.app-scroll {
     scrollbar-width: thin;
     scrollbar-color: #6366f1 #0f172a;
 }
@@ -246,4 +247,120 @@ input[type='file']::file-selector-button { margin-right: 0.75rem; border: 1px so
     .dashboard-widget {
         transition: none;
     }
+}
+
+#nota-tools [hidden] {
+    display: none !important;
+}
+
+[data-note-menu] > summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Keep the dashboard's weekly agenda within its card, with one scrolling grid. */
+[data-dashboard-content='tarefas']:has(#tarefas-page[data-view='week']) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overscroll-behavior: auto;
+}
+
+#tarefas-page[data-dashboard-embedded='true'][data-view='week'] {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+#tarefas-page[data-dashboard-embedded='true'][data-view='week'] > [data-tarefa-busca] {
+    flex-shrink: 0;
+}
+
+#tarefas-page[data-dashboard-embedded='true'][data-view='week'] [data-tarefa-busca-resultados] {
+    max-height: 6rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #6366f1 #0f172a;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] > [data-view-panel='week']:not(.hidden),
+#tarefas-page[data-dashboard-embedded='true'] .task-week {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] .task-week > div:first-child {
+    flex-shrink: 0;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] .task-week > p {
+    display: none;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] .week-scroll {
+    min-height: 0;
+    max-height: none;
+    flex: 1;
+    overflow-x: hidden;
+    overscroll-behavior: auto;
+    scrollbar-gutter: stable;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] .week-canvas {
+    min-width: 0;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] :is(.week-header, .week-all-day, .week-time-grid) {
+    grid-template-columns: 40px repeat(7, minmax(0, 1fr));
+}
+
+#tarefas-page[data-dashboard-embedded='true'] .week-header {
+    height: 64px;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] .week-all-day {
+    top: 64px;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] .week-heading {
+    gap: 0.25rem;
+    padding: 0.5rem 0.15rem;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] .week-heading strong {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 1rem;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] .week-time-labels > span {
+    right: 0.25rem;
+    font-size: 0.55rem;
+}
+
+/* Calendars use a full viewport instead of the compact dashboard card height. */
+[data-dashboard-widget='tarefas']:has(#tarefas-page[data-view='week']) {
+    height: 100dvh;
+    min-height: 42rem;
+}
+
+[data-dashboard-widget='tarefas']:has(#tarefas-page[data-view='calendar']),
+[data-dashboard-widget='tarefas']:has(#tarefas-page[data-view='month']) {
+    height: auto;
+    min-height: 100dvh;
+}
+
+[data-dashboard-content='tarefas']:has(#tarefas-page[data-view='calendar']),
+[data-dashboard-content='tarefas']:has(#tarefas-page[data-view='month']) {
+    overflow: visible;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] #tarefas-month-calendar > .overflow-x-auto {
+    overflow: visible;
+}
+
+#tarefas-page[data-dashboard-embedded='true'] #tarefas-month-calendar > .overflow-x-auto > div {
+    min-width: 0;
 }

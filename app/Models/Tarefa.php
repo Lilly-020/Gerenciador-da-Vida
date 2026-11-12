@@ -93,6 +93,12 @@ class Tarefa extends Model
         return $this->hasMany(TarefaFile::class);
     }
 
+    /** @return HasMany<Nota, $this> */
+    public function notas(): HasMany
+    {
+        return $this->hasMany(Nota::class)->orderByDesc('pinned')->orderBy('id');
+    }
+
     /**
      * Portuguese month name (kept local to avoid depending on APP_LOCALE,
      * which is "en" and would otherwise render dates in English).

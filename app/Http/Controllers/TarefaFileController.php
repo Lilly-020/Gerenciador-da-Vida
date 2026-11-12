@@ -30,7 +30,7 @@ class TarefaFileController extends Controller
             throw $exception;
         }
 
-        return response()->json(['html' => view('partials.tarefa-details', ['task' => $tarefa->load('files')])->render()]);
+        return response()->json(['html' => view('partials.tarefa-details', ['task' => $tarefa->load(['files', 'category', 'notas.items'])])->render()]);
     }
 
     public function show(Request $request, Tarefa $tarefa, TarefaFile $arquivo): BinaryFileResponse|StreamedResponse
@@ -49,6 +49,6 @@ class TarefaFileController extends Controller
         Storage::disk('local')->delete($arquivo->path);
         $arquivo->delete();
 
-        return response()->json(['html' => view('partials.tarefa-details', ['task' => $tarefa->load('files')])->render()]);
+        return response()->json(['html' => view('partials.tarefa-details', ['task' => $tarefa->load(['files', 'category', 'notas.items'])])->render()]);
     }
 }

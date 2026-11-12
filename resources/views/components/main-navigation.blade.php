@@ -6,6 +6,7 @@
         ['route' => 'cursos', 'label' => 'Cursos'],
         ['route' => 'financeiro', 'label' => 'Financeiro', 'match' => 'financeiro*'],
         ['route' => 'tarefas', 'label' => 'Tarefas'],
+        ['route' => 'notas', 'label' => 'Notas'],
     ];
 @endphp
 

@@ -29,9 +29,9 @@
                     <div class="max-h-44 min-w-0 overflow-y-auto border-r border-white/10 p-1.5">
                         @if ($holiday = \App\Support\CalendarioFeriados::on($day['date']))<div data-week-kind="feriado" data-kind="feriado" class="week-all-event whitespace-normal!" title="Feriado nacional">{{ $holiday }}</div>@endif
                         @foreach ($day['allDay'] as $task)
-                            <div data-calendar-task data-kind="atividade" class="week-all-event flex! items-center gap-2">
+                            <div data-calendar-task data-task-card-url="{{ route('tarefas.show', $task, absolute: false) }}" data-calendar-task-id="{{ $task->id }}" data-kind="atividade" class="week-all-event flex! items-center gap-2">
                                 @include('partials.tarefa-calendar-check', ['task' => $task])
-                                <button type="button" data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}" aria-haspopup="dialog" aria-label="Editar ou excluir: {{ $task->title }}" class="min-w-0 flex-1 truncate text-left {{ $task->completed ? 'line-through opacity-60' : '' }}">{{ $task->title }}</button>
+                                <button type="button" data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}" aria-haspopup="dialog" aria-label="Editar ou excluir: {{ $task->title }}" class="flex min-w-0 flex-1 items-center gap-2 text-left {{ $task->completed ? 'line-through opacity-60' : '' }}"><span class="min-w-0 flex-1 truncate">{{ $task->title }}</span>@include('partials.tarefa-note-icon', ['task' => $task])</button>
                             </div>
                         @endforeach
                         <button type="button" data-calendar-open="{{ $day['date']->toDateString() }}" data-calendar-add data-week-all-day class="week-add-all" aria-label="Adicionar tarefa de dia todo em {{ $day['date']->format('d/m/Y') }}">+</button>
@@ -44,10 +44,10 @@
                     <div data-week-slot="{{ $day['date']->toDateString() }}" data-week-date="{{ $day['date']->toDateString() }}" @class(['week-day', 'week-day-today' => $day['date']->isToday()])>
                         @foreach ($day['events'] as $event)
                             @php($task = $event['task'])
-                            <div data-calendar-task data-kind="atividade" class="week-event py-0.5!" style="top: {{ $event['start'] }}px; height: {{ $event['end'] - $event['start'] }}px; left: calc({{ $event['lane'] / $event['lanes'] * 100 }}% + 2px); width: calc({{ 100 / $event['lanes'] }}% - 4px)">
+                            <div data-calendar-task data-task-card-url="{{ route('tarefas.show', $task, absolute: false) }}" data-calendar-task-id="{{ $task->id }}" data-kind="atividade" class="week-event py-0.5!" style="top: {{ $event['start'] }}px; height: {{ $event['end'] - $event['start'] }}px; left: calc({{ $event['lane'] / $event['lanes'] * 100 }}% + 2px); width: calc({{ 100 / $event['lanes'] }}% - 4px)">
                                 <div class="flex min-w-0 items-start gap-1.5">
                                     @include('partials.tarefa-calendar-check', ['task' => $task])
-                                    <button type="button" data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}" aria-haspopup="dialog" aria-label="Editar ou excluir: {{ $task->title }}" class="min-w-0 flex-1 text-left {{ $task->completed ? 'line-through opacity-60' : '' }}"><strong>{{ $task->title }}</strong><small class="block">{{ substr($task->start_time, 0, 5) }}{{ $task->end_time ? ' — '.substr($task->end_time, 0, 5) : '' }}</small></button>
+                                    <button type="button" data-task-details-url="{{ route('tarefas.show', $task, absolute: false) }}" aria-haspopup="dialog" aria-label="Editar ou excluir: {{ $task->title }}" class="min-w-0 flex-1 text-left {{ $task->completed ? 'line-through opacity-60' : '' }}"><span class="flex items-start gap-1.5"><strong class="min-w-0 flex-1">{{ $task->title }}</strong>@include('partials.tarefa-note-icon', ['task' => $task])</span><small class="block">{{ substr($task->start_time, 0, 5) }}{{ $task->end_time ? ' — '.substr($task->end_time, 0, 5) : '' }}</small></button>
                                 </div>
                             </div>
                         @endforeach
