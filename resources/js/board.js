@@ -73,6 +73,7 @@ export function htmlToElement(html) {
  */
 export function setupBoard({ gridId, statsId, modalId, openButtonId, formId }) {
     function applyUpdate({ card, stats, removeCardId } = {}) {
+        let created = false;
         if (stats) {
             document.getElementById(statsId)?.replaceWith(htmlToElement(stats));
         }
@@ -94,9 +95,13 @@ export function setupBoard({ gridId, statsId, modalId, openButtonId, formId }) {
                 }
                 existing.replaceWith(newCard);
             } else {
-                document.getElementById(gridId)?.prepend(newCard);
+                created = true;
+                const grid = document.getElementById(gridId);
+                if (!grid?.hasAttribute('data-paginated')) grid?.prepend(newCard);
             }
         }
+        const grid = document.getElementById(gridId);
+        if (grid?.hasAttribute('data-paginated')) grid.dispatchEvent(new CustomEvent('board:updated', { detail: { created } }));
     }
 
     setupGrid(gridId, applyUpdate);

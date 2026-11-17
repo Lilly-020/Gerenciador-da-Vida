@@ -18,17 +18,13 @@
             @include('partials.projeto-stats', ['stats' => $stats])
         </div>
 
-        <x-filtros alvo="projetos-grid" data-label="Prazo" :projetos="true" />
+        <x-filtros alvo="projetos-grid" data-label="Prazo" :projetos="true" :server-url="route('projetos', absolute: false)" stats-id="projetos-stats" />
 
-        <div id="projetos-grid" class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-            @foreach ($projetos as $projeto)
-                @include('partials.projeto-card', ['projeto' => $projeto])
-            @endforeach
-            <div data-board-empty @class(['col-span-full rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-400', 'hidden' => $projetos->where('archived', false)->isNotEmpty()])>
-                Nenhum projeto nesta situação. Clique em “Adicionar projeto” para começar.
-            </div>
-
+        <div id="projetos-grid" data-paginated class="grid grid-cols-1 items-start gap-4">
+            @include('partials.projeto-list')
         </div>
+        {{ $projetos->onEachSide(1)->links('partials.projeto-pagination') }}
+
     </div>
 
     <datalist id="apelido-sugestoes"></datalist>

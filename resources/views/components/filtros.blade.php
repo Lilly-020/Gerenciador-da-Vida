@@ -5,6 +5,8 @@
     'dataLabel' => 'Data',
     'projetos' => false,
     'cursos' => false,
+    'serverUrl' => null,
+    'statsId' => null,
 ])
 
 {{--
@@ -13,7 +15,7 @@
     — over cards that describe themselves with data-filter-* attributes, so
     it keeps working when the list is re-rendered after an edit.
 --}}
-<div data-filtros data-filtros-alvo="{{ $alvo }}" class="mb-4 flex flex-wrap items-end gap-2">
+<div data-filtros data-filtros-alvo="{{ $alvo }}" @if ($serverUrl) data-filtros-server="{{ $serverUrl }}" data-filtros-stats="{{ $statsId }}" @endif class="mb-4 flex flex-wrap items-end gap-2">
     <div class="min-w-48 flex-1">
         <label for="filtro-titulo-{{ $alvo }}" class="sr-only">Buscar por título</label>
         <input

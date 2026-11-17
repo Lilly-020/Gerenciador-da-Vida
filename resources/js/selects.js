@@ -51,7 +51,9 @@ export function setupSelects() {
         }
     }, true);
     window.addEventListener('resize', () => active?.position());
-    window.addEventListener('scroll', () => active?.position(), true);
+    window.addEventListener('scroll', (event) => {
+        if (active && !active.panel.contains(event.target)) active.position();
+    }, true);
 }
 
 function enhance(select) {
@@ -118,7 +120,11 @@ function enhance(select) {
         const width = Math.min(Math.max(rect.width, 260), window.innerWidth - 24);
         panel.style.width = `${width}px`;
         panel.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`;
-        const height = Math.min(panel.scrollHeight, 380, window.innerHeight - 24);
+        const styles = window.getComputedStyle(panel);
+        const spacing = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth', 'rowGap']
+            .reduce((total, property) => total + (parseFloat(styles[property]) || 0), 0);
+        const contentHeight = search.offsetHeight + list.scrollHeight + spacing;
+        const height = Math.min(contentHeight, 380, window.innerHeight - 24);
         panel.style.maxHeight = `${height}px`;
         panel.style.top = `${Math.max(12, rect.bottom + height + 8 <= window.innerHeight ? rect.bottom + 6 : rect.top - height - 6)}px`;
     };

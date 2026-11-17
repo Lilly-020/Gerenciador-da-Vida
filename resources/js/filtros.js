@@ -1,3 +1,5 @@
+import { htmlToElement, postJson } from './board';
+
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 // "Aluguél" matches "aluguel": compare without case or accents.
@@ -24,6 +26,7 @@ export function setupFiltros() {
 }
 
 function setupBar(bar) {
+    if (bar.dataset.filtrosServer) { setupServerBar(bar); return; }
     const titulo = bar.querySelector('[data-filtro-titulo]');
     const de = bar.querySelector('[data-filtro-de]');
     const ate = bar.querySelector('[data-filtro-ate]');
@@ -166,4 +169,83 @@ function setupBar(bar) {
     new MutationObserver(apply).observe(bar.parentElement, { childList: true, subtree: true });
 
     apply();
+}
+
+
+function setupServerBar(bar) {
+    const grid = document.getElementById(bar.dataset.filtrosAlvo);
+    if (!grid) return;
+    const fields = {
+        q: bar.querySelector('[data-filtro-titulo]'),
+        de: bar.querySelector('[data-filtro-de]'),
+        ate: bar.querySelector('[data-filtro-ate]'),
+        status: bar.querySelector('[data-filtro-status]'),
+        prazo: bar.querySelector('[data-filtro-prazo]'),
+        sort: bar.querySelector('[data-filtro-ordem]'),
+    };
+    const clear = bar.querySelector('[data-filtro-limpar]');
+    const summary = bar.querySelector('[data-filtro-resumo]');
+    summary.setAttribute('role', 'status');
+    let version = 0;
+    let timer;
+    const syncFields = () => {
+        const address = new URL(window.location.href);
+        Object.entries(fields).forEach(([name, field]) => { if (field) field.value = address.searchParams.get(name) || ''; });
+        clear.classList.toggle('hidden', !Object.values(fields).some((field) => field?.value));
+    };
+    const filterAddress = (resetPage) => {
+        const address = new URL(window.location.href);
+        address.pathname = new URL(bar.dataset.filtrosServer, window.location.origin).pathname;
+        Object.entries(fields).forEach(([name, field]) => {
+            if (field?.value) address.searchParams.set(name, field.value); else address.searchParams.delete(name);
+        });
+        if (resetPage) address.searchParams.delete('page');
+        return address;
+    };
+    const load = async (address, history = true) => {
+        const request = ++version;
+        grid.setAttribute('aria-busy', 'true');
+        clear.classList.toggle('hidden', !Object.values(fields).some((field) => field?.value));
+        try {
+            const data = await postJson(address.href, 'GET');
+            if (request !== version) return;
+            const expanded = [...grid.querySelectorAll('details[data-details-key][open]')].map((details) => [details.closest('[data-board-card]').id, details.dataset.detailsKey]);
+            grid.innerHTML = data.cards;
+            expanded.forEach(([id, key]) => {
+                document.getElementById(id)?.querySelectorAll('details[data-details-key]').forEach((details) => { if (details.dataset.detailsKey === key) details.open = true; });
+            });
+            document.getElementById('projetos-pagination').replaceWith(htmlToElement(data.pagination));
+            if (data.stats && bar.dataset.filtrosStats) document.getElementById(bar.dataset.filtrosStats)?.replaceWith(htmlToElement(data.stats));
+            if (data.page > 1) address.searchParams.set('page', data.page); else address.searchParams.delete('page');
+            if (history && address.href !== window.location.href) window.history.pushState({}, '', address);
+            summary.textContent = '';
+            summary.classList.add('hidden');
+        } catch (error) {
+            if (request === version) { summary.textContent = error.message; summary.classList.remove('hidden'); }
+        } finally {
+            if (request === version) grid.removeAttribute('aria-busy');
+        }
+    };
+    Object.values(fields).forEach((field) => {
+        field?.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => load(filterAddress(true)), 300); });
+        field?.addEventListener('change', () => { clearTimeout(timer); load(filterAddress(true)); });
+    });
+    clear.addEventListener('click', () => {
+        clearTimeout(timer);
+        Object.values(fields).forEach((field) => { if (field) field.value = ''; });
+        load(filterAddress(true));
+    });
+    bar.parentElement.addEventListener('click', (event) => {
+        const link = event.target.closest('#projetos-pagination a');
+        if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        clearTimeout(timer);
+        load(new URL(link.href));
+    });
+    grid.addEventListener('board:updated', (event) => {
+        clearTimeout(timer);
+        load(filterAddress(event.detail.created));
+    });
+    window.addEventListener('popstate', () => { syncFields(); load(new URL(window.location.href), false); });
+    syncFields();
 }
