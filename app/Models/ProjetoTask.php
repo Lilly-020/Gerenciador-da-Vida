@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['title', 'completed', 'assignee_id', 'parent_id', 'due_at', 'goal_type', 'target_value', 'current_value', 'unit'])]
 class ProjetoTask extends Model
@@ -21,6 +22,12 @@ class ProjetoTask extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assignee_id');
+    }
+
+    /** @return HasOne<Tarefa, $this> */
+    public function calendarTask(): HasOne
+    {
+        return $this->hasOne(Tarefa::class, 'projeto_task_id');
     }
 
     protected function isFinished(): Attribute

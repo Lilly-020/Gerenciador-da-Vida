@@ -24,7 +24,7 @@ class Projeto extends Model
      *
      * @var array<int, string>
      */
-    public const CARD_RELATIONS = ['tasks.assignee', 'user', 'participacoes.participant', 'comments.user', 'comments.task', 'activities.user', 'files'];
+    public const CARD_RELATIONS = ['tasks.assignee', 'tasks.calendarTask', 'user', 'participacoes.participant', 'comments.user', 'comments.task', 'activities.user', 'files', 'etiquetas'];
 
     protected $attributes = ['priority' => 'medium', 'archived' => false];
 
@@ -88,6 +88,12 @@ class Projeto extends Model
     public function participacoes(): HasMany
     {
         return $this->hasMany(Participacao::class);
+    }
+
+    /** @return HasMany<ProjetoEtiqueta, $this> */
+    public function etiquetas(): HasMany
+    {
+        return $this->hasMany(ProjetoEtiqueta::class)->orderBy('id');
     }
 
     public function isOwnedBy(User $user): bool

@@ -7,6 +7,9 @@
         <div class="min-w-0 flex-1"><p class="text-[11px] font-medium text-indigo-300">{{ $task->category?->name ?? 'Sem categoria' }} · {{ $task->completed ? 'Concluída' : 'Pendente' }}</p><h2 id="task-info-title" class="mt-1 wrap-break-word text-base font-semibold text-white {{ $task->completed ? 'line-through opacity-60' : '' }}">{{ $task->title }}</h2></div>
         <button type="button" data-task-info-close aria-label="Fechar resumo" class="-mr-1 -mt-1 shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-slate-300 hover:bg-white/10">✕</button>
     </div>
+    @if ($task->projetoTask?->projeto)
+        <a href="{{ route('projetos', ['q' => $task->projetoTask->projeto->title], absolute: false) }}#projeto-card-{{ $task->projetoTask->projeto_id }}" class="mt-3 inline-flex max-w-full items-center gap-1 rounded-lg border border-indigo-400/15 px-2.5 py-1.5 text-xs text-indigo-200">↗ Projeto: {{ $task->projetoTask->projeto->title }}</a>
+    @endif
     @if ($task->notas->isNotEmpty())
         <div class="mt-3 border-t border-white/10 pt-3">
             <h3 class="mb-2 text-xs font-medium text-slate-400">Notas e listas</h3>

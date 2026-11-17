@@ -14,6 +14,11 @@ class ProjetoFile extends Model
     /** @use HasFactory<ProjetoFileFactory> */
     use HasFactory;
 
+    public function isPreviewableImage(): bool
+    {
+        return in_array(strtolower(pathinfo($this->path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp'], true);
+    }
+
     /** @return BelongsTo<Projeto, $this> */
     public function projeto(): BelongsTo
     {

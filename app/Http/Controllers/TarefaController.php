@@ -162,7 +162,7 @@ class TarefaController extends Controller
 
     public function show(Tarefa $tarefa): JsonResponse
     {
-        $tarefa->load(['files', 'category', 'notas.items']);
+        $tarefa->load(['files', 'category', 'notas.items', 'projetoTask.projeto']);
 
         return response()->json([
             'html' => view('partials.tarefa-details', ['task' => $tarefa])->render(),

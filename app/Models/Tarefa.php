@@ -81,6 +81,12 @@ class Tarefa extends Model
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<ProjetoTask, $this> */
+    public function projetoTask(): BelongsTo
+    {
+        return $this->belongsTo(ProjetoTask::class);
+    }
+
     /** @return BelongsTo<TarefaCategoria, $this> */
     public function category(): BelongsTo
     {

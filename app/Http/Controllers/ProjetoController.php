@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProjetoRequest;
 use App\Http\Requests\UpdateProjetoRequest;
 use App\Models\Projeto;
+use App\Models\ProjetoEtiqueta;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -93,9 +95,16 @@ class ProjetoController extends Controller
      */
     public function store(StoreProjetoRequest $request): RedirectResponse|JsonResponse
     {
-        $projeto = $request->user()->projetos()->create($request->validated());
+        $projeto = DB::transaction(function () use ($request): Projeto {
+            $projeto = $request->user()->projetos()->create($request->validated());
+            $projeto->etiquetas()->createMany(array_map(
+                fn (array $label): array => [...$label, 'selected' => false],
+                ProjetoEtiqueta::DEFAULTS,
+            ));
+            $projeto->recordActivity('Criou o projeto.');
 
-        $projeto->recordActivity('Criou o projeto.');
+            return $projeto;
+        });
 
         return $this->respondWith($request, $projeto);
     }

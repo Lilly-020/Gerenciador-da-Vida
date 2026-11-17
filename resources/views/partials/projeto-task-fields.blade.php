@@ -1,5 +1,5 @@
 @php($fieldClass = 'w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-400/30')
-<div class="grid gap-3 sm:grid-cols-2">
+<div data-project-goal-fields class="grid gap-3 sm:grid-cols-2">
     <label class="grid gap-1 text-xs text-slate-400 sm:col-span-2">Nome da tarefa
         <input name="title" value="{{ $task?->title }}" data-add-task-input required maxlength="255" class="{{ $fieldClass }}">
     </label>
@@ -32,13 +32,13 @@
             @endforeach
         </select>
     </label>
-    <label class="grid gap-1 text-xs text-slate-400">Unidade (ex.: páginas, km)
+    <label data-project-goal-field="unit" class="grid gap-1 text-xs text-slate-400">Unidade (ex.: páginas, km)
         <input name="unit" value="{{ $task?->unit }}" maxlength="30" class="{{ $fieldClass }}">
     </label>
-    <label class="grid gap-1 text-xs text-slate-400">Meta (para metas numéricas ou financeiras)
+    <label data-project-goal-field="target" class="grid gap-1 text-xs text-slate-400"><span data-project-goal-label>Meta</span>
         <input type="number" name="target_value" data-money-when-financial value="{{ $task?->target_value }}" min="0.01" max="999999999999.99" step="0.01" class="{{ $fieldClass }}">
     </label>
-    <label class="grid gap-1 text-xs text-slate-400">Valor atual
+    <label data-project-goal-field="current" class="grid gap-1 text-xs text-slate-400"><span data-project-goal-label>Valor atual</span>
         <input type="number" name="current_value" data-money-when-financial value="{{ $task?->current_value ?? 0 }}" min="0" max="999999999999.99" step="0.01" required class="{{ $fieldClass }}">
     </label>
 </div>

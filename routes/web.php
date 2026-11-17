@@ -17,6 +17,7 @@ use App\Http\Controllers\ParticipacaoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ProjetoCollaborationController;
 use App\Http\Controllers\ProjetoController;
+use App\Http\Controllers\ProjetoEtiquetaController;
 use App\Http\Controllers\ProjetoTaskController;
 use App\Http\Controllers\SonhoController;
 use App\Http\Controllers\SonhoTaskController;
@@ -51,12 +52,21 @@ Route::middleware('auth')->group(function () {
     Route::put('/projetos/{projeto}', [ProjetoController::class, 'update'])->name('projetos.update');
     Route::delete('/projetos/{projeto}', [ProjetoController::class, 'destroy'])->name('projetos.destroy');
     Route::post('/projetos/{projeto}/tarefas', [ProjetoTaskController::class, 'store'])->name('projetos.tarefas.store');
+    Route::post('/projetos/{projeto}/tarefas/{tarefa}/agendar', [ProjetoTaskController::class, 'schedule'])->name('projetos.tarefas.agendar');
     Route::patch('/projetos/{projeto}/tarefas/{tarefa}', [ProjetoTaskController::class, 'update'])->name('projetos.tarefas.update');
     Route::delete('/projetos/{projeto}/tarefas/{tarefa}', [ProjetoTaskController::class, 'destroy'])->name('projetos.tarefas.destroy');
 
+    Route::get('/projetos/{projeto}/etiquetas', [ProjetoEtiquetaController::class, 'index'])->name('projetos.etiquetas.index');
+    Route::post('/projetos/{projeto}/etiquetas', [ProjetoEtiquetaController::class, 'store'])->name('projetos.etiquetas.store');
+    Route::patch('/projetos/{projeto}/etiquetas/{etiqueta}', [ProjetoEtiquetaController::class, 'update'])->name('projetos.etiquetas.update');
+    Route::delete('/projetos/{projeto}/etiquetas/{etiqueta}', [ProjetoEtiquetaController::class, 'destroy'])->name('projetos.etiquetas.destroy');
+
+    Route::get('/projetos/{projeto}/comentarios', [ProjetoCollaborationController::class, 'comments'])->name('projetos.comentarios.index');
+    Route::patch('/projetos/{projeto}/comentarios/{comentario}', [ProjetoCollaborationController::class, 'updateComment'])->name('projetos.comentarios.update');
     Route::post('/projetos/{projeto}/comentarios', [ProjetoCollaborationController::class, 'comment'])->name('projetos.comentarios.store');
     Route::delete('/projetos/{projeto}/comentarios/{comentario}', [ProjetoCollaborationController::class, 'destroyComment'])->name('projetos.comentarios.destroy');
     Route::post('/projetos/{projeto}/arquivos', [ProjetoCollaborationController::class, 'upload'])->name('projetos.arquivos.store');
+    Route::get('/projetos/{projeto}/arquivos/{arquivo}/preview', [ProjetoCollaborationController::class, 'preview'])->name('projetos.arquivos.preview');
     Route::get('/projetos/{projeto}/arquivos/{arquivo}', [ProjetoCollaborationController::class, 'download'])->name('projetos.arquivos.download');
     Route::delete('/projetos/{projeto}/arquivos/{arquivo}', [ProjetoCollaborationController::class, 'destroyFile'])->name('projetos.arquivos.destroy');
 

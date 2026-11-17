@@ -1,5 +1,5 @@
 <x-layout title="Projetos" align="start">
-    <div class="w-full max-w-5xl">
+    <div class="w-full max-w-7xl">
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-white sm:text-3xl">Projetos</h1>
@@ -20,7 +20,7 @@
 
         <x-filtros alvo="projetos-grid" data-label="Prazo" :projetos="true" :server-url="route('projetos', absolute: false)" stats-id="projetos-stats" />
 
-        <div id="projetos-grid" data-paginated class="grid grid-cols-1 items-start gap-4">
+        <div id="projetos-grid" data-paginated class="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
             @include('partials.projeto-list')
         </div>
         {{ $projetos->onEachSide(1)->links('partials.projeto-pagination') }}
@@ -32,5 +32,6 @@
     <x-slot:modals>
         <x-projeto-create-modal />
         <x-projeto-edit-modal />
+        <x-projeto-etiqueta-modal />
     </x-slot:modals>
 </x-layout>

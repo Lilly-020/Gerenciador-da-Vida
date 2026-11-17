@@ -14,6 +14,12 @@ class ProjetoComment extends Model
     /** @use HasFactory<ProjetoCommentFactory> */
     use HasFactory;
 
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['edited_at' => 'datetime'];
+    }
+
     /** @return BelongsTo<Projeto, $this> */
     public function projeto(): BelongsTo
     {
