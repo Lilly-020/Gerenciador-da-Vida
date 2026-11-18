@@ -17,9 +17,14 @@ class QuadroLista extends Model
 
     public function foregroundColor(): string
     {
-        $brightness = (hexdec(substr($this->color, 1, 2)) * 299 + hexdec(substr($this->color, 3, 2)) * 587 + hexdec(substr($this->color, 5, 2)) * 114) / 1000;
+        $channels = array_map(function (int $offset): float {
+            $channel = hexdec(substr($this->color, $offset, 2)) / 255;
 
-        return $brightness > 160 ? '#0f172a' : '#f8fafc';
+            return $channel <= 0.04045 ? $channel / 12.92 : (($channel + 0.055) / 1.055) ** 2.4;
+        }, [1, 3, 5]);
+        $luminance = $channels[0] * 0.2126 + $channels[1] * 0.7152 + $channels[2] * 0.0722;
+
+        return $luminance > 0.45 ? '#0f172a' : '#f8fafc';
     }
 
     public function quadro(): BelongsTo

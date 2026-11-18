@@ -43,7 +43,7 @@
                         <input type="hidden" name="archived" value="{{ $sonho->archived ? 0 : 1 }}">
                         <button class="w-full rounded-lg px-3 py-2 text-left text-slate-300 hover:bg-white/10">{{ $sonho->archived ? 'Restaurar' : 'Arquivar' }}</button>
                     </form>
-                    <button type="button" data-delete-card-url="{{ route('sonhos.destroy', $sonho, absolute: false) }}" data-confirm-message="Excluir este sonho e todas as suas tarefas? Essa ação não pode ser desfeita." class="rounded-lg px-3 py-2 text-left text-rose-400 hover:bg-white/10">Excluir</button>
+                    @if ($sonho->user_id === auth()->id())<button type="button" data-delete-card-url="{{ route('sonhos.destroy', $sonho, absolute: false) }}" data-confirm-message="Excluir este sonho e todas as suas tarefas? Essa ação não pode ser desfeita." class="rounded-lg px-3 py-2 text-left text-rose-400 hover:bg-white/10">Excluir</button>@endif
                 </div>
             </details>
         </div>
@@ -155,4 +155,5 @@
     </div>
 
     </details>
+    <x-friend-collaboration :item="$sonho" type="sonho" />
 </div>

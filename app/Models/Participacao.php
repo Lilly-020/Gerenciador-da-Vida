@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * need to read it, so the controllers check who is asking.
  */
 #[Table('participacoes')]
-#[Fillable(['owner_id', 'participant_id', 'tipo', 'projeto_id', 'permission', 'sections', 'status', 'allowed_accounts', 'allowed_categories', 'allowed_lancamentos'])]
+#[Fillable(['owner_id', 'participant_id', 'tipo', 'projeto_id', 'sonho_id', 'tarefa_id', 'permission', 'sections', 'status', 'allowed_accounts', 'allowed_categories', 'allowed_lancamentos'])]
 class Participacao extends Model
 {
     public const TIPO_PROJETO = 'projeto';

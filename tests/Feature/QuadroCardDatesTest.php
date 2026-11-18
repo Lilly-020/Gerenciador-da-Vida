@@ -131,10 +131,11 @@ class QuadroCardDatesTest extends TestCase
         $card = QuadroCartao::factory()->for($board)->create(['title' => 'Entrega importante']);
         $owner->notifyNow(new QuadroCardDueReminder($board->id, $card->id, $card->title, '18/12/2026 12:00'));
         $notification = $owner->notifications()->firstOrFail();
-        $this->actingAs($owner)->get(route('perfil', ['aba' => 'notificacoes']))->assertOk()->assertSee('Entrega importante');
+        $response = $this->actingAs($owner)->getJson(route('notificacoes.index'))->assertOk();
+        $this->assertStringContainsString('Entrega importante', $response->json('html'));
         $outsider = User::factory()->create();
-        $this->actingAs($outsider)->post(route('perfil.lembretes.read', $notification->id))->assertNotFound();
-        $this->actingAs($owner)->post(route('perfil.lembretes.read', $notification->id))->assertRedirect(route('quadros.show', $board, absolute: false).'#card='.$card->id);
+        $this->actingAs($outsider)->post(route('notificacoes.open', $notification->id))->assertNotFound();
+        $this->actingAs($owner)->post(route('notificacoes.open', $notification->id))->assertRedirect(route('quadros.show', $board, absolute: false).'#card='.$card->id);
         $this->assertNotNull($notification->fresh()->read_at);
     }
 }

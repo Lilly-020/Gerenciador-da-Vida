@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AmizadeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\CarteiraController;
 use App\Http\Controllers\CursoController;
 use App\Http\Controllers\CursoFileController;
 use App\Http\Controllers\DashboardController;
@@ -13,6 +13,7 @@ use App\Http\Controllers\InvestimentoController;
 use App\Http\Controllers\LancamentoController;
 use App\Http\Controllers\LancamentoFileController;
 use App\Http\Controllers\NotaController;
+use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\ParticipacaoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ProjetoCollaborationController;
@@ -111,9 +112,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/quadros/{quadro}/cartoes/{cartao}/anexos/{arquivo}', [QuadroCartaoArquivoController::class, 'destroy'])->name('quadros.arquivos.destroy');
     Route::get('/quadros/{quadro}/membros', [QuadroMembroController::class, 'index'])->name('quadros.membros.index');
     Route::post('/quadros/{quadro}/membros', [QuadroMembroController::class, 'store'])->name('quadros.membros.store');
-    Route::patch('/quadros/{quadro}/membros/{membro}', [QuadroMembroController::class, 'update'])->name('quadros.membros.update');
     Route::delete('/quadros/{quadro}/membros/{membro}', [QuadroMembroController::class, 'destroy'])->name('quadros.membros.destroy');
-    Route::post('/convites-quadros/{membro}', [QuadroMembroController::class, 'respond'])->name('quadros.convites.respond');
 
     Route::post('/cursos', [CursoController::class, 'store'])->name('cursos.store');
     Route::put('/cursos/{curso}', [CursoController::class, 'update'])->name('cursos.update');
@@ -138,8 +137,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/categorias', [FinanceiroContaController::class, 'destroyCategory'])->name('categorias.destroy')->middleware('carteira:lancamentos');
         Route::post('/categorias', [FinanceiroContaController::class, 'category'])->name('categorias.store')->middleware('carteira:lancamentos');
         Route::put('/categorias/{categoria}', [FinanceiroContaController::class, 'updateCategory'])->name('categorias.update')->middleware('carteira:lancamentos');
-        Route::get('/participantes', [CarteiraController::class, 'participantes'])->name('participantes');
-        Route::post('/carteira', [CarteiraController::class, 'trocar'])->name('carteira');
 
         Route::get('/relatorio', [LancamentoController::class, 'relatorio'])->name('relatorio')->middleware('carteira:lancamentos');
 
@@ -192,13 +189,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/perfil/lembretes/{notification}', [PerfilController::class, 'readReminder'])->name('perfil.lembretes.read');
     Route::put('/perfil', [PerfilController::class, 'update'])->name('perfil.update');
     Route::put('/perfil/senha', [PerfilController::class, 'updatePassword'])->name('perfil.senha');
-    Route::get('/usuarios/buscar', [PerfilController::class, 'buscar'])->name('usuarios.buscar');
 
+    Route::post('/amigos', [AmizadeController::class, 'store'])->middleware('throttle:10,1')->name('amigos.store');
+    Route::post('/amigos/{amizade}/responder', [AmizadeController::class, 'respond'])->name('amigos.respond');
+    Route::delete('/amigos/{amizade}', [AmizadeController::class, 'destroy'])->name('amigos.destroy');
+    Route::get('/notificacoes', [NotificacaoController::class, 'index'])->name('notificacoes.index');
+    Route::post('/notificacoes/{notification}/abrir', [NotificacaoController::class, 'open'])->name('notificacoes.open');
     Route::post('/participacoes', [ParticipacaoController::class, 'store'])->name('participacoes.store');
-    Route::put('/participacoes/{participacao}/financeiro', [ParticipacaoController::class, 'updateFinancialAccess'])->name('participacoes.financeiro.update');
-    Route::post('/participacoes/{participacao}/reenviar', [ParticipacaoController::class, 'reenviar'])->name('participacoes.reenviar');
-    Route::post('/participacoes/{participacao}/aceitar', [ParticipacaoController::class, 'aceitar'])->name('participacoes.aceitar');
-    Route::post('/participacoes/{participacao}/recusar', [ParticipacaoController::class, 'recusar'])->name('participacoes.recusar');
     Route::delete('/participacoes/{participacao}', [ParticipacaoController::class, 'destroy'])->name('participacoes.destroy');
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');

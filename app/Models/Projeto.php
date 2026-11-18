@@ -116,11 +116,7 @@ class Projeto extends Model
 
     public function canBeManagedBy(User $user): bool
     {
-        return $this->isOwnedBy($user) || $this->participacoes->contains(
-            fn (Participacao $participacao): bool => (int) $participacao->participant_id === (int) $user->id
-                && $participacao->status === Participacao::STATUS_ACEITO
-                && $participacao->permission === Participacao::PERMISSION_ADMIN,
-        );
+        return $this->isOwnedBy($user);
     }
 
     /** @return HasMany<ProjetoComment, $this> */

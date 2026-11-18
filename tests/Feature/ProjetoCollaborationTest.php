@@ -173,25 +173,15 @@ class ProjetoCollaborationTest extends TestCase
         $this->assertDatabaseHas('projetos', ['id' => $project->id, 'title' => $project->title]);
     }
 
-    public function test_administrators_can_manage_project_and_invitations_and_cancel_pending_invites(): void
+    public function test_legacy_project_admins_can_edit_tasks_but_not_manage_the_project(): void
     {
         $owner = User::factory()->create();
-        $admin = User::factory()->create();
-        $invitee = User::factory()->create(['apelido' => 'newperson']);
+        $collaborator = User::factory()->create();
         $project = Projeto::factory()->for($owner)->create();
-        $this->participate($project, $admin, 'admin');
-
-        $this->actingAs($admin)->putJson(route('projetos.update', $project), ['title' => 'Managed', 'details' => 'Complemento', 'priority' => 'high', 'archived' => true])->assertOk();
-        $this->post(route('participacoes.store'), ['apelido' => 'newperson', 'tipo' => 'projeto', 'projeto_id' => $project->id, 'permission' => 'ver'])->assertRedirect();
-
-        $invitation = Participacao::where('participant_id', $invitee->id)->firstOrFail();
-        $this->assertSame($owner->id, $invitation->owner_id);
-        $this->actingAs($owner)->get('/perfil?aba=notificacoes')->assertSee('Administrador');
-        $this->actingAs($admin);
-        $this->post(route('participacoes.reenviar', $invitation))->assertRedirect();
-        $this->delete(route('participacoes.destroy', $invitation))->assertRedirect();
-        $this->assertModelMissing($invitation);
-        $this->assertDatabaseHas('projetos', ['id' => $project->id, 'details' => 'Complemento', 'priority' => 'high', 'archived' => true]);
+        $this->participate($project, $collaborator, 'admin');
+        $this->actingAs($collaborator)->putJson(route('projetos.update', $project), ['title' => 'Não permitido'])->assertForbidden();
+        $this->postJson(route('projetos.tarefas.store', $project), ['title' => 'Tarefa permitida'])->assertOk();
+        $this->assertSame(1, $project->tasks()->count());
     }
 
     public function test_removing_a_participant_clears_their_task_assignments(): void
@@ -281,19 +271,14 @@ class ProjetoCollaborationTest extends TestCase
         $this->assertModelMissing($comment);
     }
 
-    public function test_administrator_can_delete_a_project_and_an_editor_cannot_renew_invites(): void
+    public function test_only_the_project_owner_can_delete_and_legacy_invitation_renewal_is_removed(): void
     {
         $owner = User::factory()->create();
-        $admin = User::factory()->create();
-        $editor = User::factory()->create();
+        $collaborator = User::factory()->create();
         $project = Projeto::factory()->for($owner)->create();
-        $this->participate($project, $admin, 'admin');
-        $invitation = $this->participate($project, $editor, 'editar');
-        $invitation->update(['status' => 'pendente']);
-
-        $this->actingAs($editor)->post(route('participacoes.reenviar', $invitation))->assertNotFound();
-        $this->actingAs($admin)->deleteJson(route('projetos.destroy', $project))->assertOk();
-
-        $this->assertModelMissing($project);
+        $participation = $this->participate($project, $collaborator, 'admin');
+        $this->actingAs($collaborator)->post('/participacoes/'.$participation->id.'/reenviar')->assertNotFound();
+        $this->deleteJson(route('projetos.destroy', $project))->assertForbidden();
+        $this->assertModelExists($project);
     }
 }

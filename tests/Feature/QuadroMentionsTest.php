@@ -54,8 +54,9 @@ class QuadroMentionsTest extends TestCase
         $this->actingAs($owner)->postJson(route('quadros.comentarios.store', [$board, $card]), ['rich_body' => '<p><span data-mention-id="'.$member->id.'">Pessoa</span><span data-mention-id="'.$other->id.'">Outra</span></p>'])->assertOk();
         $comment = $card->comentarios()->firstOrFail();
         $notification = $member->notifications()->firstOrFail();
-        $this->actingAs($member)->get(route('perfil', ['aba' => 'notificacoes']))->assertOk()->assertSee('mencionou você');
-        $this->post(route('perfil.lembretes.read', $notification))->assertRedirect(route('quadros.show', $board, absolute: false).'#card='.$card->id.'&comment='.$comment->id);
+        $response = $this->actingAs($member)->getJson(route('notificacoes.index'))->assertOk();
+        $this->assertStringContainsString('mencionou você', $response->json('html'));
+        $this->post(route('notificacoes.open', $notification))->assertRedirect(route('quadros.show', $board, absolute: false).'#card='.$card->id.'&comment='.$comment->id);
         $this->assertNull($notification->fresh()->read_at);
         $html = $this->getJson(route('quadros.cartoes.show', [$board, $card]))->assertOk()->json('html');
         $this->assertStringContainsString('data-quadro-mention-unread', $html);

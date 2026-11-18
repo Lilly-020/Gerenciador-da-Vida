@@ -41,7 +41,7 @@ class Sonho extends Model
     {
         static::addGlobalScope('owner', function (Builder $builder): void {
             if (Auth::check()) {
-                $builder->where('user_id', Auth::id());
+                $builder->where(fn (Builder $query) => $query->where('sonhos.user_id', Auth::id())->orWhereIn('sonhos.id', Participacao::where('tipo', 'sonho')->where('participant_id', Auth::id())->where('status', 'aceito')->select('sonho_id')));
             }
         });
 
@@ -53,6 +53,11 @@ class Sonho extends Model
     /**
      * @return BelongsTo<User, $this>
      */
+    public function participacoes(): HasMany
+    {
+        return $this->hasMany(Participacao::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

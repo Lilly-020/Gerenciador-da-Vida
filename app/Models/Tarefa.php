@@ -64,7 +64,7 @@ class Tarefa extends Model
     {
         static::addGlobalScope('owner', function (Builder $builder): void {
             if (Auth::check()) {
-                $builder->where('user_id', Auth::id());
+                $builder->where(fn (Builder $query) => $query->where('tarefas.user_id', Auth::id())->orWhereIn('tarefas.id', Participacao::where('tipo', 'tarefa')->where('participant_id', Auth::id())->where('status', 'aceito')->select('tarefa_id')));
             }
         });
 
@@ -76,6 +76,11 @@ class Tarefa extends Model
     /**
      * @return BelongsTo<User, $this>
      */
+    public function participacoes(): HasMany
+    {
+        return $this->hasMany(Participacao::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

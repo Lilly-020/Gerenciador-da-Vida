@@ -31,7 +31,7 @@ class FinanceiroCategoriesTest extends TestCase
         Lancamento::factory()->for($owner)->saida()->create(['category' => 'Moradia', 'status' => 'cancelado']);
 
         $this->actingAs($owner)->deleteJson('/financeiro/categorias', ['type' => 'saida', 'name' => 'Moradia'])
-            ->assertUnprocessable()->assertJsonPath('links', 1)->assertJsonPath('sharingLinks', 0);
+            ->assertUnprocessable()->assertJsonPath('links', 1);
 
         $this->assertContains('Moradia', CategoriaFinanceira::namesFor('saida'));
     }
@@ -70,24 +70,23 @@ class FinanceiroCategoriesTest extends TestCase
         $this->assertDatabaseMissing('lancamentos', ['description' => 'Old form']);
     }
 
-    public function test_category_used_in_sharing_cannot_be_deleted(): void
+    public function test_retired_sharing_links_do_not_prevent_category_deletion(): void
     {
         $owner = User::factory()->create();
         $guest = User::factory()->create();
         Participacao::create(['owner_id' => $owner->id, 'participant_id' => $guest->id, 'tipo' => 'financas', 'permission' => 'ver', 'sections' => ['saidas'], 'allowed_categories' => ['Moradia'], 'status' => 'pendente']);
 
-        $this->actingAs($owner)->deleteJson('/financeiro/categorias', ['type' => 'saida', 'name' => 'Moradia'])->assertUnprocessable()->assertJsonPath('sharingLinks', 1);
+        $this->actingAs($owner)->deleteJson('/financeiro/categorias', ['type' => 'saida', 'name' => 'Moradia'])->assertOk();
+        $this->assertDatabaseHas('categorias_financeiras', ['user_id' => $owner->id, 'name' => 'Moradia', 'is_deleted' => true]);
     }
 
-    public function test_viewers_cannot_create_or_delete_categories(): void
+    public function test_other_users_cannot_delete_private_categories(): void
     {
         $owner = User::factory()->create();
-        $guest = User::factory()->create();
-        Participacao::create(['owner_id' => $owner->id, 'participant_id' => $guest->id, 'tipo' => 'financas', 'permission' => 'ver', 'sections' => ['entradas', 'saidas'], 'status' => 'aceito']);
-
-        $this->actingAs($guest)->withSession(['carteira_owner_id' => $owner->id])->getJson('/financeiro/categorias?type=saida')->assertOk()->assertJsonPath('canManage', false);
-        $this->postJson('/financeiro/categorias', ['type' => 'saida', 'name' => 'Other'])->assertForbidden();
-        $this->deleteJson('/financeiro/categorias', ['type' => 'saida', 'name' => 'Moradia'])->assertForbidden();
+        $viewer = User::factory()->create();
+        $category = CategoriaFinanceira::factory()->for($owner)->create();
+        $this->actingAs($viewer)->withSession(['carteira_owner_id' => $owner->id])->deleteJson(route('financeiro.categorias.destroy'), ['name' => $category->name, 'type' => $category->type])->assertNotFound();
+        $this->assertModelExists($category);
     }
 
     public function test_custom_dates_filter_monthly_indicators_and_include_the_end_date(): void

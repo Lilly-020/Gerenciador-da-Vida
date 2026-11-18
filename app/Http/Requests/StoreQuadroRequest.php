@@ -21,7 +21,8 @@ class StoreQuadroRequest extends FormRequest
             'cover' => ['required', Rule::in(array_keys(Quadro::COVERS))],
             'cover_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:8192'],
             'remove_cover' => ['sometimes', 'boolean'],
-            'invite_handle' => ['nullable', 'string', 'max:31', Rule::exists('users', 'apelido')->whereNot('id', $this->user()->id)],
+            'friend_id' => ['nullable', 'integer', Rule::in($this->user()->friendIds())],
+            'invite_handle' => ['prohibited'],
         ];
     }
 

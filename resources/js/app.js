@@ -3,35 +3,12 @@ import { setupQuadros } from './quadros';
 import { setupFiltros } from './filtros';
 import { setupContas, setupInvestimentos, setupLancamentos } from './financeiro';
 import { setupMoneyInputs } from './money';
-import { setupApelidoSearch } from './participantes';
+import { setupAppToolbar } from './app-toolbar';
 import { setupProjetos } from './projetos';
 import { setupSonhos } from './sonhos';
 import { setupTarefas } from './tarefas';
 import { setupNotas } from './notas';
 import { setupLifeDashboard } from './dashboard';
-
-function setupNotificationCount() {
-    const badge = document.querySelector('[data-app-notification-count][data-count-url]');
-    if (!badge || document.querySelector('[data-quadro-notification-count]')) return;
-    let loading = false;
-    const refresh = async () => {
-        if (loading || document.hidden || !navigator.onLine) return;
-        loading = true;
-        try {
-            const response = await fetch(badge.dataset.countUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-            if (!response.ok) return;
-            const data = await response.json();
-            if (!Number.isInteger(data.count)) return;
-            document.querySelectorAll('[data-app-notification-count]').forEach((element) => {
-                const total = Number(element.dataset.invites || 0) + data.count;
-                element.hidden = total === 0; element.textContent = String(total);
-                if (total && element.dataset.url) element.closest('a').href = element.dataset.url;
-            });
-        } catch {} finally { loading = false; }
-    };
-    setInterval(refresh, 5000); window.addEventListener('focus', refresh);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
-}
 
 function setupNavigation() {
     const dialog = document.getElementById('mobile-navigation');
@@ -70,9 +47,8 @@ function setupNavigation() {
 
 function init() {
     setupNavigation();
-    setupNotificationCount();
+    setupAppToolbar();
     setupMoneyInputs();
-    setupApelidoSearch();
     setupSonhos();
     setupProjetos();
     setupQuadros();

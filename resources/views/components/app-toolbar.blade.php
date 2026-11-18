@@ -1,0 +1,9 @@
+<header class="app-toolbar">
+    <button type="button" id="open-navigation" aria-controls="mobile-navigation" aria-haspopup="dialog" aria-expanded="false" class="app-toolbar-icon lg:hidden" aria-label="Abrir menu"><x-card-icon name="menu" /></button>
+    <div class="ml-auto flex min-w-0 items-center gap-2 sm:gap-4">
+        <button type="button" data-toggle-theme class="app-toolbar-icon" aria-label="Alternar entre modo claro e escuro" title="Alternar tema"><span data-theme-moon><x-card-icon name="moon" /></span><span data-theme-sun hidden><x-card-icon name="sun" /></span></button>
+        <a href="{{ route('perfil', absolute: false) }}" class="flex min-w-0 items-center gap-3" aria-label="Abrir meu perfil"><span class="quadro-avatar shrink-0">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 2)) }}</span><span class="max-w-36 truncate text-sm font-semibold sm:max-w-80">{{ auth()->user()->name }}</span></a>
+        <button type="button" data-notifications-toggle data-url="{{ route('notificacoes.index', absolute: false) }}" class="app-toolbar-icon relative" aria-label="Notificações" aria-expanded="false"><x-card-icon name="bell" /><span data-app-notification-count @if (! $unreadNotificationCount) hidden @endif class="app-notification-badge">{{ $unreadNotificationCount }}</span></button>
+    </div>
+    <div data-notifications-panel popover="manual" class="app-notifications app-scroll" aria-label="Todas as notificações"><header class="flex items-center justify-between gap-3 border-b border-white/10 p-4"><h2 class="font-semibold">Notificações</h2><button type="button" data-notifications-close class="app-toolbar-icon" aria-label="Fechar notificações"><x-card-icon name="close" /></button></header><div data-notifications-body class="p-3"><p class="p-3 text-sm text-slate-400">Carregando notificações…</p></div></div>
+</header>

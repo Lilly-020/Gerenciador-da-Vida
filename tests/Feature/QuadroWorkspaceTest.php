@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Amizade;
 use App\Models\Curso;
 use App\Models\CursoFile;
 use App\Models\Quadro;
 use App\Models\QuadroCartao;
 use App\Models\QuadroComentario;
 use App\Models\QuadroLista;
-use App\Models\QuadroMembro;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -100,7 +100,7 @@ class QuadroWorkspaceTest extends TestCase
         $second = QuadroLista::factory()->for($board)->create(['position' => 1]);
         $this->patchJson(route('quadros.listas.update', [$board, $first]), ['title' => 'Novas ideias', 'color' => '#ff00ff'])->assertOk();
         $this->assertSame('#ff00ff', $first->fresh()->color);
-        $this->get(route('quadros.show', $board))->assertOk()->assertSee('--quadro-list-color:#ff00ff', false);
+        $this->get(route('quadros.show', $board))->assertOk()->assertSee('--quadro-list-color:#ff00ff', false)->assertSee('--quadro-list-text:#f8fafc', false);
         $this->putJson(route('quadros.listas.ordem', $board), ['ids' => [$second->id, $first->id]])->assertOk();
         $this->assertSame([$second->id, $first->id], $board->listas()->pluck('id')->all());
         $this->deleteJson(route('quadros.listas.destroy', [$board, $first]))->assertOk();
@@ -175,41 +175,36 @@ class QuadroWorkspaceTest extends TestCase
         $this->postJson(route('quadros.update', $board), ['title' => 'No', 'cover' => 'blue'])->assertForbidden();
     }
 
-    public function test_invitation_must_be_accepted_before_shared_board_can_be_accessed(): void
+    public function test_friendship_is_required_before_adding_a_board_collaborator(): void
     {
         $owner = User::factory()->create();
         $board = $this->board($owner);
-        $guest = User::factory()->create(['apelido' => 'colega']);
-        $this->actingAs($owner)->postJson(route('quadros.membros.store', $board), ['handle' => '@colega', 'role' => 'editor'])->assertOk();
-        $invite = QuadroMembro::firstOrFail();
-        $this->actingAs($guest)->get(route('cursos'))->assertOk()->assertSee('Convites para quadros')->assertSee('Meu aprendizado');
-        $this->get(route('quadros.show', $board))->assertNotFound();
-        $this->postJson(route('quadros.convites.respond', $invite), ['accept' => true])->assertOk();
-        $this->get(route('quadros.show', $board))->assertOk();
-        $this->assertSame('accepted', $invite->fresh()->status);
+        $guest = User::factory()->create();
+        $this->actingAs($owner)->postJson(route('quadros.membros.store', $board), ['friend_id' => $guest->id])->assertUnprocessable();
+        $this->actingAs($guest)->get(route('quadros.show', $board))->assertNotFound();
+        Amizade::create(['user_low_id' => $owner->id, 'user_high_id' => $guest->id, 'requester_id' => $owner->id, 'status' => 'accepted']);
+        $this->actingAs($owner)->postJson(route('quadros.membros.store', $board), ['friend_id' => $guest->id])->assertOk();
+        $this->actingAs($guest)->get(route('quadros.show', $board))->assertOk();
     }
 
-    public function test_membership_changes_and_revocation_are_enforced(): void
+    public function test_membership_revocation_and_owner_only_management_are_enforced(): void
     {
         $owner = User::factory()->create();
         $board = $this->board($owner);
         $editor = $this->member($board);
         $member = $board->membros()->firstOrFail();
-        $this->actingAs($editor)->postJson(route('quadros.membros.store', $board), ['handle' => 'another', 'role' => 'viewer'])->assertForbidden();
-        $this->actingAs($owner)->patchJson(route('quadros.membros.update', [$board, $member]), ['role' => 'viewer'])->assertOk();
-        $this->assertSame('viewer', $member->fresh()->role);
+        $this->actingAs($editor)->postJson(route('quadros.membros.store', $board), ['friend_id' => $owner->id])->assertForbidden();
+        $this->actingAs($owner)->patchJson('/quadros/'.$board->id.'/membros/'.$member->id, ['role' => 'admin'])->assertStatus(405);
         $this->deleteJson(route('quadros.membros.destroy', [$board, $member]))->assertOk();
         $this->actingAs($editor)->get(route('quadros.show', $board))->assertNotFound();
     }
 
-    public function test_only_invited_user_can_accept_and_only_owner_can_delete_board(): void
+    public function test_legacy_board_acceptance_is_removed_and_only_owner_can_delete_board(): void
     {
         $owner = User::factory()->create();
         $board = $this->board($owner);
-        $invited = $this->member($board, 'admin', 'pending');
-        $invite = $board->membros()->firstOrFail();
-        $this->actingAs($owner)->postJson(route('quadros.convites.respond', $invite), ['accept' => true])->assertNotFound();
-        $this->actingAs($invited)->postJson(route('quadros.convites.respond', $invite), ['accept' => true])->assertOk();
+        $friend = $this->member($board, 'editor');
+        $this->actingAs($friend)->postJson('/quadros/convites/1/responder', ['accept' => true])->assertNotFound();
         $this->deleteJson(route('quadros.destroy', $board))->assertForbidden();
     }
 
@@ -269,14 +264,15 @@ class QuadroWorkspaceTest extends TestCase
         $this->actingAs($owner)->get(route('dashboard'))->assertOk()->assertSee('Meu aprendizado')->assertSee(route('quadros.show', $board, absolute: false), false);
     }
 
-    public function test_creation_can_invite_a_user_without_giving_access_before_acceptance(): void
+    public function test_creation_can_add_an_accepted_friend_as_editor(): void
     {
         $owner = User::factory()->create();
-        $invitee = User::factory()->create(['apelido' => 'amigadeestudos']);
-        $this->actingAs($owner)->postJson(route('quadros.store'), ['title' => 'Juntos', 'cover' => 'violet', 'invite_handle' => '@AMIGADEESTUDOS'])->assertOk();
+        $friend = User::factory()->create();
+        Amizade::create(['user_low_id' => $owner->id, 'user_high_id' => $friend->id, 'requester_id' => $owner->id, 'status' => 'accepted']);
+        $this->actingAs($owner)->postJson(route('quadros.store'), ['title' => 'Juntos', 'cover' => 'violet', 'friend_id' => $friend->id])->assertOk();
         $board = Quadro::firstOrFail();
-        $this->assertDatabaseHas('quadro_membros', ['quadro_id' => $board->id, 'user_id' => $invitee->id, 'role' => 'editor', 'status' => 'pending']);
-        $this->actingAs($invitee)->get(route('quadros.show', $board))->assertNotFound();
+        $this->assertDatabaseHas('quadro_membros', ['quadro_id' => $board->id, 'user_id' => $friend->id, 'role' => 'editor', 'status' => 'accepted']);
+        $this->actingAs($friend)->get(route('quadros.show', $board))->assertOk();
     }
 
     public function test_new_card_form_uses_current_lists_and_is_unavailable_to_viewers(): void
@@ -350,13 +346,10 @@ class QuadroWorkspaceTest extends TestCase
     {
         $owner = User::factory()->create();
         $board = $this->board($owner);
-        $admin = $this->member($board, 'admin');
-        $editor = $this->member($board, 'editor');
-        $viewer = $this->member($board, 'viewer');
-        $this->actingAs($admin)->get(route('cursos'))->assertSee('data-quadro-tile-edit', false)->assertDontSee('data-quadro-tile-delete', false);
-        $this->getJson(route('quadros.edit', $board))->assertOk();
-        foreach ([$editor, $viewer] as $user) {
-            $this->actingAs($user)->get(route('cursos'))->assertDontSee('data-quadro-tile-edit', false)->assertDontSee('data-quadro-tile-delete', false);
+        $this->actingAs($owner)->get(route('cursos'))->assertSee('data-quadro-tile-edit', false)->assertSee('data-quadro-tile-delete', false);
+        foreach (['admin', 'editor', 'viewer'] as $role) {
+            $friend = $this->member($board, $role);
+            $this->actingAs($friend)->get(route('cursos'))->assertDontSee('data-quadro-tile-edit', false)->assertDontSee('data-quadro-tile-delete', false);
             $this->getJson(route('quadros.edit', $board))->assertForbidden();
         }
         $this->actingAs(User::factory()->create())->getJson(route('quadros.edit', $board))->assertNotFound();

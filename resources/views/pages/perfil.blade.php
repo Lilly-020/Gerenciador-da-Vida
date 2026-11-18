@@ -17,10 +17,7 @@
 
         <nav class="mb-6 flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-slate-900/70 p-1.5 shadow-xl shadow-black/30 backdrop-blur scrollbar-none">
             <a href="{{ route('perfil', absolute: false) }}" class="{{ $tabClasses($aba === 'perfil') }}">Meus dados</a>
-            <a href="{{ route('perfil', ['aba' => 'notificacoes'], absolute: false) }}" class="{{ $tabClasses($aba === 'notificacoes') }}">
-                Notificações
-                <span data-app-notification-count data-invites="{{ $pendentes->count() }}" @if (! ($pendentes->count() + $unreadNotificationCount)) hidden @endif class="ml-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{{ $pendentes->count() + $unreadNotificationCount }}</span>
-            </a>
+            <a href="{{ route('perfil', ['aba' => 'amigos'], absolute: false) }}" class="{{ $tabClasses($aba === 'amigos') }}">Amigos e pedidos de amizade</a>
         </nav>
 
         @if ($aba === 'perfil')
@@ -99,104 +96,7 @@
                 </form>
             </div>
         @else
-            <div class="space-y-4">
-                <section class="rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-lg shadow-black/20 sm:p-6">
-                    <h2 class="mb-3 flex items-center gap-2 text-base font-semibold text-white"><x-card-icon name="bell" />Lembretes e menções</h2>
-                    @forelse ($lembretes as $lembrete)
-                        <article class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 py-3">
-                            <div class="min-w-0"><h3 class="wrap-break-word text-sm font-medium {{ $lembrete->read_at ? 'text-slate-400' : 'text-indigo-200' }}">{{ $lembrete->data['title'] }}</h3><p class="mt-1 text-xs text-slate-500">@if (isset($lembrete->data['comment_id'])){{ $lembrete->data['author'] }} mencionou você @if (! $lembrete->read_at)<span class="ml-1 inline-block h-2 w-2 rounded-full bg-indigo-400" aria-label="Não lida"></span>@endif @else Entrega: {{ $lembrete->data['due_at'] }} @endif · {{ $lembrete->created_at->format('d/m/Y H:i') }}</p></div>
-                            <form method="POST" action="{{ route('perfil.lembretes.read', $lembrete->id, absolute: false) }}">@csrf<button type="submit" class="rounded-lg border border-indigo-400/30 px-3 py-2 text-xs font-medium text-indigo-200">Abrir cartão</button></form>
-                        </article>
-                    @empty<p class="text-sm text-slate-500">Nenhum lembrete ou menção recebido.</p>@endforelse
-                </section>
-                <section class="rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-lg shadow-black/20 sm:p-6">
-                    <h2 class="mb-3 text-base font-semibold text-white">Convites para você</h2>
-
-                    @forelse ($pendentes as $convite)
-                        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 py-3 first:border-t-0 first:pt-0 last:pb-0">
-                            <div class="min-w-0 text-sm text-slate-300">
-                                <p class="wrap-break-word">
-                                    <span class="font-semibold text-white">{{ $convite->owner->handle() }}</span>
-                                    convidou você para participar d{{ $convite->subject() }}.
-                                </p>
-                                <p class="mt-0.5 text-xs text-slate-400">
-                                    {{ $convite->permissionLabel() }}
-                                    @if ($convite->sectionLabels())
-                                        · {{ implode(', ', $convite->sectionLabels()) }}
-                                    @endif
-                                </p>
-                            </div>
-                            <div class="flex shrink-0 items-center gap-2">
-                                <form method="POST" action="{{ route('participacoes.recusar', $convite, absolute: false) }}">
-                                    @csrf
-                                    <button type="submit" class="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:text-white">Recusar</button>
-                                </form>
-                                <form method="POST" action="{{ route('participacoes.aceitar', $convite, absolute: false) }}">
-                                    @csrf
-                                    <button type="submit" class="rounded-full bg-indigo-500/90 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-900/40 transition hover:bg-indigo-500">Aceitar</button>
-                                </form>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-sm text-slate-400">Nenhum convite pendente.</p>
-                    @endforelse
-                </section>
-
-                <section class="rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-lg shadow-black/20 sm:p-6">
-                    <h2 class="mb-3 text-base font-semibold text-white">Compartilhado com você</h2>
-
-                    @forelse ($aceitas as $participacao)
-                        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 py-3 first:border-t-0 first:pt-0 last:pb-0">
-                            <div class="min-w-0 text-sm text-slate-300">
-                                <p class="wrap-break-word">
-                                    {{ ucfirst($participacao->subject()) }} de
-                                    <span class="font-semibold text-white">{{ $participacao->owner->handle() }}</span>
-                                </p>
-                                <p class="mt-0.5 text-xs text-slate-400">
-                                    {{ $participacao->permissionLabel() }}
-                                    @if ($participacao->sectionLabels())
-                                        · {{ implode(', ', $participacao->sectionLabels()) }}
-                                    @endif
-                                </p>
-                            </div>
-                            <form method="POST" action="{{ route('participacoes.destroy', $participacao, absolute: false) }}">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-xs font-medium text-slate-400 transition hover:text-rose-400">Sair</button>
-                            </form>
-                        </div>
-                    @empty
-                        <p class="text-sm text-slate-400">Ninguém compartilhou nada com você ainda.</p>
-                    @endforelse
-                </section>
-
-                <section class="rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-lg shadow-black/20 sm:p-6">
-                    <h2 class="mb-3 text-base font-semibold text-white">Convites que você enviou</h2>
-
-                    @forelse ($enviadas as $participacao)
-                        @php [$statusLabel, $statusColor] = $statusLabels[$participacao->status]; @endphp
-                        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 py-3 first:border-t-0 first:pt-0 last:pb-0">
-                            <div class="min-w-0 text-sm text-slate-300">
-                                <p class="wrap-break-word">
-                                    <span class="font-semibold text-white">{{ $participacao->participant->handle() }}</span>
-                                    em {{ $participacao->subject() }}
-                                </p>
-                                <p class="mt-0.5 text-xs text-slate-400">
-                                    <span class="{{ $statusColor }}">{{ $statusLabel }}</span>
-                                    · {{ $participacao->permissionLabel() }}
-                                </p>
-                            </div>
-                            <form method="POST" action="{{ route('participacoes.destroy', $participacao, absolute: false) }}">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-xs font-medium text-slate-400 transition hover:text-rose-400">Remover</button>
-                            </form>
-                        </div>
-                    @empty
-                        <p class="text-sm text-slate-400">Você ainda não convidou ninguém.</p>
-                    @endforelse
-                </section>
-            </div>
+            @include('partials.profile-friends')
         @endif
     </div>
 </x-layout>

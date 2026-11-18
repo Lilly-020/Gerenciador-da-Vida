@@ -103,6 +103,6 @@ class Quadro extends Model
 
     public function canManage(User $user): bool
     {
-        return in_array($this->roleFor($user), ['owner', 'admin'], true);
+        return $this->user_id === $user->id;
     }
 }

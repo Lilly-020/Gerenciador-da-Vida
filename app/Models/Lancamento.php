@@ -171,9 +171,7 @@ class Lancamento extends Model
      */
     public static function sharedWith(User $user): Builder
     {
-        return self::withoutGlobalScope('owner')
-            ->where('user_id', '!=', $user->id)
-            ->whereHas('partes', fn (Builder $query) => $query->where('user_id', $user->id));
+        return self::query()->whereRaw('1 = 0');
     }
 
     /**
@@ -197,7 +195,7 @@ class Lancamento extends Model
 
     public function isDivided(): bool
     {
-        return $this->partes->where('user_id', '!=', $this->user_id)->isNotEmpty();
+        return false;
     }
 
     public function partesSaemDoDono(): bool
@@ -211,16 +209,7 @@ class Lancamento extends Model
      */
     public function parteOf(User $user): float
     {
-        // Only participants' rows count: the owner's part is never a row
-        // of its own (and one left over from older data must not be
-        // subtracted from the owner as if it were somebody else's).
-        $participantes = $this->partes->where('user_id', '!=', $this->user_id);
-
-        if ((int) $this->user_id === (int) $user->id) {
-            return round((float) $this->amount - (float) $participantes->sum('amount'), 2);
-        }
-
-        return round((float) $participantes->where('user_id', $user->id)->sum('amount'), 2);
+        return (int) $this->user_id === (int) $user->id ? round((float) $this->amount, 2) : 0.0;
     }
 
     /**

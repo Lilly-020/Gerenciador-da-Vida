@@ -32,6 +32,9 @@
         @case('more')<circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" />@break
         @case('download')<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" />@break
         @case('play')<rect x="3" y="3" width="18" height="18" rx="3" /><path d="m10 8 6 4-6 4z" />@break
+        @case('menu')<path d="M4 6h16M4 12h16M4 18h16" />@break
+        @case('moon')<path d="M20 15A9 9 0 0 1 9 4a9 9 0 1 0 11 11Z" />@break
+        @case('sun')<circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1" />@break
         @case('grip')<circle cx="8" cy="5" r="1" /><circle cx="16" cy="5" r="1" /><circle cx="8" cy="12" r="1" /><circle cx="16" cy="12" r="1" /><circle cx="8" cy="19" r="1" /><circle cx="16" cy="19" r="1" />@break
         @case('close')<path d="m6 6 12 12M6 18 18 6" />@break
         @case('open')<path d="M14 3h7v7m0-7L10 14m-1-9H3v16h16v-6" />@break

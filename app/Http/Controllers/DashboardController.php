@@ -7,6 +7,7 @@ use App\Models\Lancamento;
 use App\Models\Projeto;
 use App\Models\Quadro;
 use App\Models\Sonho;
+use App\Models\Tarefa;
 use App\Support\Carteira;
 use App\Support\DashboardLayout;
 use Carbon\Carbon;
@@ -21,11 +22,11 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $preferences = $user->dashboard_preferences ?? DashboardLayout::defaults();
-        $sonhos = $user->sonhos()->where('archived', false)->with('tasks')->latest()->get();
+        $sonhos = Sonho::where('archived', false)->with('tasks')->latest()->get();
         $projetos = Projeto::where('archived', false)->with('tasks')->latest()->get();
         $quadros = Quadro::withCount('cartoes')->latest()->get();
         $today = Carbon::today();
-        $todayTasks = $user->tarefas()->where('date', '<=', $today->copy()->endOfDay())
+        $todayTasks = Tarefa::where('date', '<=', $today->copy()->endOfDay())
             ->where(fn (Builder $query): Builder => $query->whereDate('end_date', '>=', $today)
                 ->orWhere(fn (Builder $query): Builder => $query->whereNull('end_date')->whereDate('date', $today)))
             ->get();

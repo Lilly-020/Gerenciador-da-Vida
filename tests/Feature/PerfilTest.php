@@ -100,18 +100,12 @@ class PerfilTest extends TestCase
         $this->assertTrue(Hash::check('nova-senha-123', $user->fresh()->password));
     }
 
-    public function test_users_are_found_by_the_start_of_their_apelido_ignoring_case(): void
+    public function test_users_cannot_be_enumerated_by_handle_prefix(): void
     {
-        $user = User::factory()->create(['apelido' => 'lilly']);
-        User::factory()->create(['apelido' => 'Joao_Silva', 'name' => 'João']);
-        User::factory()->create(['apelido' => 'maria']);
-
-        $this->actingAs($user)->getJson('/usuarios/buscar?q=JOA')
-            ->assertOk()
-            ->assertExactJson([['apelido' => 'Joao_Silva', 'name' => 'João']]);
-
-        // Never suggests the user themself, nor matches on a single letter.
-        $this->actingAs($user)->getJson('/usuarios/buscar?q=lil')->assertExactJson([]);
-        $this->actingAs($user)->getJson('/usuarios/buscar?q=m')->assertExactJson([]);
+        $user = User::factory()->create();
+        User::factory()->create(['apelido' => 'Joao_Silva']);
+        foreach (['JOA', 'Joao_Silva', 'm'] as $query) {
+            $this->actingAs($user)->getJson('/usuarios/buscar?q='.$query)->assertNotFound();
+        }
     }
 }

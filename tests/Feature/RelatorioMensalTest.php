@@ -3,9 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Lancamento;
-use App\Models\Participacao;
 use App\Models\User;
-use App\Support\Carteira;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -32,31 +30,22 @@ class RelatorioMensalTest extends TestCase
             ]);
     }
 
-    public function test_shared_entries_are_counted_once_using_the_users_account_impact(): void
+    public function test_historical_shared_entries_are_excluded_from_the_recipients_report(): void
     {
         $owner = User::factory()->create();
         $guest = User::factory()->create();
-        $expense = Lancamento::factory()->for($owner)->saida()->create(['date' => '2026-11-10', 'amount' => 120]);
-        $expense->syncPartes([$guest->id => 60]);
-        $income = Lancamento::factory()->for($owner)->entrada()->create(['date' => '2026-11-11', 'amount' => 50]);
-        $income->syncPartes([$guest->id => 20]);
-
-        $this->actingAs($guest)->get('/financeiro/relatorio?mes=2026-11')
-            ->assertOk()->assertViewHas('rows', fn ($rows): bool => $rows->count() === 2)
-            ->assertViewHas('totals', fn (array $totals): bool => $totals['realizado'] === ['entrada' => 0.0, 'saida' => 80.0, 'saldo' => -80.0]);
+        $row = Lancamento::factory()->for($owner)->saida()->create(['description' => 'Privado', 'amount' => 100]);
+        $row->syncPartes([$guest->id => 30]);
+        $this->actingAs($guest)->get('/financeiro/relatorio')->assertOk()->assertDontSee('Privado');
+        $this->assertSame(0, Lancamento::sharedWith($guest)->count());
     }
 
-    public function test_report_does_not_disclose_unshared_sections(): void
+    public function test_old_wallet_sessions_do_not_expose_private_report_rows(): void
     {
         $owner = User::factory()->create();
         $guest = User::factory()->create();
-        Participacao::create(['owner_id' => $owner->id, 'participant_id' => $guest->id, 'tipo' => 'financas', 'permission' => 'ver', 'sections' => ['saidas'], 'status' => 'aceito']);
-        Lancamento::factory()->for($owner)->entrada()->create(['date' => '2026-11-01', 'description' => 'Salário secreto']);
-        Lancamento::factory()->for($owner)->saida()->create(['date' => '2026-11-02', 'description' => 'Despesa compartilhada']);
-
-        $this->actingAs($guest)->withSession([Carteira::SESSION_KEY => $owner->id])->get('/financeiro/relatorio?mes=2026-11')
-            ->assertOk()->assertSee('Relatório parcial')->assertSee('Despesa compartilhada')->assertDontSee('Salário secreto');
-        $this->getJson('/financeiro/relatorio?mes=2026-11&tipo=entrada')->assertForbidden();
+        Lancamento::factory()->for($owner)->create(['description' => 'Privado']);
+        $this->actingAs($guest)->withSession(['carteira_owner_id' => $owner->id])->get('/financeiro/relatorio')->assertOk()->assertDontSee('Privado');
     }
 
     public function test_report_only_renders_selected_information_and_keeps_final_totals(): void

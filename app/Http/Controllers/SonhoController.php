@@ -17,7 +17,7 @@ class SonhoController extends Controller
      */
     public function index(Request $request): View
     {
-        $sonhos = $request->user()->sonhos()->with('tasks')->latest()->get();
+        $sonhos = Sonho::with(['tasks', 'user', 'participacoes.participant'])->latest()->get();
 
         $status = $request->string('status')->toString();
         $sort = $request->string('sort')->toString();
@@ -51,6 +51,9 @@ class SonhoController extends Controller
      */
     public function update(UpdateSonhoRequest $request, Sonho $sonho): RedirectResponse|JsonResponse
     {
+        if ($request->has('archived')) {
+            abort_unless($sonho->user_id === $request->user()->id, 403);
+        }
         $sonho->update($request->validated());
 
         return $this->respondWith($request, $sonho);
@@ -61,6 +64,7 @@ class SonhoController extends Controller
      */
     public function destroy(Request $request, Sonho $sonho): RedirectResponse|JsonResponse
     {
+        abort_unless($sonho->user_id === $request->user()->id, 403);
         $sonhoId = $sonho->id;
         $sonho->delete();
 
@@ -68,7 +72,7 @@ class SonhoController extends Controller
             return back();
         }
 
-        $sonhos = $request->user()->sonhos()->with('tasks')->latest()->get();
+        $sonhos = Sonho::with(['tasks', 'user', 'participacoes.participant'])->latest()->get();
 
         return response()->json([
             'removeCardId' => "sonho-card-{$sonhoId}",
@@ -86,7 +90,7 @@ class SonhoController extends Controller
             return back();
         }
 
-        $sonhos = $request->user()->sonhos()->with('tasks')->latest()->get();
+        $sonhos = Sonho::with(['tasks', 'user', 'participacoes.participant'])->latest()->get();
 
         return response()->json([
             'card' => view('partials.sonho-card', ['sonho' => $sonho->load('tasks')])->render(),

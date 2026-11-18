@@ -24,12 +24,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        View::composer('components.main-navigation', function (\Illuminate\View\View $view): void {
+        View::composer(['components.main-navigation', 'components.app-toolbar'], function (\Illuminate\View\View $view): void {
             $request = request();
             if (! $request->attributes->has('unreadNotificationCount')) {
                 $request->attributes->set('unreadNotificationCount', auth()->user()?->unreadNotifications()->count() ?? 0);
             }
             $view->with('unreadNotificationCount', $request->attributes->get('unreadNotificationCount'));
+        });
+        View::composer(['components.friend-collaboration', 'components.quadro-board-form'], function (\Illuminate\View\View $view): void {
+            $request = request();
+            if (! $request->attributes->has('social.friends')) {
+                $request->attributes->set('social.friends', auth()->user()?->friends()->get() ?? collect());
+            }
+            $view->with('friends', $request->attributes->get('social.friends'));
         });
         View::composer('partials.tarefa-schedule-fields', function (\Illuminate\View\View $view): void {
             $request = request();

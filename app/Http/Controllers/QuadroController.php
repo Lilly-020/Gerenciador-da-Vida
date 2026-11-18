@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateQuadroRequest;
 use App\Models\Quadro;
 use App\Models\QuadroMembro;
 use App\Models\User;
+use App\Notifications\SocialNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
@@ -41,8 +42,9 @@ class QuadroController extends Controller
                     ['title' => 'Em andamento', 'color' => '#854d0e', 'position' => 1],
                     ['title' => 'Concluído', 'color' => '#065f46', 'position' => 2],
                 ]);
-                if ($request->filled('invite_handle')) {
-                    $board->membros()->create(['user_id' => User::where('apelido', $request->validated('invite_handle'))->firstOrFail()->id, 'role' => 'editor', 'status' => 'pending']);
+                if ($request->filled('friend_id')) {
+                    $board->membros()->create(['user_id' => $request->integer('friend_id'), 'role' => 'editor', 'status' => 'accepted']);
+                    User::findOrFail($request->integer('friend_id'))->notify(new SocialNotification(['kind' => 'planner', 'board_id' => $board->id, 'title' => $board->title, 'actor' => $request->user()->name]));
                 }
 
                 return $board;

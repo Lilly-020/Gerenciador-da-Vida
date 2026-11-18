@@ -93,7 +93,7 @@ class TarefaController extends Controller
             return response()->json(['html' => '']);
         }
 
-        $tarefas = $request->user()->tarefas()
+        $tarefas = Tarefa::query()
             ->when($termo !== '', fn ($query) => $query->whereLike('title', '%'.addcslashes($termo, '%_\\').'%'))
             ->when($de, fn ($query) => $query->where('date', '>=', $de->toDateString()))
             ->when($ate, fn ($query) => $query->where('date', '<=', $ate->format('Y-m-d 23:59:59')))
@@ -187,6 +187,7 @@ class TarefaController extends Controller
      */
     public function destroy(Request $request, Tarefa $tarefa): RedirectResponse|JsonResponse
     {
+        abort_unless($tarefa->user_id === $request->user()->id, 403);
         $date = $tarefa->date->copy();
 
         if ($request->query('scope') === 'series' && $tarefa->series_id) {
@@ -235,7 +236,7 @@ class TarefaController extends Controller
     /** @return Builder<Tarefa> */
     private function tasksBetween(User $user, Carbon $start, Carbon $end): Builder
     {
-        return Tarefa::where('user_id', $user->id)->where('date', '<=', $end->format('Y-m-d 23:59:59'))
+        return Tarefa::where('date', '<=', $end->format('Y-m-d 23:59:59'))
             ->where(fn (Builder $query): Builder => $query->whereDate('end_date', '>=', $start->toDateString())
                 ->orWhere(fn (Builder $query): Builder => $query->whereNull('end_date')->where('date', '>=', $start->toDateString())));
     }

@@ -226,10 +226,10 @@ class ContaFinanceiraDeletionTest extends TestCase
         ]);
         $this->actingAs($editor)->withSession([Carteira::SESSION_KEY => $owner->id]);
 
-        $this->getJson('/financeiro/contas/'.$account->id.'/exclusao')->assertForbidden();
+        $this->getJson('/financeiro/contas/'.$account->id.'/exclusao')->assertNotFound();
         $this->deleteJson('/financeiro/contas/'.$account->id, [
             'delete_movements' => true, 'confirm_mistake' => true, 'impact_token' => str_repeat('a', 64),
-        ])->assertForbidden();
+        ])->assertNotFound();
         $this->assertNotSoftDeleted($account);
     }
 }

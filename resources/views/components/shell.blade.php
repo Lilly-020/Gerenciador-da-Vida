@@ -19,6 +19,7 @@
         <meta name="apple-mobile-web-app-title" content="Gerenciador">
         <meta name="mobile-web-app-capable" content="yes">
 
+        <script>try { const saved = localStorage.getItem('life-manager-theme'); document.documentElement.dataset.theme = saved === 'light' ? 'light' : 'dark'; } catch { document.documentElement.dataset.theme = 'dark'; }</script>
         @fonts
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>

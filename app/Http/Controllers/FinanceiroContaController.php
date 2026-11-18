@@ -8,7 +8,6 @@ use App\Models\FinanceiroActivity;
 use App\Models\Investimento;
 use App\Models\InvestimentoAporte;
 use App\Models\Lancamento;
-use App\Models\Participacao;
 use App\Models\TransferenciaFinanceira;
 use App\Models\User;
 use App\Support\Carteira;
@@ -193,15 +192,12 @@ class FinanceiroContaController extends Controller
         $counts = Lancamento::where('type', $type)->select('category')->selectRaw('COUNT(*) as links')->groupBy('category')->pluck('links', 'category');
         $canManage = Carteira::canManage() && ! Carteira::hasRestrictions();
 
-        $invitations = $canManage ? Participacao::where('owner_id', Carteira::ownerId())->where('tipo', 'financas')->get() : collect();
-
         return response()->json([
             'canManage' => $canManage,
-            'categories' => collect(CategoriaFinanceira::namesFor($type))->map(function (string $name) use ($counts, $invitations): array {
+            'categories' => collect(CategoriaFinanceira::namesFor($type))->map(function (string $name) use ($counts): array {
                 $entries = (int) ($counts[$name] ?? 0);
-                $sharing = $invitations->filter(fn (Participacao $invite): bool => in_array($name, $invite->allowed_categories ?? [], true))->count();
 
-                return ['name' => $name, 'links' => $entries + $sharing, 'entries_count' => $entries, 'sharing_count' => $sharing];
+                return ['name' => $name, 'links' => $entries, 'entries_count' => $entries, 'sharing_count' => 0];
             })->values(),
         ]);
     }
@@ -215,10 +211,8 @@ class FinanceiroContaController extends Controller
         return DB::transaction(function () use ($data): JsonResponse {
             User::whereKey(Carteira::ownerId())->lockForUpdate()->firstOrFail();
             $links = Lancamento::where('type', $data['type'])->where('category', $data['name'])->count();
-            $sharingLinks = Participacao::where('owner_id', Carteira::ownerId())->where('tipo', 'financas')->get()
-                ->filter(fn (Participacao $invite): bool => in_array($data['name'], $invite->allowed_categories ?? [], true))->count();
-            if ($links > 0 || $sharingLinks > 0) {
-                return response()->json(['message' => "Não é possível excluir: esta categoria tem {$links} lançamento(s) e {$sharingLinks} compartilhamento(s) vinculados.", 'links' => $links, 'sharingLinks' => $sharingLinks], 422);
+            if ($links > 0) {
+                return response()->json(['message' => "Não é possível excluir: esta categoria tem {$links} lançamento(s) vinculados.", 'links' => $links], 422);
             }
             abort_unless(in_array($data['name'], CategoriaFinanceira::namesFor($data['type']), true), 404);
             CategoriaFinanceira::updateOrCreate($data, ['is_deleted' => true]);
@@ -234,9 +228,6 @@ class FinanceiroContaController extends Controller
         $data = $request->validate(['name' => ['required', 'string', 'max:255', Rule::unique('categorias_financeiras')->where('user_id', Carteira::ownerId())->where('type', $categoria->type)->ignore($categoria)]]);
         DB::transaction(function () use ($categoria, $data): void {
             Lancamento::where('type', $categoria->type)->where('category', $categoria->name)->update(['category' => $data['name']]);
-            foreach (Participacao::where('owner_id', Carteira::ownerId())->where('tipo', 'financas')->whereNotNull('allowed_categories')->get() as $invitation) {
-                $invitation->update(['allowed_categories' => array_map(fn (string $name): string => $name === $categoria->name ? $data['name'] : $name, $invitation->allowed_categories)]);
-            }
             $categoria->update($data);
             FinanceiroActivity::record('Renomeou uma categoria financeira.');
         });

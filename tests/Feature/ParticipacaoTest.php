@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Amizade;
 use App\Models\Participacao;
 use App\Models\Projeto;
 use App\Models\User;
@@ -29,110 +30,67 @@ class ParticipacaoTest extends TestCase
 
     private function invite(string $permission = 'editar', string $apelido = 'joao'): Participacao
     {
-        $this->actingAs($this->owner)->post('/participacoes', [
-            'apelido' => $apelido, 'tipo' => 'projeto', 'projeto_id' => $this->projeto->id, 'permission' => $permission,
-        ])->assertSessionHasNoErrors();
+        Amizade::firstOrCreate(['user_low_id' => $this->owner->id, 'user_high_id' => $this->guest->id], ['requester_id' => $this->owner->id, 'status' => 'accepted']);
+        $this->actingAs($this->owner)->post('/participacoes', ['friend_id' => $this->guest->id, 'tipo' => 'projeto', 'item_id' => $this->projeto->id])->assertSessionHasNoErrors();
+        $entry = Participacao::latest('id')->firstOrFail();
+        if ($permission === 'ver') {
+            $entry->update(['permission' => 'ver']);
+        }
 
-        return Participacao::latest('id')->firstOrFail();
+        return $entry;
     }
 
     private function accepted(string $permission = 'editar'): Participacao
     {
-        $participacao = $this->invite($permission);
-        $this->actingAs($this->guest)->post("/participacoes/{$participacao->id}/aceitar");
-
-        return $participacao->fresh();
+        return $this->invite($permission);
     }
 
-    public function test_an_owner_invites_another_user_by_apelido_in_any_case(): void
+    public function test_an_owner_adds_an_accepted_friend_by_id(): void
     {
-        $participacao = $this->invite('ver', '@JOAO');
-
-        $this->assertSame($this->guest->id, $participacao->participant_id);
-        $this->assertSame('pendente', $participacao->status);
-        $this->assertSame('ver', $participacao->permission);
+        $entry = $this->invite();
+        $this->assertSame('aceito', $entry->status);
+        $this->assertSame('editar', $entry->permission);
     }
 
-    public function test_invalid_invitations_are_rejected(): void
+    public function test_sharing_requires_an_accepted_friend_and_known_item(): void
     {
-        $payload = ['tipo' => 'projeto', 'projeto_id' => $this->projeto->id, 'permission' => 'ver'];
-
-        $this->actingAs($this->owner)->post('/participacoes', [...$payload, 'apelido' => 'ninguem'])
-            ->assertSessionHasErrors('apelido');
-        $this->actingAs($this->owner)->post('/participacoes', [...$payload, 'apelido' => 'lilly'])
-            ->assertSessionHasErrors('apelido');
-
-        $this->invite();
-        $this->actingAs($this->owner)->post('/participacoes', [...$payload, 'apelido' => 'joao'])
-            ->assertSessionHasErrors('apelido');
-
-        $this->assertSame(1, Participacao::count());
+        $this->actingAs($this->owner)->post('/participacoes', ['tipo' => 'projeto', 'item_id' => $this->projeto->id, 'friend_id' => $this->guest->id])->assertSessionHasErrors('friend_id');
+        $this->post('/participacoes', ['apelido' => 'Joao', 'tipo' => 'projeto'])->assertSessionHasErrors(['friend_id', 'item_id']);
     }
 
-    public function test_a_user_cannot_invite_people_to_a_project_that_is_not_theirs(): void
-    {
-        $third = User::factory()->create(['apelido' => 'maria']);
-        $this->accepted('editar');
-
-        // Not even a participant who can edit.
-        $this->actingAs($this->guest)->post('/participacoes', [
-            'apelido' => 'maria', 'tipo' => 'projeto', 'projeto_id' => $this->projeto->id, 'permission' => 'ver',
-        ])->assertNotFound();
-
-        $this->assertSame(0, $third->participacoesRecebidas()->count());
-    }
-
-    public function test_a_project_is_only_visible_after_the_invitation_is_accepted(): void
-    {
-        $participacao = $this->invite();
-
-        $this->actingAs($this->guest)->get('/projetos')->assertDontSee('Projeto secreto');
-        $this->actingAs($this->guest)->get('/perfil?aba=notificacoes')
-            ->assertSee('Projeto secreto')
-            ->assertSee('@lilly');
-
-        $this->actingAs($this->guest)->post("/participacoes/{$participacao->id}/aceitar");
-
-        $this->actingAs($this->guest)->get('/projetos')
-            ->assertSee('Projeto secreto')
-            ->assertSee('Projeto de')
-            ->assertDontSee('Excluir projeto');
-    }
-
-    public function test_the_owner_sees_the_invitations_they_sent_and_their_status(): void
+    public function test_a_friend_cannot_add_people_to_another_users_project(): void
     {
         $this->invite();
-
-        $this->actingAs($this->owner)->get('/perfil?aba=notificacoes')
-            ->assertOk()
-            ->assertSee('@Joao')
-            ->assertSee('Aguardando resposta');
-        $this->actingAs($this->owner)->get('/projetos')
-            ->assertSee('aguardando aceitar')
-            ->assertSee('Convidar');
-    }
-
-    public function test_only_the_invited_user_can_answer_an_invitation(): void
-    {
-        $participacao = $this->invite();
         $third = User::factory()->create();
-
-        $this->actingAs($third)->post("/participacoes/{$participacao->id}/aceitar")->assertNotFound();
-        $this->actingAs($this->owner)->post("/participacoes/{$participacao->id}/aceitar")->assertNotFound();
-
-        $this->assertSame('pendente', $participacao->fresh()->status);
+        Amizade::create(['user_low_id' => $this->guest->id, 'user_high_id' => $third->id, 'requester_id' => $this->guest->id, 'status' => 'accepted']);
+        $this->actingAs($this->guest)->post('/participacoes', ['tipo' => 'projeto', 'item_id' => $this->projeto->id, 'friend_id' => $third->id])->assertForbidden();
     }
 
-    public function test_a_refused_invitation_gives_no_access_and_can_be_sent_again(): void
+    public function test_a_project_is_visible_only_after_an_accepted_friend_is_added_to_it(): void
     {
-        $participacao = $this->invite();
-        $this->actingAs($this->guest)->post("/participacoes/{$participacao->id}/recusar");
-
         $this->actingAs($this->guest)->get('/projetos')->assertDontSee('Projeto secreto');
+        $this->invite();
+        $this->actingAs($this->guest)->get('/projetos')->assertSee('Projeto secreto');
+    }
 
-        $again = $this->invite('ver');
-        $this->assertSame($participacao->id, $again->id);
-        $this->assertSame('pendente', $again->status);
+    public function test_the_owner_sees_friends_added_to_the_project(): void
+    {
+        $this->invite();
+        $this->actingAs($this->owner)->get('/projetos')->assertOk()->assertSee($this->guest->handle())->assertSee('Selecionar amigo');
+    }
+
+    public function test_legacy_item_acceptance_endpoints_are_removed(): void
+    {
+        $entry = $this->invite();
+        $this->actingAs($this->guest)->post('/participacoes/'.$entry->id.'/aceitar')->assertNotFound();
+        $this->post('/participacoes/'.$entry->id.'/recusar')->assertNotFound();
+    }
+
+    public function test_pending_or_declined_friendships_do_not_grant_project_access(): void
+    {
+        $friendship = Amizade::create(['user_low_id' => $this->owner->id, 'user_high_id' => $this->guest->id, 'requester_id' => $this->owner->id, 'status' => 'declined']);
+        $this->actingAs($this->guest)->get('/projetos')->assertDontSee('Projeto secreto');
+        $this->actingAs($this->owner)->post('/participacoes', ['tipo' => 'projeto', 'item_id' => $this->projeto->id, 'friend_id' => $this->guest->id])->assertSessionHasErrors('friend_id');
     }
 
     public function test_a_participant_who_can_edit_manages_tasks_but_not_the_project_itself(): void
@@ -188,11 +146,11 @@ class ParticipacaoTest extends TestCase
         $this->assertModelExists($participacao);
     }
 
-    public function test_pending_invitations_show_up_as_a_badge_on_every_page(): void
+    public function test_friend_requests_appear_in_the_global_notification_bell(): void
     {
-        $this->invite();
-
-        $this->actingAs($this->guest)->get('/tarefas')->assertSee('Convites pendentes');
-        $this->actingAs($this->owner)->get('/tarefas')->assertDontSee('Convites pendentes');
+        $this->actingAs($this->owner)->postJson(route('amigos.store'), ['apelido' => 'Joao'])->assertOk();
+        $this->actingAs($this->guest)->get('/tarefas')->assertSee('data-notifications-toggle', false);
+        $response = $this->getJson(route('notificacoes.index'))->assertOk()->assertJsonPath('count', 1);
+        $this->assertStringContainsString('Pedido de amizade', $response->json('html'));
     }
 }

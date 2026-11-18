@@ -2,11 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Participacao;
-use App\Models\Quadro;
 use App\Models\User;
-use App\Notifications\QuadroCardDueReminder;
-use App\Notifications\QuadroCommentMention;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,16 +20,12 @@ class PerfilController extends Controller
     public function show(Request $request): View
     {
         $user = $request->user();
-        $recebidas = $user->participacoesRecebidas()->with(['owner', 'projeto'])->latest()->get();
 
         return view('pages.perfil', [
             'user' => $user,
-            'aba' => $request->query('aba') === 'notificacoes' ? 'notificacoes' : 'perfil',
-            'unreadNotificationCount' => $user->unreadNotifications()->count(),
-            'lembretes' => $user->notifications()->whereIn('type', [QuadroCardDueReminder::class, QuadroCommentMention::class])->latest()->limit(50)->get(),
-            'pendentes' => $recebidas->where('status', Participacao::STATUS_PENDENTE),
-            'aceitas' => $recebidas->where('status', Participacao::STATUS_ACEITO),
-            'enviadas' => $user->participacoesEnviadas()->with(['participant', 'projeto'])->latest()->get(),
+            'aba' => in_array($request->query('aba'), ['amigos', 'notificacoes'], true) ? 'amigos' : 'perfil',
+            'friends' => $user->friends()->get(),
+            'friendships' => $user->friendships()->with(['lowUser', 'highUser'])->latest()->get(),
         ]);
     }
 
@@ -44,16 +36,7 @@ class PerfilController extends Controller
 
     public function readReminder(Request $request, string $notification): RedirectResponse
     {
-        $reminder = $request->user()->notifications()->whereIn('type', [QuadroCardDueReminder::class, QuadroCommentMention::class])->findOrFail($notification);
-        if ($reminder->type !== QuadroCommentMention::class) {
-            $reminder->markAsRead();
-        }
-        $board = Quadro::find($reminder->data['board_id']);
-        if (! $board || ! $board->cartoes()->whereKey($reminder->data['card_id'])->exists()) {
-            return redirect()->route('perfil', ['aba' => 'notificacoes'])->with('status', 'Este quadro não está mais disponível.');
-        }
-
-        return redirect()->to(route('quadros.show', $board, absolute: false).'#card='.$reminder->data['card_id'].(isset($reminder->data['comment_id']) ? '&comment='.$reminder->data['comment_id'] : ''));
+        return app(NotificacaoController::class)->open($request, $notification);
     }
 
     /**
@@ -113,25 +96,4 @@ class PerfilController extends Controller
      * Apelido search for the "convidar" fields: up to 5 other users whose
      * apelido starts with the typed text, ignoring case.
      */
-    public function buscar(Request $request): JsonResponse
-    {
-        $termo = preg_replace('/[^a-z0-9_.]/', '', Str::lower((string) $request->query('q')));
-
-        if (strlen($termo) < 2) {
-            return response()->json([]);
-        }
-
-        return response()->json(
-            User::whereLike('apelido_key', $termo.'%')
-                ->whereKeyNot($request->user()->id)
-                ->orderBy('apelido_key')
-                ->limit(20)
-                ->get()
-                // "_" is a LIKE wildcard, so confirm the prefix for real.
-                ->filter(fn (User $user): bool => str_starts_with($user->apelido_key, $termo))
-                ->take(5)
-                ->map(fn (User $user): array => ['apelido' => $user->apelido, 'name' => $user->name])
-                ->values(),
-        );
-    }
 }

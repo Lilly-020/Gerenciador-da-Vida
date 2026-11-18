@@ -27,7 +27,6 @@
 
     </div>
 
-    <datalist id="apelido-sugestoes"></datalist>
 
     <x-slot:modals>
         <x-projeto-create-modal />

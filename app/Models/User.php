@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -78,9 +79,30 @@ class User extends Authenticatable
         return $this->hasMany(Participacao::class, 'participant_id');
     }
 
+    public function friendships(): Builder
+    {
+        return Amizade::where(fn ($query) => $query->where('user_low_id', $this->id)->orWhere('user_high_id', $this->id));
+    }
+
+    /** @return list<int> */
+    public function friendIds(): array
+    {
+        return $this->friendships()->where('status', 'accepted')->get()->map(fn (Amizade $friendship): int => $friendship->otherId($this->id))->all();
+    }
+
+    public function friends(): Builder
+    {
+        return self::whereIn('id', $this->friendIds())->orderBy('name');
+    }
+
+    public function isFriendsWith(int $userId): bool
+    {
+        return $this->friendships()->where('status', 'accepted')->where('user_low_id', min($this->id, $userId))->where('user_high_id', max($this->id, $userId))->exists();
+    }
+
     public function pendingInvitesCount(): int
     {
-        return $this->participacoesRecebidas()->where('status', Participacao::STATUS_PENDENTE)->count();
+        return $this->friendships()->where('status', 'pending')->where('requester_id', '!=', $this->id)->count();
     }
 
     /**

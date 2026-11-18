@@ -361,15 +361,7 @@ export function setupQuadros() {
         updateChecklist();
         syncCardDates();
     };
-    const updateNotificationCount = (count) => {
-        const badge = page?.querySelector('[data-quadro-notification-count]');
-        if (badge) { badge.textContent = String(count); badge.hidden = count === 0; }
-        document.querySelectorAll('[data-app-notification-count]').forEach((badge) => {
-            const total = Number(badge.dataset.invites || 0) + Number(count);
-            badge.textContent = String(total); badge.hidden = total === 0;
-            if (total) badge.closest('a').href = badge.dataset.url;
-        });
-    };
+    const updateNotificationCount = (count) => document.dispatchEvent(new CustomEvent('app-notification-count', { detail: count }));
     const applyComments = (data) => {
         const container = cardDialog?.querySelector('[data-quadro-comments]');
         if (!container) return;
@@ -929,9 +921,6 @@ export function setupQuadros() {
     };
     cardDialog.addEventListener('pointerover', (event) => { if (event.pointerType !== 'touch') readMention(event.target); });
     cardDialog.addEventListener('click', (event) => readMention(event.target));
-    const notificationBadge = page.querySelector('[data-quadro-notification-count]');
-    const refreshNotificationCount = async () => { if (!notificationBadge || document.hidden || !navigator.onLine) return; try { const data = await get(notificationBadge.dataset.url); updateNotificationCount(data.count); } catch {} };
-    setInterval(refreshNotificationCount, 5000); window.addEventListener('focus', refreshNotificationCount);
     page.addEventListener('contextmenu', (event) => {
         if (touchDrag) { event.preventDefault(); return; }
         const card = event.target.closest('[data-quadro-card]');

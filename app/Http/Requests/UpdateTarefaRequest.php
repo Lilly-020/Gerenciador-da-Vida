@@ -28,7 +28,7 @@ class UpdateTarefaRequest extends FormRequest
             'date' => ['sometimes', 'required', 'date_format:Y-m-d'],
             'end_date' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:10000'],
-            'category_id' => ['nullable', 'integer', Rule::exists('tarefa_categorias', 'id')->where('user_id', $this->user()->id)],
+            'category_id' => $this->route('tarefa')->user_id === $this->user()->id ? ['nullable', 'integer', Rule::exists('tarefa_categorias', 'id')->where('user_id', $this->user()->id)] : ['sometimes', Rule::in([$this->route('tarefa')->category_id])],
             'start_time' => ['sometimes', 'nullable', 'date_format:H:i'],
             'end_time' => ['sometimes', 'nullable', 'date_format:H:i'],
             'kind' => ['sometimes', 'required', Rule::in(array_keys(Tarefa::KINDS))],

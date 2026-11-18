@@ -43,22 +43,14 @@ class FinanceiroPlanningTest extends TestCase
         $this->assertSame(3, $template->occurrences()->count());
     }
 
-    public function test_recurring_occurrences_keep_account_and_participant_shares(): void
+    public function test_recurring_occurrences_keep_the_owners_account_without_shares(): void
     {
         $owner = User::factory()->create();
-        $guest = User::factory()->create();
         $account = ContaFinanceira::factory()->for($owner)->create();
-        $this->invite($owner, $guest);
-
-        $this->actingAs($owner)->postJson('/financeiro/lancamentos', [
-            'type' => 'saida', 'category' => 'Moradia', 'description' => 'Internet', 'amount' => 100, 'date' => today()->toDateString(),
-            'account_id' => $account->id, 'partes' => [$guest->id => 40], 'is_recurring_template' => true,
-            'recurrence_period' => 'mensal', 'recurrence_day' => 10, 'recurrence_count' => 2,
-        ])->assertOk();
-
-        $child = Lancamento::whereNotNull('parent_recurring_id')->with('partes')->firstOrFail();
+        $this->actingAs($owner)->postJson('/financeiro/lancamentos', ['type' => 'saida', 'category' => 'Moradia', 'description' => 'Internet', 'amount' => 100, 'date' => today()->toDateString(), 'account_id' => $account->id, 'is_recurring_template' => true, 'recurrence_period' => 'mensal', 'recurrence_day' => 10, 'recurrence_count' => 2])->assertOk();
+        $child = Lancamento::whereNotNull('parent_recurring_id')->firstOrFail();
         $this->assertSame($account->id, $child->account_id);
-        $this->assertSame(40.0, $child->saidaFor($guest));
+        $this->assertSame(100.0, $child->saidaFor($owner));
         $this->assertSame('previsto', $child->status);
     }
 
@@ -78,23 +70,12 @@ class FinanceiroPlanningTest extends TestCase
         $this->assertSame(1, $rows->pluck('installment_group')->unique()->count());
     }
 
-    public function test_shared_installment_rounding_never_makes_owner_share_negative(): void
+    public function test_installments_reject_shares_without_creating_any_entries(): void
     {
         $owner = User::factory()->create();
         $guest = User::factory()->create();
-        $other = User::factory()->create();
-        $this->invite($owner, $guest);
-        $this->invite($owner, $other);
-
-        $this->actingAs($owner)->postJson('/financeiro/lancamentos', [
-            'type' => 'saida', 'category' => 'Compras', 'description' => 'Centavos', 'amount' => 0.02,
-            'date' => today()->toDateString(), 'installments' => 2, 'partes' => [$guest->id => 0.01, $other->id => 0.01],
-        ])->assertOk();
-
-        $rows = Lancamento::with('partes')->get();
-        $this->assertSame([0.0, 0.0], $rows->map(fn ($row): float => $row->parteOf($owner))->all());
-        $this->assertSame(0.01, $rows->sum(fn ($row): float => $row->parteOf($guest)));
-        $this->assertSame(0.01, $rows->sum(fn ($row): float => $row->parteOf($other)));
+        $this->actingAs($owner)->postJson('/financeiro/lancamentos', ['type' => 'saida', 'category' => 'Pessoal', 'description' => 'Parcelas', 'amount' => 100, 'date' => today()->toDateString(), 'installments' => 3, 'partes' => [$guest->id => 50]])->assertUnprocessable()->assertJsonValidationErrors('partes');
+        $this->assertDatabaseCount('lancamentos', 0);
     }
 
     public function test_accounts_transfers_and_investments_affect_cash_once(): void
@@ -157,30 +138,24 @@ class FinanceiroPlanningTest extends TestCase
         $this->actingAs(User::factory()->create())->get(route('financeiro.comprovantes.download', [$row, $file]))->assertNotFound();
     }
 
-    public function test_account_category_and_entry_sharing_scopes_are_applied_to_reads_and_writes(): void
+    public function test_legacy_financial_scopes_never_expose_the_owners_records(): void
     {
         $owner = User::factory()->create();
         $guest = User::factory()->create();
-        $account = ContaFinanceira::factory()->for($owner)->create();
-        $shown = Lancamento::factory()->for($owner)->saida()->create(['description' => 'Casa compartilhada', 'category' => 'Moradia', 'account_id' => $account->id]);
-        $hidden = Lancamento::factory()->for($owner)->saida()->create(['description' => 'Particular', 'category' => 'Lazer']);
-        $this->invite($owner, $guest, ['allowed_accounts' => [$account->id], 'allowed_categories' => ['Moradia'], 'allowed_lancamentos' => [$shown->id]]);
-
-        $this->actingAs($guest)->withSession(['carteira_owner_id' => $owner->id])->get('/financeiro/saidas')->assertSee('Casa compartilhada')->assertDontSee('Particular');
-        $this->patchJson(route('financeiro.lancamentos.update', $hidden), ['status' => 'previsto'])->assertNotFound();
-        $this->patchJson(route('financeiro.lancamentos.update', $shown), ['category' => 'Lazer'])->assertUnprocessable()->assertJsonValidationErrors('category');
+        $row = Lancamento::factory()->for($owner)->create(['description' => 'Particular']);
+        $this->invite($owner, $guest);
+        $this->actingAs($guest)->withSession(['carteira_owner_id' => $owner->id])->get('/financeiro/entradas')->assertDontSee('Particular');
+        $this->patchJson(route('financeiro.lancamentos.update', $row), ['status' => 'previsto'])->assertNotFound();
         $this->get('/financeiro/relatorio')->assertDontSee('Particular');
     }
 
-    public function test_viewers_cannot_transfer_and_unaccepted_invites_have_no_access(): void
+    public function test_old_viewers_cannot_transfer_from_foreign_accounts(): void
     {
         $owner = User::factory()->create();
         $guest = User::factory()->create();
         $account = ContaFinanceira::factory()->for($owner)->create();
-        $invite = $this->invite($owner, $guest, ['permission' => 'ver']);
-
-        $this->actingAs($guest)->withSession(['carteira_owner_id' => $owner->id])->post('/financeiro/transferencias', ['source_id' => $account->id])->assertForbidden();
-        $invite->update(['status' => 'pendente']);
+        $this->invite($owner, $guest, ['permission' => 'ver']);
+        $this->actingAs($guest)->withSession(['carteira_owner_id' => $owner->id])->postJson('/financeiro/transferencias', ['source_id' => $account->id, 'amount' => 5, 'date' => today()->toDateString()])->assertUnprocessable()->assertJsonValidationErrors('source_id');
         $this->get('/financeiro/contas')->assertDontSee($account->name);
     }
 
@@ -225,14 +200,13 @@ class FinanceiroPlanningTest extends TestCase
         $this->get('/financeiro/saidas')->assertSee('Moradia da família');
     }
 
-    public function test_investment_section_is_not_exposed_by_a_dashboard_only_invite(): void
+    public function test_old_dashboard_invites_do_not_expose_foreign_investments(): void
     {
         $owner = User::factory()->create();
         $guest = User::factory()->create();
         Investimento::factory()->for($owner)->create(['name' => 'Investimento privado']);
         $this->invite($owner, $guest, ['sections' => ['dashboard']]);
-
-        $this->actingAs($guest)->withSession(['carteira_owner_id' => $owner->id])->get('/financeiro')->assertDontSee('Investimentos acumulados')->assertViewHas('cards', fn (array $cards): bool => (float) $cards['patrimonio_investido'] === 0.0);
+        $this->actingAs($guest)->withSession(['carteira_owner_id' => $owner->id])->get('/financeiro')->assertDontSee('Investimento privado')->assertViewHas('cards', fn (array $cards): bool => (float) $cards['patrimonio_investido'] === 0.0);
     }
 
     public function test_scheduled_generation_is_idempotent_and_can_be_paused(): void
@@ -283,30 +257,21 @@ class FinanceiroPlanningTest extends TestCase
         $this->get('/financeiro/investimentos')->assertSee('Extrato em');
     }
 
-    public function test_an_administrator_can_manage_accounts_and_owner_can_revoke_access(): void
+    public function test_old_financial_administrators_can_only_create_their_own_accounts(): void
     {
         $owner = User::factory()->create();
         $admin = User::factory()->create();
-        $invite = $this->invite($owner, $admin, ['permission' => 'admin']);
-
-        $this->actingAs($admin)->withSession(['carteira_owner_id' => $owner->id])->post('/financeiro/contas', [
-            'name' => 'Conta da casa', 'kind' => 'banco', 'opening_balance' => 100, 'opening_date' => today()->toDateString(),
-        ])->assertRedirect();
-
-        $this->assertDatabaseHas('contas_financeiras', ['name' => 'Conta da casa', 'user_id' => $owner->id]);
-        $this->actingAs($owner)->withSession(['carteira_owner_id' => null])->put(route('participacoes.financeiro.update', $invite), ['permission' => 'ver', 'sections' => ['saidas']])->assertRedirect();
-        $this->assertSame('ver', $invite->fresh()->permission);
-        $this->actingAs($admin)->withSession(['carteira_owner_id' => $owner->id])->post('/financeiro/contas', ['name' => 'Blocked'])->assertForbidden();
+        $this->invite($owner, $admin, ['permission' => 'admin']);
+        $this->actingAs($admin)->withSession(['carteira_owner_id' => $owner->id])->post('/financeiro/contas', ['name' => 'Minha conta', 'kind' => 'banco', 'opening_balance' => 0, 'opening_date' => today()->toDateString()])->assertRedirect();
+        $this->assertDatabaseHas('contas_financeiras', ['name' => 'Minha conta', 'user_id' => $admin->id]);
     }
 
-    public function test_editors_cannot_escalate_their_financial_access(): void
+    public function test_financial_permission_escalation_endpoint_is_removed(): void
     {
         $owner = User::factory()->create();
         $editor = User::factory()->create();
         $invite = $this->invite($owner, $editor);
-
-        $this->actingAs($editor)->withSession(['carteira_owner_id' => $owner->id])->putJson(route('participacoes.financeiro.update', $invite), ['permission' => 'admin', 'sections' => ['investimentos']])->assertNotFound();
-
+        $this->actingAs($editor)->putJson('/participacoes/'.$invite->id.'/financeiro', ['permission' => 'admin'])->assertNotFound();
         $this->assertSame('editar', $invite->fresh()->permission);
     }
 
@@ -340,22 +305,12 @@ class FinanceiroPlanningTest extends TestCase
         $this->actingAs($owner)->get('/financeiro?period=mes_atual')->assertViewHas('cards', fn (array $cards): bool => $cards['investido'] === 0.0 && $cards['patrimonio_investido'] === 1000.0);
     }
 
-    public function test_user_can_invite_a_financial_administrator_with_account_limits(): void
+    public function test_users_cannot_invite_financial_administrators(): void
     {
         $owner = User::factory()->create();
-        $guest = User::factory()->create(['apelido' => 'financeguest']);
-        $account = ContaFinanceira::factory()->for($owner)->create();
-
-        $this->actingAs($owner)->post(route('participacoes.store'), [
-            'tipo' => 'financas', 'apelido' => 'financeguest', 'permission' => 'admin',
-            'sections' => ['entradas', 'saidas'], 'allowed_accounts' => [$account->id],
-        ])->assertRedirect();
-
-        $invite = Participacao::where('participant_id', $guest->id)->firstOrFail();
-        $this->assertSame('pendente', $invite->status);
-        $this->assertSame('admin', $invite->permission);
-        $this->assertSame([$account->id], $invite->allowed_accounts);
-        $this->get('/financeiro/participantes')->assertSee('Editar acesso');
+        $guest = User::factory()->create();
+        $this->actingAs($owner)->post('/participacoes', ['tipo' => 'financas', 'apelido' => $guest->handle(), 'permission' => 'admin', 'sections' => ['dashboard']])->assertSessionHasErrors('tipo');
+        $this->assertDatabaseCount('participacoes', 0);
     }
 
     public function test_removing_contributions_cannot_leave_withdrawals_without_balance(): void

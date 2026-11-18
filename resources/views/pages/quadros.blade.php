@@ -1,7 +1,6 @@
 <x-layout title="Planner" align="start">
     <div data-quadros-index data-url="{{ route('cursos', absolute: false) }}" class="w-full min-w-0 max-w-7xl">
         <header class="mb-8 flex flex-wrap items-center justify-between gap-4"><div><p class="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Seu planejamento, do seu jeito</p><h1 class="text-3xl font-semibold text-white">Planner</h1><p class="mt-2 text-sm text-slate-400">Crie quadros, organize suas listas e avance um cartão por vez.</p></div><button type="button" data-quadro-create class="quadro-primary">+ Criar quadro</button></header>
-        @if ($invites->isNotEmpty())<section class="mb-6 grid gap-3 rounded-2xl border border-indigo-400/20 bg-indigo-500/5 p-5"><h2 class="text-sm font-semibold text-indigo-200">Convites para quadros</h2>@foreach ($invites as $invite)<div class="flex flex-wrap items-center justify-between gap-3"><p class="text-sm text-slate-300">{{ $invite->quadro->title }} <span class="text-slate-500">· de {{ $invite->quadro->user->name }}</span></p><div class="flex gap-2"><button type="button" data-quadro-invite="1" data-url="{{ route('quadros.convites.respond', $invite, absolute: false) }}" class="quadro-primary">Aceitar</button><button type="button" data-quadro-invite="0" data-url="{{ route('quadros.convites.respond', $invite, absolute: false) }}" class="quadro-tool">Recusar</button></div></div>@endforeach</section>@endif
         <div class="mb-7 grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_auto]">
             <label class="grid gap-2 text-xs text-slate-400">Buscar quadro<input type="search" data-quadro-index-search placeholder="Buscar quadro pelo nome..." class="w-full"></label>
             <label class="grid gap-2 text-xs text-slate-400">Categoria<select data-quadro-index-category><option value="">Todas as categorias</option>@foreach ($quadros->pluck('category')->filter()->unique()->sort() as $category)<option value="{{ $category }}">{{ $category }}</option>@endforeach</select></label>
@@ -29,6 +28,5 @@
         </div>
         <p data-quadro-index-empty hidden class="mt-6 text-center text-sm text-slate-500">Nenhum quadro encontrado com esses filtros.</p><p data-quadro-page-error hidden class="mt-4 text-sm text-rose-300" role="alert"></p>
     </div>
-    <datalist id="apelido-sugestoes"></datalist>
     <x-slot:modals><x-quadro-board-form :categories="$quadros->pluck('category')->filter()->unique()->sort()" /></x-slot:modals>
 </x-layout>

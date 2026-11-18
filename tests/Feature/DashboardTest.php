@@ -188,16 +188,13 @@ class DashboardTest extends TestCase
         $response->assertViewHas('financeiro', ['owner' => $user->name, 'income' => 2000.0, 'expense' => 500.0, 'to_pay' => 300.0, 'to_receive' => 100.0]);
     }
 
-    public function test_financial_widget_respects_shared_wallet_section_permissions(): void
+    public function test_financial_widget_always_shows_the_authenticated_users_private_summary(): void
     {
         $owner = User::factory()->create();
         $viewer = User::factory()->create();
         Participacao::create(['owner_id' => $owner->id, 'participant_id' => $viewer->id, 'tipo' => 'financas', 'permission' => 'ver', 'status' => 'aceito', 'sections' => ['saidas']]);
         Lancamento::factory()->for($owner)->entrada()->create(['amount' => 987654]);
-
-        $response = $this->actingAs($viewer)->withSession([Carteira::SESSION_KEY => $owner->id])->get('/dashboard');
-
-        $response->assertViewHas('financeiro', null)->assertDontSee('987.654,00')->assertSee('Você não tem acesso ao resumo da carteira selecionada.');
+        $this->actingAs($viewer)->withSession([Carteira::SESSION_KEY => $owner->id])->get('/dashboard')->assertOk()->assertDontSee('987.654,00')->assertViewHas('financeiro', fn ($summary): bool => $summary !== null);
     }
 
     public function test_invalid_calendar_navigation_is_rejected(): void
