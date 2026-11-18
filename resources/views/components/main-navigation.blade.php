@@ -3,7 +3,7 @@
         ['route' => 'dashboard', 'label' => 'Dashboard'],
         ['route' => 'sonhos', 'label' => 'Sonhos'],
         ['route' => 'projetos', 'label' => 'Projetos'],
-        ['route' => 'cursos', 'label' => 'Cursos'],
+        ['route' => 'cursos', 'label' => 'Cursos', 'match' => ['cursos', 'quadros.*']],
         ['route' => 'financeiro', 'label' => 'Financeiro', 'match' => 'financeiro*'],
         ['route' => 'tarefas', 'label' => 'Tarefas'],
         ['route' => 'notas', 'label' => 'Notas'],

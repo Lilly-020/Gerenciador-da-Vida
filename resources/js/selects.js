@@ -31,7 +31,7 @@ export function toast(message, error = false) {
 }
 
 export function setupSelects() {
-    const scan = () => document.querySelectorAll('select').forEach((select) => {
+    const scan = () => document.querySelectorAll('select:not([data-native-select])').forEach((select) => {
         if (!enhanced.has(select)) enhanced.set(select, enhance(select));
     });
     scan();
@@ -249,7 +249,7 @@ function enhance(select) {
         list.setAttribute('role', 'listbox');
         if (select.multiple) list.setAttribute('aria-multiselectable', 'true');
         panel.append(search, list);
-        (select.closest('dialog[open]') || document.body).append(panel);
+        (select.closest('[popover]:popover-open') || select.closest('dialog[open]') || document.body).append(panel);
         active = { panel, button, close, position };
         button.setAttribute('aria-expanded', 'true');
         search.addEventListener('input', render);

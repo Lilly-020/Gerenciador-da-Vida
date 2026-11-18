@@ -1,6 +1,6 @@
-@props(['title' => null, 'align' => 'center'])
+@props(['title' => null, 'align' => 'center', 'fullBleed' => false])
 
-<x-shell :title="$title" :align="$align" sidebar>
+<x-shell :title="$title" :align="$align" :full-bleed="$fullBleed" sidebar>
     <x-slot:header>
         <aside class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-white/10 bg-slate-950/95 p-5 lg:flex" aria-label="Menu lateral">
             <p class="mb-8 px-3 text-lg font-semibold text-white">Gerenciador da Vida</p>

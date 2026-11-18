@@ -1,4 +1,4 @@
-@props(['title' => null, 'align' => 'center', 'sidebar' => false])
+@props(['title' => null, 'align' => 'center', 'sidebar' => false, 'fullBleed' => false])
 
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -31,7 +31,7 @@
         <div class="relative flex min-h-screen min-w-0 flex-col {{ $sidebar ? 'lg:pl-64' : '' }}">
             {{ $header ?? '' }}
 
-            <main class="flex min-w-0 flex-1 justify-center px-4 pb-24 sm:px-6 {{ $align === 'start' ? 'items-start pt-16' : 'items-center py-24' }}">
+            <main class="flex min-w-0 flex-1 justify-center {{ $fullBleed ? 'items-stretch p-0' : "px-4 pb-24 sm:px-6 ".($align === 'start' ? 'items-start pt-16' : 'items-center py-24') }}">
                 {{ $slot }}
             </main>
         </div>

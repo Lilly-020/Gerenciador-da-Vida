@@ -1,0 +1,7 @@
+@props(['checklist'])
+<section data-quadro-checklist-section data-id="{{ $checklist['id'] }}" class="quadro-card-section">
+    <div class="mb-4 flex items-center gap-3"><input data-quadro-checklist-title value="{{ $checklist['title'] }}" required maxlength="100" aria-label="Nome do checklist" class="min-w-0 flex-1 bg-transparent! text-sm font-semibold"><span data-quadro-checklist-count class="shrink-0 text-xs text-slate-500"></span><button type="button" data-quadro-checklist-delete class="quadro-tool px-2!" aria-label="Excluir checklist"><x-card-icon name="trash" /></button></div>
+    <div class="mb-4 h-1.5 overflow-hidden rounded-full bg-white/5"><div data-quadro-checklist-progress class="h-full bg-indigo-400"></div></div>
+    <div data-quadro-checklist-items class="grid gap-3">@foreach ($checklist['items'] as $item)<div data-quadro-checklist-item class="flex items-center gap-2"><x-checkbox data-quadro-checklist-done :checked="$item['done']" aria-label="Concluir item" /><input data-quadro-checklist-text value="{{ $item['text'] }}" required maxlength="500" aria-label="Item do checklist" class="min-w-0 flex-1"><button type="button" data-quadro-checklist-remove class="quadro-tool px-2!" aria-label="Excluir item"><x-card-icon name="trash" /></button></div>@endforeach</div>
+    <button type="button" data-quadro-checklist-add class="mt-4 text-xs text-indigo-300">+ Adicionar item</button><button type="submit" class="quadro-primary mt-4 block">Salvar checklist</button>
+</section>

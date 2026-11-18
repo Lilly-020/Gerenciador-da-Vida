@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Curso;
 use App\Models\CursoFile;
+use App\Models\Quadro;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -20,7 +21,11 @@ class CursoTest extends TestCase
         Curso::factory()->for($user)->status('not_started')->create(['title' => 'Laravel do zero']);
         Curso::factory()->for($user)->status('in_progress')->create(['title' => 'React avançado']);
 
-        $response = $this->actingAs($user)->get('/cursos');
+        $migration = require glob(database_path('migrations/*_import_existing_cursos_into_quadros.php'))[0];
+        $migration->up();
+        $this->actingAs($user)->get('/cursos')->assertOk()->assertSee('Meus cursos');
+        $board = Quadro::firstOrFail();
+        $response = $this->get(route('quadros.show', $board));
 
         $response->assertOk();
         $response->assertSee('Laravel do zero');

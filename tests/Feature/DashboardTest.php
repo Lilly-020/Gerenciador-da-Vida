@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\Curso;
 use App\Models\Lancamento;
 use App\Models\Participacao;
 use App\Models\Projeto;
+use App\Models\Quadro;
 use App\Models\Sonho;
 use App\Models\Tarefa;
 use App\Models\User;
@@ -30,7 +30,7 @@ class DashboardTest extends TestCase
         $response = $this->actingAs(User::factory()->create())->get('/dashboard');
 
         $response->assertOk()->assertSee('Sua vida, do seu jeito.')->assertSee('Personalizar')
-            ->assertSee('Qual é o seu próximo sonho?')->assertSee('O que você quer aprender?');
+            ->assertSee('Qual é o seu próximo sonho?')->assertSee('Crie um quadro para organizar seus estudos.');
         foreach (array_keys(DashboardLayout::WIDGETS) as $id) {
             $response->assertSee('data-dashboard-widget="'.$id.'"', false);
         }
@@ -43,12 +43,12 @@ class DashboardTest extends TestCase
         $other = User::factory()->create();
         Sonho::factory()->for($user)->create(['title' => 'Conhecer o Japão']);
         Projeto::factory()->for($user)->create(['title' => 'Meu projeto']);
-        Curso::factory()->for($user)->create(['title' => 'Aprender Laravel']);
+        Quadro::factory()->for($user)->create(['title' => 'Aprender Laravel']);
         Tarefa::factory()->for($user)->onDate('2026-11-11')->create(['title' => 'Ler a Bíblia']);
         Tarefa::factory()->for($user)->completed()->onDate('2026-11-10')->create(['end_date' => '2026-11-12']);
         Sonho::factory()->for($other)->create(['title' => 'Sonho privado']);
         Projeto::factory()->for($other)->create(['title' => 'Projeto privado']);
-        Curso::factory()->for($other)->create(['title' => 'Curso privado']);
+        Quadro::factory()->for($other)->create(['title' => 'Curso privado']);
         Tarefa::factory()->for($other)->onDate('2026-11-11')->create(['title' => 'Tarefa privada']);
         Lancamento::factory()->for($user)->entrada()->create(['amount' => 3000]);
         Lancamento::factory()->for($user)->saida()->create(['amount' => 600]);

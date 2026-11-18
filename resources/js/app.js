@@ -1,5 +1,5 @@
 import { setupSelects, setupDashboardPeriod } from './selects';
-import { setupCursos } from './cursos';
+import { setupQuadros } from './quadros';
 import { setupFiltros } from './filtros';
 import { setupContas, setupInvestimentos, setupLancamentos } from './financeiro';
 import { setupMoneyInputs } from './money';
@@ -51,7 +51,7 @@ function init() {
     setupApelidoSearch();
     setupSonhos();
     setupProjetos();
-    setupCursos();
+    setupQuadros();
     setupTarefas();
     setupNotas();
     setupLifeDashboard();

@@ -31,7 +31,8 @@ class CursoLearningTest extends TestCase
         $this->assertSame(60, $curso->progress);
         $this->assertSame('in_progress', $curso->status);
         $this->assertDatabaseHas('cursos', ['id' => $curso->id, 'category' => 'Programação', 'studied_hours' => 12, 'completed_lessons' => 24]);
-        $this->get('/cursos')->assertSee('24 de 40 aulas')->assertSee('60%')->assertSee('Horas estudadas');
+        $this->assertStringContainsString('24 de 40 aulas', $response->json('card'));
+        $this->assertStringContainsString('60%', $response->json('card'));
     }
 
     public function test_finishing_lessons_records_completion_and_review_preserves_it_and_stats(): void
@@ -94,10 +95,12 @@ class CursoLearningTest extends TestCase
         $curso = Curso::factory()->for($user)->status('completed')->create();
         $note = '<script>alert("notes")</script>';
 
-        $this->actingAs($user)->putJson(route('cursos.update', $curso), ['title' => $curso->title, 'rating' => 5, 'notes' => $note])->assertOk();
+        $response = $this->actingAs($user)->putJson(route('cursos.update', $curso), ['title' => $curso->title, 'rating' => 5, 'notes' => $note])->assertOk();
 
         $this->assertDatabaseHas('cursos', ['id' => $curso->id, 'rating' => 5, 'notes' => $note]);
-        $this->get('/cursos')->assertSee($note)->assertDontSee($note, false)->assertSee('5/5');
+        $this->assertStringContainsString(e($note), $response->json('card'));
+        $this->assertStringNotContainsString($note, $response->json('card'));
+        $this->assertStringContainsString('5/5', $response->json('card'));
     }
 
     public function test_certificate_upload_and_material_reclassification(): void
@@ -136,7 +139,7 @@ class CursoLearningTest extends TestCase
         Curso::factory()->for($user)->status('in_review')->create(['studied_hours' => 2]);
         Curso::factory()->create(['studied_hours' => 999]);
 
-        $this->actingAs($user)->get('/cursos')->assertSee('14,5h')->assertDontSee('999,0h');
+        $this->actingAs($user)->get('/cursos')->assertSee('Criar quadro')->assertDontSee('Horas estudadas')->assertDontSee('999,0h');
 
         $this->assertSame(['total' => 2, 'em_andamento' => 1, 'finalizados' => 1, 'horas' => 14.5], Curso::summarize($user->cursos()->get()));
     }

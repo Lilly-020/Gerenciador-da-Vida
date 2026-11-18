@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateDashboardRequest;
-use App\Models\Curso;
 use App\Models\Lancamento;
 use App\Models\Projeto;
+use App\Models\Quadro;
 use App\Models\Sonho;
 use App\Support\Carteira;
 use App\Support\DashboardLayout;
@@ -23,7 +23,7 @@ class DashboardController extends Controller
         $preferences = $user->dashboard_preferences ?? DashboardLayout::defaults();
         $sonhos = $user->sonhos()->where('archived', false)->with('tasks')->latest()->get();
         $projetos = Projeto::where('archived', false)->with('tasks')->latest()->get();
-        $cursos = $user->cursos()->latest()->get();
+        $quadros = Quadro::withCount('cartoes')->latest()->get();
         $today = Carbon::today();
         $todayTasks = $user->tarefas()->where('date', '<=', $today->copy()->endOfDay())
             ->where(fn (Builder $query): Builder => $query->whereDate('end_date', '>=', $today)
@@ -35,10 +35,9 @@ class DashboardController extends Controller
             'taskViews' => DashboardLayout::TASK_VIEWS,
             'sonhos' => $sonhos,
             'projetos' => $projetos,
-            'cursos' => $cursos,
+            'quadros' => $quadros,
             'sonhoStats' => Sonho::summarize($sonhos),
             'projetoStats' => Projeto::summarize($projetos),
-            'cursoStats' => Curso::summarize($cursos),
             'todayTotal' => $todayTasks->count(),
             'todayCompleted' => $todayTasks->where('completed', true)->count(),
             'financeiro' => $this->financeiro($request),
