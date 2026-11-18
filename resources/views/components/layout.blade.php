@@ -4,7 +4,7 @@
     <x-slot:header>
         <aside id="app-sidebar" class="app-sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-white/10 bg-slate-950/95 p-5 lg:flex" aria-label="Menu lateral">
             <a href="{{ route('dashboard', absolute: false) }}" aria-label="Gerenciador da Vida" title="Gerenciador da Vida" class="app-sidebar-brand mb-6 flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-indigo-400">
-                <x-card-icon name="home" class="size-5 text-indigo-300" />
+                <img src="/icons/icon-192.png" alt="" width="24" height="24" class="size-6 shrink-0 rounded-md">
                 <span class="app-sidebar-label">Gerenciador da Vida</span>
             </a>
             <x-main-navigation />
@@ -18,7 +18,10 @@
         <x-app-toolbar />
         <dialog id="mobile-navigation" aria-labelledby="mobile-navigation-title" class="fixed inset-y-0 right-auto left-0 m-0 h-dvh max-h-dvh w-72 max-w-[85vw] border-r border-white/10 bg-slate-950 p-5 text-white backdrop:bg-black/60 lg:hidden">
             <div class="mb-6 flex items-center justify-between gap-3">
-                <h2 id="mobile-navigation-title" class="font-semibold">Gerenciador da Vida</h2>
+                <h2 id="mobile-navigation-title" class="flex items-center gap-2 font-semibold">
+                    <img src="/icons/icon-192.png" alt="" width="24" height="24" class="size-6 shrink-0 rounded-md">
+                    Gerenciador da Vida
+                </h2>
                 <button type="button" id="close-navigation" aria-label="Fechar menu" class="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-white/15"><x-card-icon name="close" /></button>
             </div>
             <x-main-navigation />
