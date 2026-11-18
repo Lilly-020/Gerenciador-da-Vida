@@ -53,7 +53,10 @@
 
                     <div>
                         <label for="perfil-email" class="mb-1.5 block text-sm font-medium text-slate-300">E-mail</label>
-                        <input id="perfil-email" type="email" name="email" required maxlength="255" value="{{ old('email', $user->email) }}" class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20">
+                        <input id="perfil-email" @error('email') aria-invalid="true" aria-describedby="perfil-email-error" @enderror type="email" name="email" required maxlength="255" value="{{ old('email', $user->email) }}" class="w-full rounded-lg border border-white/10 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20">
+                        @error('email')
+                            <p id="perfil-email-error" role="alert" class="mt-2 text-sm text-rose-300">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div class="flex justify-end">

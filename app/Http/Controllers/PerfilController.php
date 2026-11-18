@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Rules\UniqueUserEmail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -47,6 +47,10 @@ class PerfilController extends Controller
     {
         $user = $request->user();
 
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => Str::lower(trim($request->input('email')))]);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'apelido' => [
@@ -57,7 +61,7 @@ class PerfilController extends Controller
                     }
                 },
             ],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'email' => ['bail', 'required', 'string', 'email', 'max:255', new UniqueUserEmail($user)],
         ], [
             'name.required' => 'Informe o seu nome.',
             'apelido.required' => 'Escolha um apelido.',

@@ -45,6 +45,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:manage-users')->prefix('admin/usuarios')->name('admin.usuarios.')->group(function () {
         Route::get('/', [AdminUserController::class, 'index'])->name('index');
         Route::post('/', [AdminUserController::class, 'store'])->name('store');
+        Route::get('/novo', [AdminUserController::class, 'create'])->name('create');
+        Route::get('/{user}/editar', [AdminUserController::class, 'edit'])->name('edit');
+        Route::put('/{user}', [AdminUserController::class, 'update'])->name('update');
+        Route::get('/{user}/excluir', [AdminUserController::class, 'confirmDeletion'])->name('confirm-deletion');
+        Route::delete('/{user}', [AdminUserController::class, 'destroy'])->name('destroy');
     });
 
     Route::get('/', [SonhoController::class, 'index'])->name('sonhos');
