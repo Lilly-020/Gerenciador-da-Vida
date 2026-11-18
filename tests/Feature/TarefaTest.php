@@ -11,13 +11,30 @@ class TarefaTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_index_shows_todays_tasks_by_default(): void
+    public function test_tasks_open_in_week_view_and_remember_the_selected_view_per_user(): void
+    {
+        $user = User::factory()->create();
+        $anotherUser = User::factory()->create();
+
+        $this->actingAs($user)->get('/tarefas')->assertViewHas('view', 'week');
+        $this->get('/tarefas?view=month')->assertViewHas('view', 'month');
+        $this->assertSame('month', $user->fresh()->tasks_view);
+
+        $this->getJson('/tarefas?view=week')->assertOk();
+        $this->get('/tarefas?view=invalid')->assertViewHas('view', 'month');
+        $this->get('/tarefas')->assertViewHas('view', 'month');
+
+        $this->actingAs($anotherUser)->get('/tarefas')->assertViewHas('view', 'week');
+        $this->assertNull($anotherUser->fresh()->tasks_view);
+    }
+
+    public function test_minimalist_view_shows_only_the_selected_days_tasks(): void
     {
         $user = User::factory()->create();
         Tarefa::factory()->for($user)->onDate(today()->toDateString())->create(['title' => 'Tarefa de hoje']);
         Tarefa::factory()->for($user)->onDate(today()->addDay()->toDateString())->create(['title' => 'Tarefa de amanhã']);
 
-        $response = $this->actingAs($user)->get('/tarefas');
+        $response = $this->actingAs($user)->get('/tarefas?view=calendar');
 
         $response->assertOk();
         $response->assertSee('Tarefa de hoje');
@@ -29,7 +46,7 @@ class TarefaTest extends TestCase
         $user = User::factory()->create();
         Tarefa::factory()->for($user)->onDate('2026-09-20')->create(['title' => 'Tarefa específica']);
 
-        $response = $this->actingAs($user)->get('/tarefas?date=2026-09-20');
+        $response = $this->actingAs($user)->get('/tarefas?view=calendar&date=2026-09-20');
 
         $response->assertOk();
         $response->assertSee('Tarefa específica');
@@ -70,7 +87,7 @@ class TarefaTest extends TestCase
         // selected cell — its own highlight should still show through.
         $otherDay = today()->day === 1 ? today()->addDay() : today()->subDay();
 
-        $response = $this->actingAs($user)->get('/tarefas?date='.$otherDay->toDateString());
+        $response = $this->actingAs($user)->get('/tarefas?view=calendar&date='.$otherDay->toDateString());
 
         $response->assertOk();
         $html = $response->getContent();

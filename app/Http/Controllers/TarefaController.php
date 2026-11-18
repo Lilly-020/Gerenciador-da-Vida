@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateTarefaRequest;
 use App\Models\Tarefa;
 use App\Models\TarefaCategoria;
 use App\Models\User;
+use App\Support\DashboardLayout;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -35,7 +36,6 @@ class TarefaController extends Controller
     {
         $user = $request->user();
         $selected = $this->resolveDate($request->query('date'));
-        $view = in_array($request->query('view'), ['calendar', 'month', 'week', 'dashboard'], true) ? $request->query('view') : 'calendar';
 
         if ($request->wantsJson()) {
             $dayTasks = $this->tasksBetween($user, $selected, $selected)->with(['category', 'notas:id,tarefa_id,title'])->orderBy('id')->get();
@@ -55,7 +55,13 @@ class TarefaController extends Controller
             ]);
         }
 
-        return view('pages.tarefas', $this->calendarData($user, $selected, $view));
+        $requestedView = $request->query('view');
+        if (is_string($requestedView) && array_key_exists($requestedView, DashboardLayout::TASK_VIEWS) && $user->tasks_view !== $requestedView) {
+            $user->tasks_view = $requestedView;
+            $user->save();
+        }
+
+        return view('pages.tarefas', $this->calendarData($user, $selected, $user->tasks_view ?? 'week'));
     }
 
     /** @return array<string, mixed> */

@@ -31,6 +31,7 @@ export function setupNotas() {
     let tasksVersion = 0;
     let pickerVersion = 0;
     let gridVersion = 0;
+    const savingItems = new WeakMap();
     let taskTimer;
     let pickerTimer;
 
@@ -94,12 +95,7 @@ export function setupNotas() {
         if (calendarChanged) {
             try { localStorage.setItem('tarefas:last-change', `${Date.now()}-${Math.random()}`); } catch {}
         }
-        if (!page) return;
-        if (!refresh && data?.card) {
-            const card = page.querySelector(`[data-note-card="${data.nota.id}"]`);
-            if (card) card.replaceWith(htmlToElement(data.card));
-            return;
-        }
+        if (!page || !refresh) return;
         refreshGrid().catch(() => toast('Alteração salva. Atualize a página para recarregar as notas.', true));
     };
     const closeEditor = async () => {
@@ -271,10 +267,46 @@ export function setupNotas() {
     document.addEventListener('change', async (event) => {
         const checkbox = event.target.closest('[data-note-item-toggle]');
         if (!checkbox) return;
-        checkbox.disabled = true;
-        try { changed(await postJson(checkbox.dataset.noteItemToggle, 'PATCH', { completed: checkbox.checked }), { refresh: false }); }
-        catch (error) { checkbox.checked = !checkbox.checked; toast(error.message, true); }
-        finally { checkbox.disabled = false; }
+        if (savingItems.has(checkbox)) {
+            checkbox.checked = savingItems.get(checkbox);
+            return;
+        }
+
+        const completed = checkbox.checked;
+        const card = checkbox.closest('[data-note-card]');
+        const updateProgress = () => {
+            const items = card?.querySelectorAll('[data-note-item-toggle]');
+            const progress = card?.querySelector('[data-note-checklist-progress]');
+            if (progress) progress.textContent = `${[...items].filter((item) => item.checked).length} de ${items.length} itens concluídos`;
+        };
+
+        savingItems.set(checkbox, completed);
+        checkbox.setAttribute('aria-busy', 'true');
+        updateProgress();
+        try {
+            const data = await postJson(checkbox.dataset.noteItemToggle, 'PATCH', { completed });
+            if (card?.isConnected) {
+                const text = checkbox.closest('label')?.querySelector('[data-note-item-text]');
+                text?.classList.toggle('line-through', completed);
+                text?.classList.toggle('text-slate-500', completed);
+                text?.classList.toggle('text-slate-300', !completed);
+
+                const updatedTime = data.card && htmlToElement(data.card).querySelector('time');
+                const time = card.querySelector('time');
+                if (time && updatedTime && updatedTime.dateTime >= time.dateTime) {
+                    time.dateTime = updatedTime.dateTime;
+                    time.textContent = updatedTime.textContent;
+                }
+            }
+            changed(data, { refresh: false });
+        } catch (error) {
+            checkbox.checked = !completed;
+            updateProgress();
+            toast(error.message, true);
+        } finally {
+            savingItems.delete(checkbox);
+            checkbox.removeAttribute('aria-busy');
+        }
     });
     editor.addEventListener('cancel', (event) => { event.preventDefault(); closeEditor(); });
     editor.addEventListener('close', () => { ++editorVersion; });

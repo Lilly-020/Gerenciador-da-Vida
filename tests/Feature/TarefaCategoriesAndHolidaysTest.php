@@ -68,7 +68,7 @@ class TarefaCategoriesAndHolidaysTest extends TestCase
 
     public function test_new_task_form_exposes_options_and_repetition_preserves_custom_details(): void
     {
-        $this->actingAs(User::factory()->create())->get('/tarefas?date=2026-11-10')->assertOk()
+        $this->actingAs(User::factory()->create())->get('/tarefas?view=calendar&date=2026-11-10')->assertOk()
             ->assertSee('Título da tarefa')->assertSee('Data de início')->assertSee('Data de fim (opcional)')
             ->assertSee('Observações (opcional)')->assertSee('Criar categoria')->assertSee('Adicionar com anexos')
             ->assertDontSee('Tipo e horário')->assertDontSee('Editar tipo e horário');

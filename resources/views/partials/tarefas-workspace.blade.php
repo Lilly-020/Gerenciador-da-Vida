@@ -20,9 +20,9 @@
             </div>
 
             <div class="flex max-w-full flex-wrap items-center gap-2">
-                <div class="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-slate-900/70 p-1 shadow-xl shadow-black/30 backdrop-blur">
+                <div class="inline-flex max-w-full flex-wrap items-center justify-center gap-1 rounded-2xl border border-white/10 bg-slate-900/70 p-1 shadow-xl shadow-black/30 backdrop-blur sm:rounded-full">
                     @foreach (['week' => 'Semana', 'calendar' => 'Minimalista', 'month' => 'Calendário amplo', 'dashboard' => 'Dashboard'] as $key => $label)
-                        <a href="{{ route('tarefas', ['date' => $selected->toDateString(), 'view' => $key], absolute: false) }}" data-view-tab="{{ $key }}" aria-current="{{ $view === $key ? 'page' : 'false' }}" aria-selected="{{ $view === $key ? 'true' : 'false' }}" class="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm {{ $view === $key ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:text-white' }}">{{ $label }}</a>
+                        <a href="{{ route('tarefas', ['date' => $selected->toDateString(), 'view' => $key], absolute: false) }}" data-view-tab="{{ $key }}" aria-current="{{ $view === $key ? 'page' : 'false' }}" aria-selected="{{ $view === $key ? 'true' : 'false' }}" class="max-w-full rounded-full px-3 py-2 text-center text-xs font-semibold transition sm:px-4 sm:text-sm {{ $view === $key ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:text-white' }}">{{ $label }}</a>
                     @endforeach
                 </div>
 

@@ -65,11 +65,11 @@ class TarefaDashboardTest extends TestCase
         $this->assertDatabaseHas('tarefas', ['id' => $task->id, 'completed' => true]);
     }
 
-    public function test_empty_dashboard_has_clear_empty_states_and_invalid_view_falls_back(): void
+    public function test_empty_dashboard_has_clear_empty_states_and_invalid_view_preserves_the_selection(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)->get('/tarefas?view=dashboard')->assertSee('Nenhuma tarefa para hoje.')->assertSee('Nenhuma pendência atrasada.');
-        $this->get('/tarefas?view=invalid')->assertViewHas('view', 'calendar');
+        $this->get('/tarefas?view=invalid')->assertViewHas('view', 'dashboard');
     }
 }
