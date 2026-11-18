@@ -256,54 +256,80 @@ class Lancamento extends Model
         return $type === self::TYPE_ENTRADA ? self::INCOME_CATEGORIES : self::EXPENSE_CATEGORIES;
     }
 
+    public function setRecurrenceActive(bool $active): void
+    {
+        if (! $this->is_recurring_template) {
+            return;
+        }
+
+        $template = self::withoutGlobalScope('owner')->whereKey($this->id)->lockForUpdate()->firstOrFail();
+        if ($template->recurrence_active === $active) {
+            return;
+        }
+
+        $template->update(['recurrence_active' => $active]);
+        // On a child row, recurrence_active=false identifies a cancellation made by pausing the series.
+        $template->occurrences()->whereDate('date', '>=', today())
+            ->where('recurrence_active', ! $active)
+            ->where('status', $active ? self::STATUS_CANCELADO : self::STATUS_PREVISTO)
+            ->update([
+                'recurrence_active' => $active,
+                'status' => $active ? self::STATUS_PREVISTO : self::STATUS_CANCELADO,
+            ]);
+
+        if ($active) {
+            $template->generateUpcomingOccurrences(10000, skipPast: true);
+        }
+    }
+
     /**
      * Generate the next `$months` projected ("previsto") occurrences for a
      * recurring template. Idempotent-ish: only fills the gap beyond the
      * furthest occurrence that already exists.
      */
-    public function generateUpcomingOccurrences(int $months = 12): void
+    public function generateUpcomingOccurrences(int $months = 12, bool $skipPast = false): void
     {
-        if (! $this->is_recurring_template || ! $this->recurrence_day || $this->recurrence_active === false || $this->status === self::STATUS_CANCELADO) {
-            return;
-        }
+        DB::transaction(function () use ($months, $skipPast): void {
+            $template = self::withoutGlobalScope('owner')->whereKey($this->id)->lockForUpdate()->firstOrFail();
+            if (! $template->is_recurring_template || ! $template->recurrence_day || $template->recurrence_active === false || $template->status === self::STATUS_CANCELADO) {
+                return;
+            }
 
-        DB::transaction(function () use ($months): void {
-            self::withoutGlobalScope('owner')->whereKey($this->id)->lockForUpdate()->firstOrFail();
-            $latest = $this->occurrences()->orderByDesc('date')->first()?->date ?? $this->date;
-            $generated = $this->occurrences()->count();
+            $latest = $template->occurrences()->orderByDesc('date')->first()?->date ?? $template->date;
+            $generated = $template->occurrences()->count();
             $cursor = $latest->copy();
-            $limit = today()->addYear()->endOfDay()->max($this->date->copy()->addYear());
+            $limit = today()->addYear()->endOfDay()->max($template->date->copy()->addYear());
 
             for ($index = 0; $index < $months; $index++) {
-                if ($generated >= $months || ($this->recurrence_count && $generated >= $this->recurrence_count - 1)) {
+                if ($generated >= $months || ($template->recurrence_count && $generated >= $template->recurrence_count - 1)) {
                     break;
                 }
-                $cursor = match ($this->recurrence_period) {
+                $cursor = match ($template->recurrence_period) {
                     'semanal' => $cursor->copy()->addWeek(),
-                    'anual' => $cursor->copy()->addYearNoOverflow()->month($this->date->month)->day(1),
+                    'anual' => $cursor->copy()->addYearNoOverflow()->month($template->date->month)->day(1),
                     default => $cursor->copy()->startOfMonth()->addMonth(),
                 };
-                if ($this->recurrence_period !== 'semanal') {
-                    $cursor->day(min($this->recurrence_day, $cursor->daysInMonth));
+                if ($template->recurrence_period !== 'semanal') {
+                    $cursor->day(min($template->recurrence_day, $cursor->daysInMonth));
                 }
-                if ($cursor->gt($limit) || ($this->recurrence_end && $cursor->gt($this->recurrence_end))) {
+                if ($cursor->gt($limit) || ($template->recurrence_end && $cursor->gt($template->recurrence_end))) {
                     break;
                 }
                 $date = $cursor->toDateString();
-                $exists = $this->occurrences()->whereDate('date', $date)->exists();
+                $exists = $template->occurrences()->whereDate('date', $date)->exists();
                 if ($exists) {
                     continue;
                 }
-                $occurrence = $this->occurrences()->make([
-                    'type' => $this->type, 'category' => $this->category, 'subcategory' => $this->subcategory,
-                    'description' => $this->description, 'amount' => $this->amount, 'date' => $date,
-                    'payment_method' => $this->payment_method, 'status' => $this->recurrence_status ?? self::STATUS_PREVISTO,
-                    'notes' => $this->notes, 'account_id' => $this->account_id, 'expense_kind' => $this->expense_kind ?? 'fixo',
-                    'partes_conta' => $this->partes_conta, 'occurrence_key' => $this->id.':'.$date,
+                $occurrence = $template->occurrences()->make([
+                    'type' => $template->type, 'category' => $template->category, 'subcategory' => $template->subcategory,
+                    'description' => $template->description, 'amount' => $template->amount, 'date' => $date,
+                    'payment_method' => $template->payment_method, 'status' => $skipPast && $cursor->isBefore(today()) ? self::STATUS_CANCELADO : ($template->recurrence_status ?? self::STATUS_PREVISTO),
+                    'notes' => $template->notes, 'account_id' => $template->account_id, 'expense_kind' => $template->expense_kind ?? 'fixo',
+                    'partes_conta' => $template->partes_conta, 'occurrence_key' => $template->id.':'.$date,
                 ]);
-                $occurrence->user_id = $this->user_id;
+                $occurrence->user_id = $template->user_id;
                 $occurrence->save();
-                $occurrence->syncPartes($this->partes->pluck('amount', 'user_id')->all());
+                $occurrence->syncPartes($template->partes->pluck('amount', 'user_id')->all());
                 $generated++;
             }
         });

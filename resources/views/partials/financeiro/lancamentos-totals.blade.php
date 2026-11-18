@@ -4,8 +4,18 @@
         <p class="mt-2 text-2xl font-semibold text-white">@money($totalRealizado)</p>
     </div>
     <div class="rounded-xl border border-white/10 bg-gradient-to-b from-slate-900/70 to-slate-900/40 p-4">
-        <p class="text-xs font-medium tracking-wide text-slate-400 uppercase">Previsto</p>
-        <p class="mt-2 text-2xl font-semibold text-amber-300">@money($totalPrevisto)</p>
+        <p class="text-xs font-medium tracking-wide text-slate-400 uppercase">{{ $type === 'entrada' ? 'Previsto a receber' : 'Previsto a pagar' }}</p>
+        <p class="mt-2 text-2xl font-semibold tabular-nums text-amber-300">@money($totalPrevisto)</p>
+        <dl class="mt-3 grid gap-1.5 border-t border-white/10 pt-2 text-xs tabular-nums">
+            <div class="flex flex-wrap justify-between gap-x-2">
+                <dt class="text-slate-400">Em atraso</dt>
+                <dd class="font-medium text-rose-300">@money($totalAtrasado)</dd>
+            </div>
+            <div class="flex flex-wrap justify-between gap-x-2">
+                <dt class="text-slate-400">A vencer</dt>
+                <dd class="font-medium text-slate-200">@money($totalPrevisto - $totalAtrasado)</dd>
+            </div>
+        </dl>
     </div>
     <div class="rounded-xl border border-white/10 bg-gradient-to-b from-slate-900/70 to-slate-900/40 p-4">
         <p class="text-xs font-medium tracking-wide text-slate-400 uppercase">Total</p>

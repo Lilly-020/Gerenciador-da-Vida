@@ -308,6 +308,10 @@ export function setupDashboardPeriod() {
         const range = ranges[period.value];
         if (range) { start.value = format(range[0]); end.value = format(range[1]); end.min = start.value; }
     });
-    [start, end].forEach((input) => input.addEventListener('change', () => { period.value = 'personalizado'; end.min = start.value; }));
+    [start, end].forEach((input) => input.addEventListener('change', () => {
+        period.value = 'personalizado';
+        period.dispatchEvent(new Event('change', { bubbles: true }));
+        end.min = start.value;
+    }));
     end.min = start.value;
 }

@@ -2,7 +2,6 @@
     $isEntrada = $type === 'entrada';
     $title = $isEntrada ? 'Entradas' : 'Saídas';
     $routeName = $isEntrada ? 'financeiro.entradas' : 'financeiro.saidas';
-    $arrowClasses = 'inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-slate-950/60 text-slate-300 transition hover:border-indigo-400/50 hover:text-white';
 @endphp
 
 <x-layout :title="$title" align="start">
@@ -25,38 +24,13 @@
             </button>
         </div>
 
-        <form method="GET" action="{{ route($routeName, absolute: false) }}" class="mb-4 flex flex-wrap items-center gap-2">
-            @if ($month)
-                <a
-                    href="{{ route($routeName, ['mes' => $month->copy()->subMonthNoOverflow()->format('Y-m')], absolute: false) }}"
-                    class="{{ $arrowClasses }}"
-                    aria-label="Mês anterior"
-                >‹</a>
-            @endif
+        <x-financeiro-period-filter :route-name="$routeName" :filter="$periodFilter" />
 
-            <label for="mes" class="sr-only">Mês</label>
-            <select
-                id="mes"
-                name="mes"
-                onchange="this.form.submit()"
-                class="rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/20"
-            >
-                <option value="todos" @selected(! $month)>Todos os meses</option>
-                @foreach ($meses as $key => $label)
-                    <option value="{{ $key }}" @selected($mes === $key)>{{ $label }}</option>
-                @endforeach
-            </select>
+        @if ($month)
+            <p class="mb-2 text-sm text-slate-400">{{ \App\Http\Controllers\LancamentoController::monthTitle($month) }}</p>
+        @endif
 
-            @if ($month)
-                <a
-                    href="{{ route($routeName, ['mes' => $month->copy()->addMonthNoOverflow()->format('Y-m')], absolute: false) }}"
-                    class="{{ $arrowClasses }}"
-                    aria-label="Próximo mês"
-                >›</a>
-            @endif
-        </form>
-
-        <a href="{{ route('financeiro.relatorio', ['mes' => $month?->format('Y-m') ?? now()->format('Y-m'), 'tipo' => $type], absolute: false) }}" class="mb-4 inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-indigo-300 transition hover:text-white">Relatório mensal de {{ $isEntrada ? 'entradas' : 'saídas' }}</a>
+        <a href="{{ route('financeiro.relatorio', ['mes' => ($periodFilter?->start ?? $month)?->format('Y-m') ?? now()->format('Y-m'), 'tipo' => $type], absolute: false) }}" class="mb-4 inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-indigo-300 transition hover:text-white">Relatório mensal de {{ $isEntrada ? 'entradas' : 'saídas' }}</a>
 
         @include('partials.financeiro.lancamentos-totals')
 

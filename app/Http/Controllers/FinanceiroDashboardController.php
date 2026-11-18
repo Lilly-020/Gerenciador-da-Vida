@@ -7,47 +7,20 @@ use App\Models\Investimento;
 use App\Models\Lancamento;
 use App\Models\User;
 use App\Support\Carteira;
+use App\Support\FinanceiroPeriod;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class FinanceiroDashboardController extends Controller
 {
-    /**
-     * @var array<string, string>
-     */
-    public const PERIODS = [
-        'mes_atual' => 'Este mês',
-        'mes_anterior' => 'Mês anterior',
-        'ultimos_3_meses' => 'Últimos 3 meses',
-        'ultimos_6_meses' => 'Últimos 6 meses',
-        'ano_atual' => 'Este ano',
-        'ano_anterior' => 'Ano anterior',
-        'personalizado' => 'Personalizado',
-    ];
-
     public function index(Request $request): View
     {
-        $request->validate(['start' => ['nullable', 'required_with:end', 'date_format:Y-m-d'], 'end' => ['nullable', 'required_with:start', 'date_format:Y-m-d', 'after_or_equal:start']], [
-            'start.date_format' => 'Informe uma data inicial válida.', 'end.date_format' => 'Informe uma data final válida.',
-            'end.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
-        ]);
+        $periodFilter = FinanceiroPeriod::apply($request);
         $user = Carteira::owner();
-        $period = $request->query('period', 'mes_atual');
-        if (! array_key_exists($period, self::PERIODS)) {
-            $period = 'mes_atual';
-        }
-        [$presetStart, $presetEnd] = $this->resolvePeriod($period, $request);
-        if ($request->filled('start') && ($request->input('start') !== $presetStart->toDateString() || $request->input('end') !== $presetEnd->toDateString())) {
-            $period = 'personalizado';
-        }
-        [$start, $end] = $this->resolvePeriod($period, $request);
-        $end = $end->copy()->endOfDay();
-        if ($start->gt($end)) {
-            throw ValidationException::withMessages(['end' => 'A data final deve ser igual ou posterior à data inicial.']);
-        }
+        $start = $periodFilter?->start ?? Carbon::today()->startOfMonth();
+        $end = $periodFilter?->end ?? Carbon::today()->endOfMonth();
 
         $lancamentos = $user->lancamentos()
             ->with('partes')
@@ -126,6 +99,36 @@ class FinanceiroDashboardController extends Controller
         $cards['a_pagar'] = round($toPay, 2);
         $cards['a_receber'] = round($toReceive, 2);
         $cards['saldo_projetado'] = round($available + $toReceive - $toPay, 2);
+
+        $calendarMonth = $end->copy()->startOfMonth();
+        $pendingByDay = $pending->groupBy(fn (Lancamento $row): string => $row->date->toDateString())
+            ->map(fn (Collection $rows): array => [
+                'pay' => $rows->sum(fn (Lancamento $row): float => $row->saidaFor($viewer)),
+                'receive' => $rows->sum(fn (Lancamento $row): float => $row->entradaFor($viewer)),
+            ]);
+        $firstProjectedDay = today()->max($calendarMonth)->toDateString();
+        $runningBalance = $available + $pendingByDay
+            ->filter(fn (array $amounts, string $date): bool => $date < $firstProjectedDay)
+            ->sum(fn (array $amounts): float => $amounts['receive'] - $amounts['pay']);
+        $calendarDays = [];
+        for ($day = $calendarMonth->copy(); $day->lte($end); $day->addDay()) {
+            $date = $day->toDateString();
+            $amounts = $pendingByDay->get($date, ['pay' => 0.0, 'receive' => 0.0]);
+            $projectedBalance = null;
+            if ($date >= $firstProjectedDay) {
+                $runningBalance += $amounts['receive'] - $amounts['pay'];
+                $projectedBalance = round($runningBalance, 2);
+            }
+
+            $calendarDays[] = ['date' => $day->copy(), ...$amounts, 'balance' => $projectedBalance];
+        }
+
+        $previstosNoPeriodo = $pending->filter(fn (Lancamento $row): bool => $row->date->gte($start));
+        $previsao = [
+            'entradas' => round($previstosNoPeriodo->sum(fn (Lancamento $row): float => $row->entradaFor($viewer)), 2),
+            'saidas' => round($previstosNoPeriodo->sum(fn (Lancamento $row): float => $row->saidaFor($viewer)), 2),
+        ];
+
         $timelineStart = $end->copy()->subMonthsNoOverflow(5)->startOfMonth();
         $timelineRows = $user->lancamentos()->with('partes')->where('status', 'realizado')->whereBetween('date', Lancamento::dateRange($timelineStart, $end))->get();
         if (Carteira::isOwn()) {
@@ -137,17 +140,19 @@ class FinanceiroDashboardController extends Controller
             $income = $rows->sum(fn (Lancamento $row): float => $row->entradaFor($viewer));
             $expense = $rows->sum(fn (Lancamento $row): float => $row->saidaFor($viewer));
 
-            return ['month' => $month->format('m/Y'), 'income' => $income, 'expense' => $expense, 'balance' => $income - $expense];
+            return ['month' => $month->format('m/Y'), 'income' => $income, 'expense' => $expense];
         });
 
         return view('pages.financeiro.dashboard', [
             'accounts' => $accounts, 'timeline' => $timeline,
-            'upcoming' => $pending->sortBy('date')->take(10),
-            'period' => $period,
-            'periods' => self::PERIODS,
+            'period' => $periodFilter?->preset ?? 'mes_atual',
+            'periodFilter' => $periodFilter,
             'periodStart' => $start,
             'periodEnd' => $end,
             'cards' => $cards,
+            'previsao' => $previsao,
+            'calendarMonth' => $calendarMonth,
+            'calendarDays' => $calendarDays,
             'participantes' => $membros
                 ->reject(fn (User $member): bool => $member->is($viewer))
                 ->map(function (User $member) use ($lancamentos): array {
@@ -164,43 +169,6 @@ class FinanceiroDashboardController extends Controller
             'totaisPorCategoria' => $this->totaisPorCategoria($temDivisao ? $movimentos->where('conjunto', false) : $movimentos),
             'gastosConjuntos' => $temDivisao ? $this->totaisPorCategoria($conta->filter->isDivided()) : null,
         ]);
-    }
-
-    /**
-     * @return array{0: Carbon, 1: Carbon}
-     */
-    private function resolvePeriod(string $preset, Request $request): array
-    {
-        $today = Carbon::today();
-
-        return match ($preset) {
-            'mes_anterior' => [
-                $today->copy()->subMonthNoOverflow()->startOfMonth(),
-                $today->copy()->subMonthNoOverflow()->endOfMonth(),
-            ],
-            'ultimos_3_meses' => [$today->copy()->subMonths(2)->startOfMonth(), $today->copy()->endOfMonth()],
-            'ultimos_6_meses' => [$today->copy()->subMonths(5)->startOfMonth(), $today->copy()->endOfMonth()],
-            'ano_atual' => [$today->copy()->startOfYear(), $today->copy()->endOfYear()],
-            'ano_anterior' => [$today->copy()->subYear()->startOfYear(), $today->copy()->subYear()->endOfYear()],
-            'personalizado' => [
-                $this->parseDate($request->query('start')) ?? $today->copy()->startOfMonth(),
-                $this->parseDate($request->query('end')) ?? $today->copy()->endOfMonth(),
-            ],
-            default => [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()],
-        };
-    }
-
-    private function parseDate(?string $value): ?Carbon
-    {
-        if (! $value) {
-            return null;
-        }
-
-        try {
-            return Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     /**

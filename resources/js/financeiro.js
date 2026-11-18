@@ -49,6 +49,11 @@ export function setupLancamentos() {
         const state = event.target.closest('[data-lancamento-state-url]');
         const recurrence = event.target.closest('[data-recurrence-url]');
         if (state || recurrence) {
+            if (recurrence && recurrence.dataset.active === '0' && !await confirmDialog(
+                'Pausar a série e retirar da previsão as próximas repetições pendentes? Lançamentos já confirmados e pendências anteriores a hoje serão mantidos.',
+                { confirmLabel: 'Pausar recorrência' },
+            )) return;
+
             const button = state || recurrence;
             button.disabled = true;
             try {

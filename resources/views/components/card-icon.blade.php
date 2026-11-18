@@ -40,5 +40,13 @@
         @case('open')<path d="M14 3h7v7m0-7L10 14m-1-9H3v16h16v-6" />@break
         @case('send')<path d="m3 3 19 9-19 9 4-9zm4 9h15" />@break
         @case('file')<path d="M14 2H4v20h16V8zM14 2v6h6M8 13h8m-8 4h6" />@break
+        @case('home')<path d="m3 10 9-7 9 7v10H3z" />@break
+        @case('dashboard')<rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />@break
+        @case('folder')<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />@break
+        @case('calendar')<rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4m10-4v4M3 10h18" />@break
+        @case('wallet')<path d="M21 9V6a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h16v12H5a2 2 0 0 1-2-2V6m18 6h-5a2 2 0 0 0 0 4h5" />@break
+        @case('profile')<circle cx="12" cy="8" r="4" /><path d="M4 21v-1a8 6 0 0 1 16 0v1" />@break
+        @case('logout')<path d="M10 4H4v16h6m4-12 4 4-4 4m4-4H8" />@break
+        @case('chevrons-left')<path d="m11 6-6 6 6 6m7-12-6 6 6 6" />@break
     @endswitch
 </svg>

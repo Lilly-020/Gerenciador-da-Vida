@@ -100,6 +100,27 @@ class FinanceiroPlanningTest extends TestCase
         $this->assertDatabaseCount('lancamentos', 3);
     }
 
+    public function test_dashboard_forecast_uses_pending_amounts_inside_the_selected_dates(): void
+    {
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->onDate('2026-11-12')->create(['amount' => 100]);
+        Lancamento::factory()->for($user)->entrada()->previsto()->onDate('2026-11-10')->create(['amount' => 350]);
+        Lancamento::factory()->for($user)->saida()->previsto()->onDate('2026-11-20')->create(['amount' => 500]);
+        Lancamento::factory()->for($user)->saida()->previsto()->onDate('2026-11-09')->create(['amount' => 80]);
+        Lancamento::factory()->for($user)->entrada()->previsto()->onDate('2026-11-21')->create(['amount' => 900]);
+
+        $this->actingAs($user)->get('/financeiro?period=personalizado&start=2026-11-10&end=2026-11-20')
+            ->assertOk()
+            ->assertSee('Movimentos do período')
+            ->assertSee('Realizado')
+            ->assertSee('Previsto')
+            ->assertViewHas('previsao', [
+                'entradas' => 350.0,
+                'saidas' => 500.0,
+            ])
+            ->assertViewHas('cards', fn (array $cards): bool => $cards['a_pagar'] === 580.0);
+    }
+
     public function test_opening_balance_does_not_count_older_account_transactions_twice(): void
     {
         $this->travelTo(now()->setDate(2026, 11, 8));

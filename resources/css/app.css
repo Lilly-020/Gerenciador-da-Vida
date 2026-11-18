@@ -892,7 +892,14 @@ html[data-theme='light'] { --app-scroll-thumb: #a5b4fc; --app-scroll-thumb-hover
 .app-sidebar { min-height: 0; overflow: hidden; }
 .app-sidebar .app-main-navigation { overflow-y: auto; overscroll-behavior: contain; padding: 0.2rem; }
 .app-main-navigation > a, .app-main-navigation > form { flex-shrink: 0; }
-@media (min-width: 64rem) { .app-toolbar #open-navigation { display: inline-flex; } html[data-sidebar='collapsed'] .app-sidebar { display: none; } html[data-sidebar='collapsed'] .app-shell-sidebar { padding-left: 0; } }
+@media (min-width: 64rem) {
+    .app-toolbar #open-navigation { display: none; }
+    html[data-sidebar='collapsed'] .app-shell-sidebar { padding-left: 4.75rem; }
+    html[data-sidebar='collapsed'] .app-sidebar { width: 4.75rem; padding-inline: 0.55rem; }
+    html[data-sidebar='collapsed'] .app-sidebar .app-sidebar-label { display: none; }
+    html[data-sidebar='collapsed'] .app-sidebar :is(.app-sidebar-brand, .app-main-navigation a, button) { justify-content: center; padding-inline: 0; }
+    html[data-sidebar='collapsed'] #toggle-sidebar svg { transform: rotate(180deg); }
+}
 html[data-theme='light'] .app-main-navigation > a[aria-current='page'] { background: #e0e7ff; color: #3730a3; --tw-ring-color: #c7d2fe; }
 html[data-theme='light'] .app-main-navigation > a:not([aria-current='page']):hover { background: #f1f5f9; color: #312e81; }
 html[data-theme='light'] :is(.app-select-trigger, .app-select-panel) { background: #fff; border-color: #cbd5e1; color: #24364b; }

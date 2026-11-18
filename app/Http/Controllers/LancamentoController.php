@@ -11,6 +11,7 @@ use App\Models\FinanceiroActivity;
 use App\Models\Lancamento;
 use App\Models\User;
 use App\Support\Carteira;
+use App\Support\FinanceiroPeriod;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
@@ -225,7 +226,16 @@ class LancamentoController extends Controller
             if ($accountId && ContaFinanceira::onlyTrashed()->whereKey($accountId)->exists()) {
                 throw ValidationException::withMessages(['account_id' => 'Esta conta foi excluída. Selecione uma conta ativa para alterar o lançamento.']);
             }
-            $lancamento->update(Arr::except($request->validated(), 'partes'));
+            $lancamento->refresh();
+            $data = Arr::except($request->validated(), ['partes', 'recurrence_active']);
+            if ($lancamento->parent_recurring_id && array_key_exists('status', $data)) {
+                $data['recurrence_active'] = true;
+            }
+            $lancamento->update($data);
+
+            if ($request->has('recurrence_active')) {
+                $lancamento->setRecurrenceActive($request->boolean('recurrence_active'));
+            }
             FinanceiroActivity::record('Atualizou o lançamento “'.$lancamento->description.'”.');
 
             if ($request->has('partes')) {
@@ -266,8 +276,9 @@ class LancamentoController extends Controller
 
     private function list(Request $request, string $type): View
     {
-        $month = $this->resolveMonth($request);
-        $lancamentos = $this->lancamentosFor($request, $type, $month);
+        $periodFilter = FinanceiroPeriod::apply($request);
+        $month = $periodFilter === null && $request->query('mes') !== null ? $this->resolveMonth($request) : null;
+        $lancamentos = $this->lancamentosFor($request, $type, $month, $periodFilter);
 
         return view('pages.financeiro.lancamentos', [
             'type' => $type,
@@ -277,7 +288,7 @@ class LancamentoController extends Controller
             ...$this->totals($request, $type, $lancamentos),
             'month' => $month,
             'mes' => $this->monthParam($month),
-            'meses' => $this->monthOptions($request, $type, $month),
+            'periodFilter' => $periodFilter,
             'membros' => Carteira::members(),
         ]);
     }
@@ -288,14 +299,16 @@ class LancamentoController extends Controller
             return back();
         }
 
-        $month = $this->resolveMonth($request);
-        $lancamentos = $this->lancamentosFor($request, $type, $month);
+        $periodFilter = FinanceiroPeriod::current($request);
+        $month = $periodFilter === null && $request->query('mes') !== null ? $this->resolveMonth($request) : null;
+        $lancamentos = $this->lancamentosFor($request, $type, $month, $periodFilter);
 
         return response()->json([
             'list' => view('partials.financeiro.lancamentos-list', [
                 'type' => $type,
                 'lancamentos' => $lancamentos,
                 'month' => $month,
+                'periodFilter' => $periodFilter,
                 'mes' => $this->monthParam($month),
                 'membros' => Carteira::members(),
             ])->render(),
@@ -309,7 +322,7 @@ class LancamentoController extends Controller
      * the carteira (empty when it has no participants).
      *
      * @param  Collection<int, Lancamento>  $lancamentos
-     * @return array{totalPrevisto: float, totalRealizado: float, participantes: \Illuminate\Support\Collection<int, array{user: User, previsto: float, realizado: float}>}
+     * @return array{type: string, totalPrevisto: float, totalAtrasado: float, totalRealizado: float, participantes: \Illuminate\Support\Collection<int, array{user: User, previsto: float, realizado: float}>}
      */
     private function totals(Request $request, string $type, Collection $lancamentos): array
     {
@@ -330,8 +343,12 @@ class LancamentoController extends Controller
         ];
         $mine = $sharesOf($request->user());
 
+        $atrasados = $lancamentos->where('status', Lancamento::STATUS_PREVISTO)->where('date', '<', today());
+
         return [
+            'type' => $type,
             'totalPrevisto' => $mine['previsto'],
+            'totalAtrasado' => (float) $atrasados->sum(fn (Lancamento $l): float => $amountFor($l, $request->user(), false)),
             'totalRealizado' => $mine['realizado'],
             'participantes' => Carteira::members()
                 ->reject(fn (User $member): bool => $member->is($request->user()))
@@ -343,21 +360,23 @@ class LancamentoController extends Controller
     /**
      * @return Collection<int, Lancamento>
      */
-    private function lancamentosFor(Request $request, string $type, ?Carbon $month): Collection
+    private function lancamentosFor(Request $request, string $type, ?Carbon $month, ?FinanceiroPeriod $periodFilter = null): Collection
     {
-        $inMonth = fn ($query) => $query->when($month, fn ($query) => $query->whereBetween(
+        $start = $periodFilter?->start ?? $month;
+        $end = $periodFilter?->end ?? $month?->copy()->endOfMonth();
+        $inPeriod = fn ($query) => $query->when($start, fn ($query) => $query->whereBetween(
             'date',
-            Lancamento::dateRange($month, $month->copy()->endOfMonth()),
+            Lancamento::dateRange($start, $end),
         ));
 
-        $lancamentos = $inMonth(Carteira::owner()->lancamentos()->with(['partes.user', 'user', 'account', 'files'])->where('type', $type))->get();
+        $lancamentos = $inPeriod(Carteira::owner()->lancamentos()->with(['partes.user', 'user', 'account', 'files', 'parentRecurring'])->where('type', $type))->get();
 
         // In their own carteira the user also sees — read-only — what
         // other carteiras' lançamentos take out of their account: their
         // part of an expense, or of an income its owner received from them.
         if (Carteira::isOwn() && $type === Lancamento::TYPE_SAIDA) {
             $lancamentos = $lancamentos->concat(
-                $inMonth(Lancamento::sharedWith($request->user())->with(['partes.user', 'user', 'account', 'files']))
+                $inPeriod(Lancamento::sharedWith($request->user())->with(['partes.user', 'user', 'account', 'files', 'parentRecurring']))
                     ->get()
                     ->filter(fn (Lancamento $l): bool => $l->saidaFor($request->user()) > 0),
             );
@@ -366,29 +385,5 @@ class LancamentoController extends Controller
         return $lancamentos
             ->sortBy([['date', 'desc'], ['id', 'desc']])
             ->values();
-    }
-
-    /**
-     * Months offered in the filter, newest first: every month that has a
-     * lançamento of this type, plus the current and the selected one so
-     * neither disappears from the select just for being empty.
-     *
-     * @return array<string, string>
-     */
-    private function monthOptions(Request $request, string $type, ?Carbon $month): array
-    {
-        $keys = Carteira::owner()->lancamentos()
-            ->where('type', $type)
-            ->toBase()
-            ->pluck('date')
-            ->map(fn ($date): string => substr((string) $date, 0, 7))
-            ->push(Carbon::today()->format('Y-m'))
-            ->when($month, fn ($keys) => $keys->push($month->format('Y-m')))
-            ->unique()
-            ->sortDesc();
-
-        return $keys
-            ->mapWithKeys(fn (string $key): array => [$key => self::monthTitle(Carbon::createFromFormat('!Y-m', $key))])
-            ->all();
     }
 }

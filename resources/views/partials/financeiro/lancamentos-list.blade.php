@@ -108,8 +108,9 @@
                                 @if (\App\Support\Carteira::canEdit())
                                     <form method="POST" enctype="multipart/form-data" action="{{ route('financeiro.comprovantes.store', $lancamento, absolute: false) }}" class="flex flex-wrap items-center gap-2">@csrf<input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp" aria-label="Comprovante" class="min-w-0 max-w-full text-xs text-slate-400"><button class="text-indigo-300">Anexar</button></form>
                                     <button type="button" data-lancamento-state-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}" data-state="{{ $lancamento->status === 'cancelado' ? 'previsto' : 'cancelado' }}" class="justify-self-start text-rose-300">{{ $lancamento->status === 'cancelado' ? 'Restaurar como previsto' : 'Cancelar lançamento' }}</button>
-                                    @if ($lancamento->is_recurring_template)
-                                        <button type="button" data-recurrence-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $lancamento, 'mes' => $mes], absolute: false) }}" data-active="{{ $lancamento->recurrence_active ? 0 : 1 }}" class="justify-self-start text-indigo-300">{{ $lancamento->recurrence_active ? 'Pausar geração de novas ocorrências' : 'Retomar recorrência' }}</button>
+                                    @php($series = $lancamento->is_recurring_template ? $lancamento : $lancamento->parentRecurring)
+                                    @if ($series)
+                                        <button type="button" data-recurrence-url="{{ route('financeiro.lancamentos.update', ['lancamento' => $series, 'mes' => $mes], absolute: false) }}" data-active="{{ $series->recurrence_active ? 0 : 1 }}" class="justify-self-start text-indigo-300">{{ $series->recurrence_active ? 'Pausar recorrência' : 'Retomar recorrência' }}</button>
                                     @endif
                                 @endif
                             </div>
@@ -165,7 +166,9 @@
         </div>
     @empty
         <div class="rounded-2xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-400">
-            @if ($month)
+            @if ($periodFilter ?? null)
+                Nenhum lançamento no período selecionado.
+            @elseif ($month)
                 Nenhum lançamento em {{ \App\Http\Controllers\LancamentoController::monthTitle($month) }}.
             @else
                 Nenhum lançamento ainda. Clique em "Adicionar {{ $isEntrada ? 'entrada' : 'saída' }}" para começar.

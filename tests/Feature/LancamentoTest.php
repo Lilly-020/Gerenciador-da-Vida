@@ -24,7 +24,7 @@ class LancamentoTest extends TestCase
         $response->assertDontSee('Supermercado');
     }
 
-    public function test_lancamentos_pages_show_only_the_current_month_by_default(): void
+    public function test_lancamentos_pages_show_all_months_without_an_active_filter(): void
     {
         $user = User::factory()->create();
         Lancamento::factory()->for($user)->saida()->create(['description' => 'Mercado deste mês', 'amount' => 100]);
@@ -35,8 +35,58 @@ class LancamentoTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Mercado deste mês');
-        $response->assertDontSee('Mercado do mês passado');
-        $response->assertViewHas('totalRealizado', 100.0);
+        $response->assertSee('Mercado do mês passado');
+        $response->assertViewHas('totalRealizado', 140.0);
+    }
+
+    public function test_period_filter_is_shared_across_finance_pages_and_can_be_cleared(): void
+    {
+        $user = User::factory()->create();
+        $entrada = Lancamento::factory()->for($user)->entrada()->previsto()->onDate('2026-03-15')->create(['description' => 'Entrada no período']);
+        Lancamento::factory()->for($user)->entrada()->onDate('2026-03-16')->create(['description' => 'Entrada fora do período']);
+        Lancamento::factory()->for($user)->saida()->onDate('2026-03-10')->create(['description' => 'Saída no período']);
+        Lancamento::factory()->for($user)->saida()->onDate('2026-03-09')->create(['description' => 'Saída fora do período']);
+
+        $this->actingAs($user)->get('/financeiro?period=personalizado&start=2026-03-10&end=2026-03-15')
+            ->assertOk()
+            ->assertSee('Filtro ativo no Dashboard, em Entradas e em Saídas.');
+
+        $this->get('/financeiro/entradas')->assertSee('Entrada no período')->assertDontSee('Entrada fora do período');
+        $this->get('/financeiro/saidas')->assertSee('Saída no período')->assertDontSee('Saída fora do período');
+
+        $updated = $this->patchJson("/financeiro/lancamentos/{$entrada->id}?mes=todos", ['status' => 'realizado'])->assertOk();
+        $this->assertStringContainsString('Entrada no período', $updated->json('list'));
+        $this->assertStringNotContainsString('Entrada fora do período', $updated->json('list'));
+
+        $this->get('/financeiro/saidas?period=personalizado&start=2026-03-09&end=2026-03-16')->assertOk();
+        $this->get('/financeiro')->assertSee('09/03/2026 a 16/03/2026');
+
+        $this->get('/financeiro/entradas?period=limpar')->assertOk();
+        $this->get('/financeiro/saidas')->assertSee('Saída fora do período');
+    }
+
+    public function test_planned_income_and_expenses_show_overdue_amounts_in_the_selected_period(): void
+    {
+        $this->travelTo(now()->setDate(2026, 11, 18));
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->previsto()->onDate('2026-11-17')->create(['amount' => 70]);
+        Lancamento::factory()->for($user)->entrada()->previsto()->onDate('2026-11-18')->create(['amount' => 100]);
+        Lancamento::factory()->for($user)->saida()->previsto()->onDate('2026-11-16')->create(['amount' => 40]);
+        Lancamento::factory()->for($user)->saida()->previsto()->onDate('2026-11-20')->create(['amount' => 60]);
+        Lancamento::factory()->for($user)->saida()->previsto()->onDate('2026-10-31')->create(['amount' => 90]);
+
+        $this->actingAs($user)->get('/financeiro/entradas?period=mes_atual')
+            ->assertOk()
+            ->assertSee('Previsto a receber')
+            ->assertViewHas('totalPrevisto', 170.0)
+            ->assertViewHas('totalAtrasado', 70.0);
+
+        $this->get('/financeiro/saidas')
+            ->assertOk()
+            ->assertSee('Previsto a pagar')
+            ->assertSee('A vencer')
+            ->assertViewHas('totalPrevisto', 100.0)
+            ->assertViewHas('totalAtrasado', 40.0);
     }
 
     public function test_lancamentos_pages_can_be_filtered_by_month(): void
