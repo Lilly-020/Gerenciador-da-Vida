@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreSonhoRequest;
 use App\Http\Requests\UpdateSonhoRequest;
 use App\Models\Sonho;
+use App\Support\DreamUniverse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,9 +16,16 @@ class SonhoController extends Controller
     /**
      * Display the authenticated user's dreams, with progress analytics.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $sonhos = Sonho::with(['tasks', 'user', 'participacoes.participant'])->latest()->get();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'dreams' => $sonhos->map(fn (Sonho $sonho): array => DreamUniverse::dream($sonho))->values(),
+                'categories' => DreamUniverse::CATEGORIES,
+            ])->header('Cache-Control', 'no-store');
+        }
 
         $status = $request->string('status')->toString();
         $sort = $request->string('sort')->toString();
@@ -33,6 +41,8 @@ class SonhoController extends Controller
         return view('pages.sonhos', [
             'sonhos' => $visible,
             'stats' => Sonho::summarize($sonhos),
+            'universe' => $visible->map(fn (Sonho $sonho): array => DreamUniverse::dream($sonho))->values(),
+            'categories' => DreamUniverse::CATEGORIES,
         ]);
     }
 
@@ -93,6 +103,7 @@ class SonhoController extends Controller
         $sonhos = Sonho::with(['tasks', 'user', 'participacoes.participant'])->latest()->get();
 
         return response()->json([
+            'dream' => DreamUniverse::dream($sonho),
             'card' => view('partials.sonho-card', ['sonho' => $sonho->load('tasks')])->render(),
             'stats' => view('partials.sonho-stats', ['stats' => Sonho::summarize($sonhos)])->render(),
         ]);

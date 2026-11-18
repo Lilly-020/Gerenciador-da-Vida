@@ -13,13 +13,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
-#[Fillable(['title', 'target_date', 'financial_goal', 'saved_amount', 'priority', 'notes', 'image_url', 'archived'])]
+#[Fillable(['title', 'target_date', 'financial_goal', 'saved_amount', 'priority', 'notes', 'image_url', 'archived', 'category'])]
 class Sonho extends Model
 {
     /** @use HasFactory<SonhoFactory> */
     use HasFactory;
 
-    protected $attributes = ['priority' => 'medium', 'archived' => false];
+    protected $attributes = ['priority' => 'medium', 'archived' => false, 'category' => 'other'];
 
     protected function casts(): array
     {

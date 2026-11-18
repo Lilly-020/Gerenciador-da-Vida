@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Support\DreamUniverse;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateSonhoRequest extends FormRequest
 {
@@ -17,11 +19,12 @@ class UpdateSonhoRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, array<int, string>>
+     * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
         return [
+            'category' => ['sometimes', 'required', Rule::in(array_keys(DreamUniverse::CATEGORIES))],
             'title' => ['required', 'string', 'max:255'],
             'target_date' => ['nullable', 'date_format:Y-m-d'],
             'financial_goal' => ['nullable', 'numeric', 'min:0.01', 'max:999999999999.99'],

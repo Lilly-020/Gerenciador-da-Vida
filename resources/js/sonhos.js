@@ -1,6 +1,10 @@
 import { setupBoard, setupCardEditModal } from './board';
 
 export function setupSonhos() {
+    if (document.getElementById('dreamverse')) {
+        import('./dreamverse').then(({ mountDreamUniverse }) => mountDreamUniverse()).catch(() => { document.getElementById('dreamverse')?.remove(); setupSonhos(); });
+        return;
+    }
     const grid = document.getElementById('sonhos-grid');
     if (!grid) return;
     const params = new URLSearchParams(window.location.search);

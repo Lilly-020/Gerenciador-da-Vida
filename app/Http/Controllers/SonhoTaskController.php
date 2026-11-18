@@ -6,6 +6,7 @@ use App\Http\Requests\StoreSonhoTaskRequest;
 use App\Http\Requests\UpdateSonhoTaskRequest;
 use App\Models\Sonho;
 use App\Models\SonhoTask;
+use App\Support\DreamUniverse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,9 +57,10 @@ class SonhoTaskController extends Controller
             return back();
         }
 
-        $sonhos = $request->user()->sonhos()->with('tasks')->latest()->get();
+        $sonhos = Sonho::with(['tasks', 'user', 'participacoes.participant'])->latest()->get();
 
         return response()->json([
+            'dream' => DreamUniverse::dream($sonho->fresh(['tasks', 'user', 'participacoes.participant'])),
             'card' => view('partials.sonho-card', ['sonho' => $sonho->fresh('tasks')])->render(),
             'stats' => view('partials.sonho-stats', ['stats' => Sonho::summarize($sonhos)])->render(),
         ]);

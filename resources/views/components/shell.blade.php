@@ -20,6 +20,7 @@
         <meta name="mobile-web-app-capable" content="yes">
 
         <script>try { const saved = localStorage.getItem('life-manager-theme'); document.documentElement.dataset.theme = saved === 'light' ? 'light' : 'dark'; } catch { document.documentElement.dataset.theme = 'dark'; }</script>
+        <script>try { document.documentElement.dataset.sidebar = localStorage.getItem('life-manager-sidebar') === 'collapsed' ? 'collapsed' : 'expanded'; } catch { document.documentElement.dataset.sidebar = 'expanded'; }</script>
         @fonts
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
@@ -29,7 +30,7 @@
             <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_100%_0%,rgba(30,41,59,0.6),transparent)]"></div>
         </div>
 
-        <div class="relative flex min-h-screen min-w-0 flex-col {{ $sidebar ? 'lg:pl-64' : '' }}">
+        <div class="relative flex min-h-screen min-w-0 flex-col {{ $sidebar ? 'app-shell-sidebar lg:pl-64' : '' }}">
             {{ $header ?? '' }}
 
             <main class="flex min-w-0 flex-1 justify-center {{ $fullBleed ? 'items-stretch p-0' : "px-4 pb-24 sm:px-6 ".($align === 'start' ? 'items-start pt-16' : 'items-center py-24') }}">

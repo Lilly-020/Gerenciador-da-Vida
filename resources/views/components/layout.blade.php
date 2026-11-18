@@ -2,7 +2,7 @@
 
 <x-shell :title="$title" :align="$align" :full-bleed="$fullBleed" sidebar>
     <x-slot:header>
-        <aside class="app-sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-white/10 bg-slate-950/95 p-5 lg:flex" aria-label="Menu lateral">
+        <aside id="app-sidebar" class="app-sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-white/10 bg-slate-950/95 p-5 lg:flex" aria-label="Menu lateral">
             <p class="mb-6 shrink-0 px-3 text-lg font-semibold text-white">Gerenciador da Vida</p>
             <x-main-navigation />
         </aside>

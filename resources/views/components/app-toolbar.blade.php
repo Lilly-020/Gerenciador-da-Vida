@@ -1,5 +1,5 @@
 <header class="app-toolbar">
-    <button type="button" id="open-navigation" aria-controls="mobile-navigation" aria-haspopup="dialog" aria-expanded="false" class="app-toolbar-icon lg:hidden" aria-label="Abrir menu"><x-card-icon name="menu" /></button>
+    <button type="button" id="open-navigation" aria-controls="mobile-navigation" aria-haspopup="dialog" aria-expanded="false" class="app-toolbar-icon" aria-label="Abrir menu"><x-card-icon name="menu" /></button>
     <div class="ml-auto flex min-w-0 items-center gap-2 sm:gap-4">
         <button type="button" data-toggle-theme class="app-toolbar-icon" aria-label="Alternar entre modo claro e escuro" title="Alternar tema"><span data-theme-moon><x-card-icon name="moon" /></span><span data-theme-sun hidden><x-card-icon name="sun" /></span></button>
         <a href="{{ route('perfil', absolute: false) }}" class="flex min-w-0 items-center gap-3" aria-label="Abrir meu perfil"><span class="quadro-avatar shrink-0">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 2)) }}</span><span class="max-w-36 truncate text-sm font-semibold sm:max-w-80">{{ auth()->user()->name }}</span></a>

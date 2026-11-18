@@ -19,30 +19,39 @@ function setupNavigation() {
         return;
     }
 
+    const desktop = window.matchMedia('(min-width: 64rem)');
+    const sync = () => {
+        const expanded = desktop.matches ? document.documentElement.dataset.sidebar !== 'collapsed' : dialog.open;
+        openButton.setAttribute('aria-expanded', String(expanded));
+        openButton.setAttribute('aria-controls', desktop.matches ? 'app-sidebar' : 'mobile-navigation');
+        const label = desktop.matches ? (expanded ? 'Recolher menu lateral' : 'Expandir menu lateral') : 'Abrir menu';
+        openButton.setAttribute('aria-label', label);
+        openButton.title = label;
+        if (desktop.matches) openButton.removeAttribute('aria-haspopup'); else openButton.setAttribute('aria-haspopup', 'dialog');
+    };
     const close = () => dialog.close();
-
     openButton.addEventListener('click', () => {
+        if (desktop.matches) {
+            document.documentElement.dataset.sidebar = document.documentElement.dataset.sidebar === 'collapsed' ? 'expanded' : 'collapsed';
+            try { localStorage.setItem('life-manager-sidebar', document.documentElement.dataset.sidebar); } catch {}
+            sync();
+            return;
+        }
         dialog.showModal();
-        openButton.setAttribute('aria-expanded', 'true');
         document.body.style.overflow = 'hidden';
+        sync();
     });
     closeButton.addEventListener('click', close);
     dialog.addEventListener('click', (event) => {
         const bounds = dialog.getBoundingClientRect();
-        if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) {
-            close();
-        }
+        if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) close();
     });
-    dialog.addEventListener('close', () => {
-        openButton.setAttribute('aria-expanded', 'false');
-        document.body.style.overflow = '';
-        openButton.focus();
+    dialog.addEventListener('close', () => { document.body.style.overflow = ''; sync(); openButton.focus(); });
+    desktop.addEventListener('change', (event) => { if (event.matches && dialog.open) close(); sync(); });
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'life-manager-sidebar') { document.documentElement.dataset.sidebar = event.newValue === 'collapsed' ? 'collapsed' : 'expanded'; sync(); }
     });
-    window.matchMedia('(min-width: 64rem)').addEventListener('change', (event) => {
-        if (event.matches && dialog.open) {
-            close();
-        }
-    });
+    sync();
 }
 
 function init() {
