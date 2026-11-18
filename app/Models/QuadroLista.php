@@ -15,6 +15,13 @@ class QuadroLista extends Model
     /** @use HasFactory<QuadroListaFactory> */
     use HasFactory;
 
+    public function foregroundColor(): string
+    {
+        $brightness = (hexdec(substr($this->color, 1, 2)) * 299 + hexdec(substr($this->color, 3, 2)) * 587 + hexdec(substr($this->color, 5, 2)) * 114) / 1000;
+
+        return $brightness > 160 ? '#0f172a' : '#f8fafc';
+    }
+
     public function quadro(): BelongsTo
     {
         return $this->belongsTo(Quadro::class);

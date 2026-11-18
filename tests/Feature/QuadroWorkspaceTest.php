@@ -100,6 +100,7 @@ class QuadroWorkspaceTest extends TestCase
         $second = QuadroLista::factory()->for($board)->create(['position' => 1]);
         $this->patchJson(route('quadros.listas.update', [$board, $first]), ['title' => 'Novas ideias', 'color' => '#ff00ff'])->assertOk();
         $this->assertSame('#ff00ff', $first->fresh()->color);
+        $this->get(route('quadros.show', $board))->assertOk()->assertSee('--quadro-list-color:#ff00ff', false);
         $this->putJson(route('quadros.listas.ordem', $board), ['ids' => [$second->id, $first->id]])->assertOk();
         $this->assertSame([$second->id, $first->id], $board->listas()->pluck('id')->all());
         $this->deleteJson(route('quadros.listas.destroy', [$board, $first]))->assertOk();

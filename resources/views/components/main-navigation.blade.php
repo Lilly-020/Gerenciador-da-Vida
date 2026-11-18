@@ -3,7 +3,7 @@
         ['route' => 'dashboard', 'label' => 'Dashboard'],
         ['route' => 'sonhos', 'label' => 'Sonhos'],
         ['route' => 'projetos', 'label' => 'Projetos'],
-        ['route' => 'cursos', 'label' => 'Cursos', 'match' => ['cursos', 'quadros.*']],
+        ['route' => 'cursos', 'label' => 'Planner', 'match' => ['cursos', 'quadros.*']],
         ['route' => 'financeiro', 'label' => 'Financeiro', 'match' => 'financeiro*'],
         ['route' => 'tarefas', 'label' => 'Tarefas'],
         ['route' => 'notas', 'label' => 'Notas'],
@@ -22,11 +22,9 @@
     @endcan
     @auth
         @php($pendingInvites = auth()->user()->pendingInvitesCount())
-        <a href="{{ route('perfil', $pendingInvites ? ['aba' => 'notificacoes'] : [], absolute: false) }}" @if (request()->routeIs('perfil')) aria-current="page" @endif class="mt-6 flex min-h-11 items-center justify-between rounded-xl border-t border-white/10 px-4 py-3 text-sm font-semibold {{ request()->routeIs('perfil') ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:bg-white/5 hover:text-white' }}">
+        <a href="{{ route('perfil', ($pendingInvites + $unreadNotificationCount) ? ['aba' => 'notificacoes'] : [], absolute: false) }}" @if (request()->routeIs('perfil')) aria-current="page" @endif class="mt-6 flex min-h-11 items-center justify-between rounded-xl border-t border-white/10 px-4 py-3 text-sm font-semibold {{ request()->routeIs('perfil') ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:bg-white/5 hover:text-white' }}">
             Perfil
-            @if ($pendingInvites)
-                <span class="rounded-full bg-rose-500 px-2 py-0.5 text-xs text-white" title="Convites pendentes">{{ $pendingInvites }}</span>
-            @endif
+            <span data-app-notification-count data-count-url="{{ route('perfil.notificacoes.count', absolute: false) }}" data-invites="{{ $pendingInvites }}" data-url="{{ route('perfil', ['aba' => 'notificacoes'], absolute: false) }}" @if (! ($pendingInvites + $unreadNotificationCount)) hidden @endif class="rounded-full bg-rose-500 px-2 py-0.5 text-xs text-white" title="Notificações pendentes">{{ $pendingInvites + $unreadNotificationCount }}</span>
         </a>
         <form method="POST" action="{{ route('logout', absolute: false) }}">
             @csrf

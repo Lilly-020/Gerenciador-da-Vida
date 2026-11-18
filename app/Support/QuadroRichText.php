@@ -10,7 +10,7 @@ use DOMNode;
 
 class QuadroRichText
 {
-    /** @return array{html: string, text: string, file_ids: list<string>} */
+    /** @return array{html: string, text: string, file_ids: list<string>, mention_ids: list<int>} */
     public function sanitize(string $html, Quadro $board, QuadroCartao $card): array
     {
         $document = new DOMDocument('1.0', 'UTF-8');
@@ -23,24 +23,38 @@ class QuadroRichText
         }
         $files = collect($card->attachments ?? [])->keyBy('id');
         $ids = [];
-        $render = function (DOMNode $node, int $depth = 0) use (&$render, &$ids, $files, $board, $card): string {
+        $mentionIds = [];
+        $people = collect();
+        if (str_contains($html, 'data-mention-id')) {
+            $board->loadMissing(['user', 'membros.user']);
+            $people = collect([$board->user])->merge($board->membros->where('status', 'accepted')->pluck('user'))->keyBy('id');
+        }
+        $render = function (DOMNode $node, int $depth = 0) use (&$render, &$ids, $files, $board, $card, $people, &$mentionIds): string {
             if ($depth > 30) {
                 return '';
             }
             if ($node->nodeType === XML_TEXT_NODE) {
                 return e($node->textContent);
             }
-            if (!$node instanceof DOMElement) {
+            if (! $node instanceof DOMElement) {
                 return '';
             }
             $tag = strtolower($node->tagName);
             if (in_array($tag, ['script', 'style', 'iframe', 'object', 'embed', 'svg', 'math', 'form', 'input', 'button', 'video', 'audio'], true)) {
                 return '';
             }
+            if ($tag === 'span' && $node->hasAttribute('data-mention-id')) {
+                $person = $people->get((int) $node->getAttribute('data-mention-id'));
+                if ($person) {
+                    $mentionIds[] = $person->id;
+
+                    return '<span data-mention-id="'.$person->id.'" class="quadro-mention" contenteditable="false">@'.e($person->name).'</span>';
+                }
+            }
             if ($tag === 'img' || $tag === 'attachment') {
                 $id = $node->getAttribute('data-file-id');
                 $file = $files->get($id);
-                if (!$file) {
+                if (! $file) {
                     return '';
                 }
                 $ids[] = $id;
@@ -74,7 +88,7 @@ class QuadroRichText
             if ($tag === 'br') {
                 return '<br>';
             }
-            if (!in_array($tag, ['p', 'div', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'h2', 'h3'], true)) {
+            if (! in_array($tag, ['p', 'div', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'h2', 'h3'], true)) {
                 return $children;
             }
 
@@ -86,6 +100,6 @@ class QuadroRichText
         }
         $text = trim(html_entity_decode(strip_tags(str_replace(['</p>', '</div>', '<br>', '</li>'], "\n", $clean)), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 
-        return ['html' => $clean, 'text' => $text, 'file_ids' => array_values(array_unique($ids))];
+        return ['html' => $clean, 'text' => $text, 'file_ids' => array_values(array_unique($ids)), 'mention_ids' => array_values(array_unique($mentionIds))];
     }
 }

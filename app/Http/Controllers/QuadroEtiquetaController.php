@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ProjetoEtiqueta;
 use App\Models\Quadro;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class QuadroEtiquetaController extends Controller
 {
@@ -25,14 +25,22 @@ class QuadroEtiquetaController extends Controller
     private function save(Request $request, Quadro $quadro, ?string $id = null): JsonResponse
     {
         abort_unless($quadro->canEdit($request->user()), 403);
-        $data = $request->validate(['name' => ['required', 'string', 'max:40'], 'color' => ['required', Rule::in(array_keys(ProjetoEtiqueta::COLORS))]]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:40'],
+            'color' => ['required', 'string', function (string $attribute, mixed $value, Closure $fail): void {
+                if (! is_string($value) || (! array_key_exists($value, ProjetoEtiqueta::COLORS) && ! preg_match('/^#[0-9a-fA-F]{6}$/', $value))) {
+                    $fail('Selecione uma cor válida.');
+                }
+            }],
+        ]);
+        $data['color'] = strtolower($data['color']);
         DB::transaction(function () use ($quadro, $data, $id): void {
             $board = Quadro::whereKey($quadro->id)->lockForUpdate()->firstOrFail();
             $labels = collect($board->label_catalog ?? []);
             $old = $id ? $labels->firstWhere('id', $id) : null;
-            abort_if($id && !$old, 404);
+            abort_if($id && ! $old, 404);
             abort_if($labels->contains(fn (array $label): bool => $label['id'] !== $id && mb_strtolower($label['name']) === mb_strtolower(trim($data['name']))), 422, 'Já existe uma etiqueta com esse nome.');
-            abort_if(!$id && $labels->count() >= 100, 422, 'O quadro pode ter até 100 etiquetas.');
+            abort_if(! $id && $labels->count() >= 100, 422, 'O quadro pode ter até 100 etiquetas.');
             $label = [...$data, 'name' => trim($data['name']), 'id' => $id ?? (string) Str::uuid()];
             $board->label_catalog = $id ? $labels->map(fn (array $item): array => $item['id'] === $id ? $label : $item)->all() : $labels->push($label)->all();
             $board->save();

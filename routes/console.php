@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('financeiro:recorrencias')->daily()->withoutOverlapping();
+Schedule::command('quadros:lembretes')->everyMinute()->withoutOverlapping();

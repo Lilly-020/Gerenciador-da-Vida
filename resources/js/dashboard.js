@@ -177,7 +177,7 @@ export function setupLifeDashboard() {
         }
         const createButton = event.target.closest('[data-dashboard-create]');
         if (createButton) {
-            const titles = { sonhos: 'Novo sonho', projetos: 'Novo projeto', cursos: 'Novo curso' };
+            const titles = { sonhos: 'Novo sonho', projetos: 'Novo projeto', cursos: 'Novo quadro' };
             createForm.dataset.kind = createButton.dataset.dashboardCreate;
             createForm.action = createButton.dataset.dashboardStoreUrl;
             createModal.querySelector('h2').textContent = titles[createForm.dataset.kind];

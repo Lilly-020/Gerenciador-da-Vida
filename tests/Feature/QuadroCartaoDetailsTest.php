@@ -15,6 +15,40 @@ class QuadroCartaoDetailsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_cover_upload_is_applied_immediately_and_replaces_color(): void
+    {
+        Storage::fake('local');
+        $owner = User::factory()->create();
+        $board = Quadro::factory()->for($owner)->create();
+        $card = QuadroCartao::factory()->for($board)->create(['cover_color' => '#579dff']);
+        $response = $this->actingAs($owner)->postJson(route('quadros.arquivos.store', [$board, $card]), ['file' => UploadedFile::fake()->image('Cover.png'), 'cover' => true])->assertOk();
+        $this->assertSame($response->json('file.id'), $card->fresh()->cover_file_id);
+        $this->assertNull($card->fresh()->cover_color);
+        Storage::disk('local')->assertExists($card->fresh()->attachments[0]['path']);
+        $html = $this->getJson(route('quadros.show', $board))->assertOk()->json('html');
+        $this->assertStringContainsString('data-quadro-card-cover="image"', $html);
+        $this->assertStringContainsString($response->json('file.id').'?preview=1', $html);
+        $this->patchJson(route('quadros.cartoes.update', [$board, $card]), ['cover_color' => '#4bce97', 'cover_file_id' => null])->assertOk();
+        $this->assertSame('#4bce97', $card->fresh()->cover_color);
+        $this->assertNull($card->fresh()->cover_file_id);
+        $html = $this->getJson(route('quadros.show', $board))->assertOk()->json('html');
+        $this->assertStringContainsString('data-quadro-card-cover="color"', $html);
+        $this->assertStringContainsString('background-color:#4bce97', $html);
+    }
+
+    public function test_cover_upload_accepts_only_images_up_to_eight_megabytes(): void
+    {
+        Storage::fake('local');
+        $owner = User::factory()->create();
+        $board = Quadro::factory()->for($owner)->create();
+        $card = QuadroCartao::factory()->for($board)->create();
+        $url = route('quadros.arquivos.store', [$board, $card]);
+        $this->actingAs($owner)->postJson($url, ['file' => UploadedFile::fake()->create('Document.pdf', 10, 'application/pdf'), 'cover' => true])->assertUnprocessable()->assertJsonValidationErrors('file');
+        $this->postJson($url, ['file' => UploadedFile::fake()->image('Large.png')->size(8193), 'cover' => true])->assertUnprocessable()->assertJsonValidationErrors('file');
+        $this->assertNull($card->fresh()->cover_file_id);
+        Storage::disk('local')->assertEmpty();
+    }
+
     public function test_card_details_save_checklist_location_and_history_without_changing_title(): void
     {
         $owner = User::factory()->create();

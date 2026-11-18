@@ -9,7 +9,7 @@ class DashboardLayout
         'financeiro' => 'Financeiro',
         'sonhos' => 'Sonhos',
         'projetos' => 'Projetos',
-        'cursos' => 'Cursos',
+        'cursos' => 'Planner',
     ];
 
     public const TASK_VIEWS = [

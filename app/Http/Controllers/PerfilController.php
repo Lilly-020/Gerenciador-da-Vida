@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Participacao;
+use App\Models\Quadro;
 use App\Models\User;
+use App\Notifications\QuadroCardDueReminder;
+use App\Notifications\QuadroCommentMention;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,10 +29,31 @@ class PerfilController extends Controller
         return view('pages.perfil', [
             'user' => $user,
             'aba' => $request->query('aba') === 'notificacoes' ? 'notificacoes' : 'perfil',
+            'unreadNotificationCount' => $user->unreadNotifications()->count(),
+            'lembretes' => $user->notifications()->whereIn('type', [QuadroCardDueReminder::class, QuadroCommentMention::class])->latest()->limit(50)->get(),
             'pendentes' => $recebidas->where('status', Participacao::STATUS_PENDENTE),
             'aceitas' => $recebidas->where('status', Participacao::STATUS_ACEITO),
             'enviadas' => $user->participacoesEnviadas()->with(['participant', 'projeto'])->latest()->get(),
         ]);
+    }
+
+    public function notificationCount(Request $request): JsonResponse
+    {
+        return response()->json(['count' => $request->user()->unreadNotifications()->count()])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function readReminder(Request $request, string $notification): RedirectResponse
+    {
+        $reminder = $request->user()->notifications()->whereIn('type', [QuadroCardDueReminder::class, QuadroCommentMention::class])->findOrFail($notification);
+        if ($reminder->type !== QuadroCommentMention::class) {
+            $reminder->markAsRead();
+        }
+        $board = Quadro::find($reminder->data['board_id']);
+        if (! $board || ! $board->cartoes()->whereKey($reminder->data['card_id'])->exists()) {
+            return redirect()->route('perfil', ['aba' => 'notificacoes'])->with('status', 'Este quadro não está mais disponível.');
+        }
+
+        return redirect()->to(route('quadros.show', $board, absolute: false).'#card='.$reminder->data['card_id'].(isset($reminder->data['comment_id']) ? '&comment='.$reminder->data['comment_id'] : ''));
     }
 
     /**

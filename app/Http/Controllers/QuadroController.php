@@ -65,7 +65,7 @@ class QuadroController extends Controller
                 $comments->with('user')->limit(1);
             }]);
         }]);
-        $data = ['quadro' => $quadro, 'canEdit' => $quadro->canEdit($request->user()), 'canManage' => $quadro->canManage($request->user())];
+        $data = ['quadro' => $quadro, 'canEdit' => $quadro->canEdit($request->user()), 'canManage' => $quadro->canManage($request->user()), 'reminderCount' => $request->user()->unreadNotifications()->count()];
 
         return $request->wantsJson() ? response()->json(['html' => view('partials.quadro-content', $data)->render()]) : view('pages.quadro', $data);
     }

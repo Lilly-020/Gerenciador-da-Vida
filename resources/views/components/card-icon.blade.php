@@ -1,6 +1,11 @@
 @props(['name'])
 <svg {{ $attributes->merge(['class' => 'h-4 w-4 shrink-0']) }} aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
     @switch($name)
+        @case('filter')<path d="M3 4h18l-7 8v7l-4 2v-9z" />@break
+        @case('back')<path d="m15 5-7 7 7 7" />@break
+        @case('bell')<path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 10h18c0-2-3-3-3-10M10 22h4" />@break
+        @case('upload')<path d="M4 15v6h16v-6M12 16V3m-5 5 5-5 5 5" />@break
+        @case('comment')<path d="M21 4H3v13h5l4 4v-4h9z" />@break
         @case('bold')<path stroke-width="2" d="M7 3h6a4 4 0 0 1 0 8H7m0-8v18h7a5 5 0 0 0 0-10H7" />@break
         @case('italic')<path d="M10 3h10M4 21h10M15 3 9 21" />@break
         @case('underline')<path d="M6 3v8a6 6 0 0 0 12 0V3M4 21h16" />@break
@@ -24,6 +29,10 @@
         @case('attachment')<path d="m9 12 6-6a3 3 0 0 1 4 4l-9 9a5 5 0 0 1-7-7L13 2m-7 13 9-9" />@break
         @case('pencil')<path d="m16 3 5 5M3 21l5-1L21 7a2 2 0 0 0-4-4L4 16z" />@break
         @case('trash')<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7" />@break
+        @case('more')<circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" />@break
+        @case('download')<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" />@break
+        @case('play')<rect x="3" y="3" width="18" height="18" rx="3" /><path d="m10 8 6 4-6 4z" />@break
+        @case('grip')<circle cx="8" cy="5" r="1" /><circle cx="16" cy="5" r="1" /><circle cx="8" cy="12" r="1" /><circle cx="16" cy="12" r="1" /><circle cx="8" cy="19" r="1" /><circle cx="16" cy="19" r="1" />@break
         @case('close')<path d="m6 6 12 12M6 18 18 6" />@break
         @case('open')<path d="M14 3h7v7m0-7L10 14m-1-9H3v16h16v-6" />@break
         @case('send')<path d="m3 3 19 9-19 9 4-9zm4 9h15" />@break

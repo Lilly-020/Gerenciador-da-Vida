@@ -25,21 +25,22 @@ class QuadroCartaoActionController extends Controller
                 Quadro::whereKey($quadro->id)->lockForUpdate()->firstOrFail();
                 $cartao->refresh();
                 $copy = $quadro->cartoes()->create([
-                    ...$cartao->only(['title', 'description', 'status', 'labels', 'assignee_ids', 'due_at', 'checklist', 'checklists', 'location', 'cover_color']),
+                    ...$cartao->only(['title', 'description', 'status', 'labels', 'assignee_ids', 'due_at', 'starts_on', 'reminder_minutes', 'checklist', 'checklists', 'location', 'cover_color']),
                     'title' => $data['title'] ?? mb_substr($cartao->title.' (cópia)', 0, 255),
                     'lista_id' => $data['lista_id'],
                     'position' => ($quadro->cartoes()->where('lista_id', $data['lista_id'])->max('position') ?? -1) + 1,
                 ]);
+                $copy->created_by = $request->user()->id;
                 $files = [];
                 foreach ($cartao->attachments ?? [] as $file) {
-                    if (($file['source'] ?? 'card') === 'comment') {
+                    if (($file['source'] ?? 'card') === 'comment' && $cartao->cover_file_id !== $file['id']) {
                         continue;
                     }
                     $id = (string) Str::uuid();
                     $path = 'quadro-cartoes/'.$copy->id.'/'.$id.'.'.pathinfo($file['path'], PATHINFO_EXTENSION);
                     abort_unless(Storage::disk('local')->copy($file['path'], $path), 500, 'Não foi possível copiar o anexo.');
                     $paths[] = $path;
-                    $files[] = [...$file, 'id' => $id, 'path' => $path, 'at' => now()->toIso8601String()];
+                    $files[] = [...$file, 'id' => $id, 'path' => $path, 'source' => 'card', 'at' => now()->toIso8601String()];
                     if ($cartao->cover_file_id === $file['id']) {
                         $copy->cover_file_id = $id;
                     }

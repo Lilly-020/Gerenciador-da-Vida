@@ -19,9 +19,7 @@
             <a href="{{ route('perfil', absolute: false) }}" class="{{ $tabClasses($aba === 'perfil') }}">Meus dados</a>
             <a href="{{ route('perfil', ['aba' => 'notificacoes'], absolute: false) }}" class="{{ $tabClasses($aba === 'notificacoes') }}">
                 Notificações
-                @if ($pendentes->isNotEmpty())
-                    <span class="ml-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{{ $pendentes->count() }}</span>
-                @endif
+                <span data-app-notification-count data-invites="{{ $pendentes->count() }}" @if (! ($pendentes->count() + $unreadNotificationCount)) hidden @endif class="ml-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{{ $pendentes->count() + $unreadNotificationCount }}</span>
             </a>
         </nav>
 
@@ -102,6 +100,15 @@
             </div>
         @else
             <div class="space-y-4">
+                <section class="rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-lg shadow-black/20 sm:p-6">
+                    <h2 class="mb-3 flex items-center gap-2 text-base font-semibold text-white"><x-card-icon name="bell" />Lembretes e menções</h2>
+                    @forelse ($lembretes as $lembrete)
+                        <article class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 py-3">
+                            <div class="min-w-0"><h3 class="wrap-break-word text-sm font-medium {{ $lembrete->read_at ? 'text-slate-400' : 'text-indigo-200' }}">{{ $lembrete->data['title'] }}</h3><p class="mt-1 text-xs text-slate-500">@if (isset($lembrete->data['comment_id'])){{ $lembrete->data['author'] }} mencionou você @if (! $lembrete->read_at)<span class="ml-1 inline-block h-2 w-2 rounded-full bg-indigo-400" aria-label="Não lida"></span>@endif @else Entrega: {{ $lembrete->data['due_at'] }} @endif · {{ $lembrete->created_at->format('d/m/Y H:i') }}</p></div>
+                            <form method="POST" action="{{ route('perfil.lembretes.read', $lembrete->id, absolute: false) }}">@csrf<button type="submit" class="rounded-lg border border-indigo-400/30 px-3 py-2 text-xs font-medium text-indigo-200">Abrir cartão</button></form>
+                        </article>
+                    @empty<p class="text-sm text-slate-500">Nenhum lembrete ou menção recebido.</p>@endforelse
+                </section>
                 <section class="rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-lg shadow-black/20 sm:p-6">
                     <h2 class="mb-3 text-base font-semibold text-white">Convites para você</h2>
 

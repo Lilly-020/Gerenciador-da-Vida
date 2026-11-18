@@ -19,11 +19,11 @@ use App\Http\Controllers\ProjetoCollaborationController;
 use App\Http\Controllers\ProjetoController;
 use App\Http\Controllers\ProjetoEtiquetaController;
 use App\Http\Controllers\ProjetoTaskController;
-use App\Http\Controllers\QuadroCartaoArquivoController;
 use App\Http\Controllers\QuadroCartaoActionController;
-use App\Http\Controllers\QuadroEtiquetaController;
+use App\Http\Controllers\QuadroCartaoArquivoController;
 use App\Http\Controllers\QuadroCartaoController;
 use App\Http\Controllers\QuadroController;
+use App\Http\Controllers\QuadroEtiquetaController;
 use App\Http\Controllers\QuadroListaController;
 use App\Http\Controllers\QuadroMembroController;
 use App\Http\Controllers\SonhoController;
@@ -99,6 +99,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/quadros/{quadro}/etiquetas/{etiqueta}', [QuadroEtiquetaController::class, 'destroy'])->name('quadros.etiquetas.destroy');
     Route::delete('/quadros/{quadro}/cartoes/{cartao}', [QuadroCartaoController::class, 'destroy'])->name('quadros.cartoes.destroy');
     Route::get('/quadros/{quadro}/cartoes/{cartao}/comentarios', [QuadroCartaoController::class, 'comments'])->name('quadros.comentarios.index');
+    Route::post('/quadros/{quadro}/cartoes/{cartao}/comentarios/{comentario}/visualizar', [QuadroCartaoController::class, 'readMention'])->name('quadros.comentarios.read');
     Route::post('/quadros/{quadro}/cartoes/{cartao}/comentarios', [QuadroCartaoController::class, 'comment'])->name('quadros.comentarios.store');
     Route::patch('/quadros/{quadro}/cartoes/{cartao}/comentarios/{comentario}', [QuadroCartaoController::class, 'updateComment'])->name('quadros.comentarios.update');
     Route::delete('/quadros/{quadro}/cartoes/{cartao}/comentarios/{comentario}', [QuadroCartaoController::class, 'destroyComment'])->name('quadros.comentarios.destroy');
@@ -187,6 +188,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/tarefas/{tarefa}', [TarefaController::class, 'destroy'])->name('tarefas.destroy');
 
     Route::get('/perfil', [PerfilController::class, 'show'])->name('perfil');
+    Route::get('/perfil/notificacoes/contador', [PerfilController::class, 'notificationCount'])->name('perfil.notificacoes.count');
+    Route::post('/perfil/lembretes/{notification}', [PerfilController::class, 'readReminder'])->name('perfil.lembretes.read');
     Route::put('/perfil', [PerfilController::class, 'update'])->name('perfil.update');
     Route::put('/perfil/senha', [PerfilController::class, 'updatePassword'])->name('perfil.senha');
     Route::get('/usuarios/buscar', [PerfilController::class, 'buscar'])->name('usuarios.buscar');

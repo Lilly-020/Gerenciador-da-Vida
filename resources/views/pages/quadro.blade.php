@@ -1,10 +1,15 @@
 <x-layout :title="$quadro->title" align="start" :full-bleed="true">
     <div data-quadro-page data-url="{{ route('quadros.show', $quadro, absolute: false) }}" data-editable="{{ $canEdit ? '1' : '0' }}" class="quadro-workspace quadro-cover quadro-cover--{{ $quadro->cover }} w-full min-w-0 max-w-none" @if ($quadro->cover_path) style="background-image:url('{{ route('quadros.cover', $quadro, absolute: false) }}')" @endif>
         <header class="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex min-w-0 items-center gap-3"><a href="{{ route('cursos', absolute: false) }}" class="quadro-tool" aria-label="Voltar aos quadros">←</a><div class="min-w-0"><p class="text-xs text-slate-500">{{ $quadro->category ?: 'Quadro de estudos' }}</p><h1 class="truncate text-xl font-semibold text-white">{{ $quadro->title }}</h1></div></div>
-            <div class="flex flex-wrap items-center gap-2"><div class="mr-2 hidden -space-x-1 sm:flex"><span class="quadro-avatar border-2 border-slate-950" title="{{ $quadro->user->name }}">{{ mb_strtoupper(mb_substr($quadro->user->name, 0, 2)) }}</span>@foreach ($quadro->membros->where('status', 'accepted')->take(4) as $member)<span class="quadro-avatar border-2 border-slate-950" title="{{ $member->user->name }}">{{ mb_strtoupper(mb_substr($member->user->name, 0, 2)) }}</span>@endforeach</div><button type="button" data-quadro-members data-url="{{ route('quadros.membros.index', $quadro, absolute: false) }}" class="quadro-tool">Compartilhar</button>@if ($canManage)<button type="button" data-quadro-config class="quadro-tool" aria-label="Configurar quadro"><x-settings-icon /></button>@endif</div>
+            <div class="flex min-w-0 items-center gap-3"><a href="{{ route('cursos', absolute: false) }}" class="quadro-tool" aria-label="Voltar aos quadros"><x-card-icon name="back" /></a><div class="min-w-0"><p class="text-xs text-slate-500">{{ $quadro->category ?: 'Quadro do Planner' }}</p><h1 class="truncate text-xl font-semibold text-white">{{ $quadro->title }}</h1></div></div>
+            <div data-quadro-header-actions class="flex flex-wrap items-center gap-2"><div class="mr-2 hidden -space-x-1 sm:flex"><span class="quadro-avatar border-2 border-slate-950" title="{{ $quadro->user->name }}">{{ mb_strtoupper(mb_substr($quadro->user->name, 0, 2)) }}</span>@foreach ($quadro->membros->where('status', 'accepted')->take(4) as $member)<span class="quadro-avatar border-2 border-slate-950" title="{{ $member->user->name }}">{{ mb_strtoupper(mb_substr($member->user->name, 0, 2)) }}</span>@endforeach</div><a href="{{ route('perfil', ['aba' => 'notificacoes'], absolute: false) }}" class="quadro-tool" aria-label="Lembretes e notificações" title="Lembretes e notificações"><x-card-icon name="bell" /><span data-quadro-notification-count data-url="{{ route('perfil.notificacoes.count', absolute: false) }}" @if (! $reminderCount) hidden @endif class="rounded-full bg-indigo-500 px-1.5 text-[10px] text-white">{{ $reminderCount }}</span></a><button type="button" data-quadro-members data-url="{{ route('quadros.membros.index', $quadro, absolute: false) }}" class="quadro-tool" aria-label="Compartilhar quadro" title="Compartilhar quadro"><x-card-icon name="people" /><span class="quadro-share-label">Compartilhar</span></button>@if ($canManage)<button type="button" data-quadro-config class="quadro-tool" aria-label="Configurar quadro"><x-settings-icon /></button>@endif</div>
         </header>
-        <div class="quadro-toolbar mb-4 grid grid-cols-2 items-center gap-3 sm:flex sm:flex-wrap"><input data-quadro-search type="search" placeholder="Pesquisar cartões..." aria-label="Pesquisar cartões" class="col-span-2 w-full min-w-0 sm:max-w-sm sm:flex-1"><select data-quadro-status aria-label="Filtrar por status"><option value="">Todos os status</option>@foreach (\App\Models\QuadroCartao::STATUSES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select><span class="hidden sm:block sm:flex-1"></span><div class="flex rounded-xl border border-white/10 bg-slate-900 p-1"><button type="button" data-quadro-view="kanban" aria-pressed="true" class="rounded-lg px-4 py-2 text-xs text-slate-300 aria-pressed:bg-indigo-500/25">Quadro</button><button type="button" data-quadro-view="table" aria-pressed="false" class="rounded-lg px-4 py-2 text-xs text-slate-300 aria-pressed:bg-indigo-500/25">Tabela</button></div>@if ($canEdit)<button type="button" data-quadro-new-list class="quadro-primary col-span-2">+ Nova lista</button>@endif</div>
+        <div class="quadro-toolbar">
+            <input data-quadro-search type="search" placeholder="Pesquisar cartões…" aria-label="Pesquisar cartões" class="w-full min-w-0 sm:max-w-sm sm:flex-1">
+            <div class="quadro-status-control" title="Filtrar por status"><x-card-icon name="filter" class="quadro-status-icon" /><select data-quadro-status aria-label="Filtrar por status"><option value="">Todos os status</option>@foreach (\App\Models\QuadroCartao::STATUSES as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></div>
+            <div class="quadro-view-toggle flex rounded-xl border border-white/10 bg-slate-900 p-1"><button type="button" data-quadro-view="kanban" aria-pressed="true" class="rounded-lg px-4 py-2 text-xs text-slate-300 aria-pressed:bg-indigo-500/25">Quadro</button><button type="button" data-quadro-view="table" aria-pressed="false" class="rounded-lg px-4 py-2 text-xs text-slate-300 aria-pressed:bg-indigo-500/25">Tabela</button></div>
+            @if ($canEdit)<button type="button" data-quadro-new-list class="quadro-primary">+ Nova lista</button>@endif
+        </div>
         <p data-quadro-page-error hidden class="mb-3 text-sm text-rose-300" role="alert"></p>
         <div class="quadro-stage"><div data-quadro-content class="h-full min-w-0">@include('partials.quadro-content')</div></div>
     </div>
@@ -22,7 +27,26 @@
             </div></fieldset>
             <button type="button" data-quadro-list-clear class="quadro-tool mt-4 w-full text-left">Limpar filtro</button>
         </div>
+        <div id="quadro-card-menu" popover="auto" class="quadro-filter-popover app-scroll" role="dialog" aria-label="Ações do cartão">
+            <header class="mb-3 flex items-center justify-between gap-3"><h2 data-quadro-context-title class="min-w-0 truncate text-xs font-semibold uppercase text-slate-400"></h2><button type="button" data-quadro-context-close aria-label="Fechar ações"><x-card-icon name="close" /></button></header>
+            <div data-quadro-context-actions>
+                <button type="button" data-quadro-context-action="open" class="quadro-context-item"><x-card-icon name="open" />Abrir cartão</button>
+                @if ($canEdit)
+                    <button type="button" data-quadro-context-action="copy" class="quadro-context-item"><x-card-icon name="copy" />Copiar</button>
+                    <button type="button" data-quadro-context-action="paste" class="quadro-context-item disabled:text-slate-600"><x-card-icon name="file" />Colar aqui</button>
+                    <button type="button" data-quadro-context-action="duplicate" class="quadro-context-item"><x-card-icon name="copy" />Duplicar</button>
+                    <button type="button" data-quadro-context-action="move" class="quadro-context-item"><x-card-icon name="move" />Mover…</button>
+                    <button type="button" data-quadro-context-action="delete" class="quadro-context-item mt-3 border-t border-white/10 pt-4 text-rose-300"><x-card-icon name="trash" />Excluir</button>
+                @endif
+            </div>
+            @if ($canEdit)<form data-quadro-context-move hidden><label class="grid gap-2 text-xs text-slate-400">Mover para a lista<select name="lista_id">@foreach ($quadro->listas as $list)<option value="{{ $list->id }}">{{ $list->title }}</option>@endforeach</select></label><button type="submit" class="quadro-primary mt-4 w-full">Mover cartão</button></form>@endif
+            <p data-quadro-error hidden role="alert" class="mt-3 text-xs text-rose-300"></p>
+        </div>
         <dialog id="quadro-card-dialog" class="quadro-dialog quadro-card-dialog" aria-label="Detalhes do cartão"><div data-quadro-card-body></div></dialog>
+        <dialog id="quadro-file-preview" class="quadro-dialog quadro-file-preview" aria-labelledby="quadro-file-preview-title">
+            <header class="flex items-center justify-between gap-4 border-b border-white/10 p-4"><h2 id="quadro-file-preview-title" class="min-w-0 wrap-break-word text-sm font-semibold"></h2><button type="button" data-quadro-close class="quadro-tool" aria-label="Fechar visualização"><x-card-icon name="close" /></button></header>
+            <div data-quadro-file-preview-body class="quadro-file-preview-body"></div>
+        </dialog>
         <dialog id="quadro-members-dialog" class="quadro-dialog max-w-2xl!" aria-label="Compartilhar quadro"><div data-quadro-members-body></div></dialog>
     </x-slot:modals>
 </x-layout>

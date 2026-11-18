@@ -30,7 +30,7 @@ class DashboardTest extends TestCase
         $response = $this->actingAs(User::factory()->create())->get('/dashboard');
 
         $response->assertOk()->assertSee('Sua vida, do seu jeito.')->assertSee('Personalizar')
-            ->assertSee('Qual é o seu próximo sonho?')->assertSee('Crie um quadro para organizar seus estudos.');
+            ->assertSee('Qual é o seu próximo sonho?')->assertSee('Crie um quadro para organizar seus planos.');
         foreach (array_keys(DashboardLayout::WIDGETS) as $id) {
             $response->assertSee('data-dashboard-widget="'.$id.'"', false);
         }

@@ -1,0 +1,10 @@
+@props(['item' => ['text' => '', 'done' => false]])
+<div data-quadro-checklist-item class="quadro-checklist-item">
+    <x-checkbox data-quadro-checklist-done :checked="$item['done']" aria-label="Concluir item" />
+    <span data-quadro-checklist-label @class(['min-w-0 flex-1 wrap-break-word text-sm', 'line-through text-slate-500' => $item['done']])>{{ $item['text'] }}</span>
+    <input hidden data-quadro-checklist-text value="{{ $item['text'] }}" readonly required maxlength="500" aria-label="Item do checklist" @class(['min-w-0 flex-1', 'line-through text-slate-500' => $item['done']])>
+    <div class="flex shrink-0 gap-2">
+        <button type="button" data-quadro-checklist-edit class="quadro-tool" aria-label="Editar item"><x-card-icon name="pencil" /></button>
+        <button type="button" data-quadro-checklist-remove class="quadro-tool" aria-label="Excluir item"><x-card-icon name="trash" /></button>
+    </div>
+</div>
