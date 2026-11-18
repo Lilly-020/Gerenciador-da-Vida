@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateDashboardRequest;
+use App\Models\ContaFinanceira;
 use App\Models\Lancamento;
 use App\Models\Projeto;
 use App\Models\Quadro;
@@ -10,6 +11,7 @@ use App\Models\Sonho;
 use App\Models\Tarefa;
 use App\Support\Carteira;
 use App\Support\DashboardLayout;
+use App\Support\FinanceiroPainel;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +20,7 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request, TarefaController $tarefas): View|JsonResponse
+    public function index(Request $request, TarefaController $tarefas, FinanceiroPainel $panel): View|JsonResponse
     {
         $user = $request->user();
         $preferences = $user->dashboard_preferences ?? DashboardLayout::defaults();
@@ -43,6 +45,18 @@ class DashboardController extends Controller
             'todayCompleted' => $todayTasks->where('completed', true)->count(),
             'financeiro' => $this->financeiro($request),
         ];
+
+        if ($data['financeiro'] && Carteira::isOwn()) {
+            $accounts = ContaFinanceira::withTrashed()->get();
+            $investments = $user->investimentos()->with('aportes')->get();
+            $available = $panel->available($user, $user, $today->copy()->endOfDay(), $accounts, $investments);
+            $data['financeAgenda'] = [
+                ...$panel->agenda($user, $user, $today, $available, $request->query('agenda'), $request->query('foco')),
+                'agendaRoute' => 'dashboard',
+                'agendaQuery' => $request->only('date', 'view'),
+                'cards' => ['saldo_disponivel' => $available],
+            ];
+        }
 
         if ($request->wantsJson()) {
             return response()->json([

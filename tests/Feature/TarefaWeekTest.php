@@ -38,6 +38,9 @@ class TarefaWeekTest extends TestCase
         $response->assertSee('Reunião da equipe')->assertSee('Compromisso do domingo')->assertSee('Dia todo')
             ->assertSee('07:00')->assertSee('23:00')->assertSee('Semana anterior')->assertSee('Próxima semana')->assertDontSee('Fora desta semana');
         $response->assertViewHas('weekDays', fn (array $days): bool => count($days) === 7 && $days[0]['date']->toDateString() === '2026-11-09' && $days[6]['date']->toDateString() === '2026-11-15');
+        $this->assertMatchesRegularExpression('/data-week-date="2026-11-10"\s+data-week-selected/', $response->getContent());
+        $response->assertSee('/tarefas?date=2026-11-09&amp;view=week#tarefas-week-calendar', false)
+            ->assertSee('/tarefas?date=2026-11-11&amp;view=week#tarefas-week-calendar', false);
         $this->assertSame(0, substr_count($response->getContent(), 'id="tarefas-day"'));
     }
 

@@ -5,8 +5,8 @@ namespace App\Support;
 class DashboardLayout
 {
     public const WIDGETS = [
-        'tarefas' => 'Tarefas',
         'financeiro' => 'Financeiro',
+        'tarefas' => 'Tarefas',
         'sonhos' => 'Sonhos',
         'projetos' => 'Projetos',
         'cursos' => 'Planner',
@@ -26,7 +26,7 @@ class DashboardLayout
             'widgets' => array_map(fn (string $id): array => [
                 'id' => $id,
                 'visible' => true,
-                'width' => $id === 'tarefas' ? 'wide' : 'normal',
+                'width' => in_array($id, ['financeiro', 'tarefas'], true) ? 'wide' : 'normal',
             ], array_keys(self::WIDGETS)),
             'task_view' => 'calendar',
         ];

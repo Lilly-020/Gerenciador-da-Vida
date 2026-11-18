@@ -301,10 +301,6 @@ input[type='file']::file-selector-button { margin-right: 0.75rem; border: 1px so
     flex-direction: column;
 }
 
-#tarefas-page[data-dashboard-embedded='true'] .task-week > div:first-child {
-    flex-shrink: 0;
-}
-
 #tarefas-page[data-dashboard-embedded='true'] .task-week > p {
     display: none;
 }
@@ -313,13 +309,8 @@ input[type='file']::file-selector-button { margin-right: 0.75rem; border: 1px so
     min-height: 0;
     max-height: none;
     flex: 1;
-    overflow-x: hidden;
     overscroll-behavior: auto;
     scrollbar-gutter: stable;
-}
-
-#tarefas-page[data-dashboard-embedded='true'] .week-canvas {
-    min-width: 0;
 }
 
 #tarefas-page[data-dashboard-embedded='true'] :is(.week-header, .week-all-day, .week-time-grid) {
@@ -354,6 +345,36 @@ input[type='file']::file-selector-button { margin-right: 0.75rem; border: 1px so
 [data-dashboard-widget='tarefas']:has(#tarefas-page[data-view='week']) {
     height: 100dvh;
     min-height: 42rem;
+}
+
+@media (width < 40rem) {
+    #tarefas-page .task-week .week-scroll {
+        min-height: 0;
+        max-height: none;
+        flex: none;
+        overflow: visible;
+        scrollbar-gutter: auto;
+    }
+
+    #tarefas-page .task-week .week-canvas { min-width: 0; }
+    #tarefas-page .task-week :is(.week-header, .week-all-day, .week-time-grid) {
+        grid-template-columns: 3rem minmax(0, 1fr);
+    }
+
+    #tarefas-page .task-week :is(.week-header, .week-all-day) { position: static; }
+    #tarefas-page .task-week .week-header { height: auto; }
+    #tarefas-page .task-week .week-heading:not(.week-selected),
+    #tarefas-page .task-week .week-all-day > div:not([data-week-selected]),
+    #tarefas-page .task-week .week-day:not([data-week-selected]) { display: none; }
+
+    [data-dashboard-widget='tarefas']:has(#tarefas-page[data-view='week']) {
+        height: auto;
+        min-height: 0;
+    }
+
+    [data-dashboard-content='tarefas']:has(#tarefas-page[data-view='week']) {
+        overflow: visible;
+    }
 }
 
 [data-dashboard-widget='tarefas']:has(#tarefas-page[data-view='calendar']),
@@ -895,6 +916,7 @@ html[data-theme='light'] { --app-scroll-thumb: #a5b4fc; --app-scroll-thumb-hover
 @media (min-width: 64rem) {
     .app-toolbar #open-navigation { display: none; }
     html[data-sidebar='collapsed'] .app-shell-sidebar { padding-left: 4.75rem; }
+    html[data-sidebar='collapsed'] .app-shell-sidebar .app-expand-with-sidebar { max-width: none; }
     html[data-sidebar='collapsed'] .app-sidebar { width: 4.75rem; padding-inline: 0.55rem; }
     html[data-sidebar='collapsed'] .app-sidebar .app-sidebar-label { display: none; }
     html[data-sidebar='collapsed'] .app-sidebar :is(.app-sidebar-brand, .app-main-navigation a, button) { justify-content: center; padding-inline: 0; }

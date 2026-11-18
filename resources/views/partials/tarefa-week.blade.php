@@ -2,8 +2,21 @@
     $weekStart = $weekDays[0]['date'];
     $weekEnd = $weekDays[6]['date'];
 @endphp
-<div id="tarefas-week-calendar" class="task-week">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+<div id="tarefas-week-calendar" class="task-week @container scroll-mt-20">
+    <div class="sm:hidden">
+        <nav aria-label="Dia do calendário de tarefas" class="mb-3 flex items-center gap-2">
+            <a href="{{ route('tarefas', ['date' => $selected->copy()->subDay()->toDateString(), 'view' => 'week'], absolute: false) }}#tarefas-week-calendar"
+               aria-label="Dia anterior" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-white/10 text-slate-300 hover:bg-white/5">‹</a>
+            <a href="{{ route('tarefas', ['date' => today()->toDateString(), 'view' => 'week'], absolute: false) }}#tarefas-week-calendar"
+               class="inline-flex min-h-11 items-center rounded-lg border border-white/10 px-3 text-xs font-semibold text-slate-300 hover:bg-white/5">Hoje</a>
+            <a href="{{ route('tarefas', ['date' => $selected->copy()->addDay()->toDateString(), 'view' => 'week'], absolute: false) }}#tarefas-week-calendar"
+               aria-label="Próximo dia" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-white/10 text-slate-300 hover:bg-white/5">›</a>
+        </nav>
+        <h2 class="mb-3 text-sm font-semibold text-white">
+            {{ \App\Models\Tarefa::weekdayLabel($selected) }}, {{ $selected->format('d') }} de {{ Str::lower(\App\Models\Tarefa::monthLabel($selected)) }}
+        </h2>
+    </div>
+    <div class="mb-4 hidden shrink-0 flex-wrap items-center justify-between gap-4 sm:flex">
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-1">
                 <a href="{{ route('tarefas', ['date' => $selected->copy()->subWeek()->toDateString(), 'view' => 'week'], absolute: false) }}" aria-label="Semana anterior" class="rounded-lg border border-white/10 px-3 py-2 text-slate-300 hover:bg-white/5">‹</a>
@@ -14,8 +27,9 @@
         </div>
         <button type="button" data-week-kind-filter="feriado" data-kind="feriado" aria-pressed="true" class="week-kind-chip"><span aria-hidden="true">●</span> Feriados nacionais</button>
     </div>
-    <p class="mb-3 text-xs text-slate-500">Clique em um horário para agendar. Sem horário, a tarefa aparece em Dia todo. Marque o quadrado para concluir. Clique no título para editar, excluir ou adicionar anexos.</p>
-    <div data-week-scroll class="week-scroll" tabindex="0" aria-label="Agenda semanal com horários, role para navegar">
+    <p class="mb-3 hidden text-xs text-slate-500 sm:block">Clique em um horário para agendar. Sem horário, a tarefa aparece em Dia todo. Marque o quadrado para concluir. Clique no título para editar, excluir ou adicionar anexos.</p>
+    <div class="mb-2 hidden shrink-0 text-xs text-slate-400 sm:block @min-[940px]:hidden">Deslize para os lados para ver mais dias.</div>
+    <div data-week-scroll class="week-scroll" tabindex="0" aria-label="Calendário de tarefas com horários">
         <div class="week-canvas">
             <div class="week-header">
                 <div class="week-corner"></div>
@@ -26,7 +40,7 @@
             <div class="week-all-day">
                 <span class="week-all-label">Dia todo</span>
                 @foreach ($weekDays as $day)
-                    <div class="max-h-44 min-w-0 overflow-y-auto border-r border-white/10 p-1.5">
+                    <div class="min-w-0 border-r border-white/10 p-1.5 sm:max-h-44 sm:overflow-y-auto" @if ($day['date']->isSameDay($selected)) data-week-selected @endif>
                         @if ($holiday = \App\Support\CalendarioFeriados::on($day['date']))<div data-week-kind="feriado" data-kind="feriado" class="week-all-event whitespace-normal!" title="Feriado nacional">{{ $holiday }}</div>@endif
                         @foreach ($day['allDay'] as $task)
                             <div data-calendar-task data-task-card-url="{{ route('tarefas.show', $task, absolute: false) }}" data-calendar-task-id="{{ $task->id }}" data-kind="atividade" class="week-all-event flex! items-center gap-2">
@@ -41,7 +55,7 @@
             <div class="week-time-grid">
                 <div class="week-time-labels">@for ($hour = 0; $hour < 24; $hour++)<span style="top: {{ $hour * 60 }}px">{{ sprintf('%02d:00', $hour) }}</span>@endfor</div>
                 @foreach ($weekDays as $day)
-                    <div data-week-slot="{{ $day['date']->toDateString() }}" data-week-date="{{ $day['date']->toDateString() }}" @class(['week-day', 'week-day-today' => $day['date']->isToday()])>
+                    <div data-week-slot="{{ $day['date']->toDateString() }}" data-week-date="{{ $day['date']->toDateString() }}" @if ($day['date']->isSameDay($selected)) data-week-selected @endif @class(['week-day', 'week-day-today' => $day['date']->isToday()])>
                         @foreach ($day['events'] as $event)
                             @php($task = $event['task'])
                             <div data-calendar-task data-task-card-url="{{ route('tarefas.show', $task, absolute: false) }}" data-calendar-task-id="{{ $task->id }}" data-kind="atividade" class="week-event py-0.5!" style="top: {{ $event['start'] }}px; height: {{ $event['end'] - $event['start'] }}px; left: calc({{ $event['lane'] / $event['lanes'] * 100 }}% + 2px); width: calc({{ 100 / $event['lanes'] }}% - 4px)">
@@ -57,5 +71,5 @@
             </div>
         </div>
     </div>
-    <p class="mt-3 text-[11px] text-slate-500">Horário de Brasília. A linha vermelha indica o horário atual. Feriados nacionais são exibidos automaticamente. Datas estaduais e municipais não estão incluídas.</p>
+    <p class="mt-3 hidden text-[11px] text-slate-500 sm:block">Horário de Brasília. A linha vermelha indica o horário atual. Feriados nacionais são exibidos automaticamente. Datas estaduais e municipais não estão incluídas.</p>
 </div>

@@ -18,12 +18,12 @@
 
 @endphp
 
-<nav class="mb-8 flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-slate-900/70 p-1.5 shadow-xl shadow-black/30 backdrop-blur scrollbar-none">
+<nav class="mb-8 flex w-fit max-w-full flex-wrap items-center justify-center gap-1 rounded-2xl border border-white/10 bg-slate-900/70 p-1.5 shadow-xl shadow-black/30 backdrop-blur sm:rounded-full">
     @foreach ($items as $item)
         @php $isActive = $active === $item['route']; @endphp
         <a
             href="{{ route($item['route'], absolute: false) }}"
-            class="shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition {{ $isActive ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:text-white' }}"
+            class="max-w-full rounded-full px-3 py-2 text-center text-sm sm:px-4 font-semibold transition {{ $isActive ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:text-white' }}"
         >
             {{ $item['label'] }}
         </a>

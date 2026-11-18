@@ -88,6 +88,14 @@ export function setupTarefas() {
         else {
             const currentWeek = Boolean(page.querySelector(`[data-week-date="${now.date}"]`));
             scroller.scrollTop = currentWeek ? Math.max(0, now.minute - 120) : 420;
+
+            if (scroller.scrollWidth > scroller.clientWidth) {
+                const selectedDay = scroller.querySelector('.week-selected');
+                const timeColumn = scroller.querySelector('.week-corner');
+                if (selectedDay && timeColumn) {
+                    scroller.scrollLeft += selectedDay.getBoundingClientRect().left - timeColumn.getBoundingClientRect().right;
+                }
+            }
         }
     };
     page.addEventListener('click', (event) => {

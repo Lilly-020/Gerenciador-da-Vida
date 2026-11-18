@@ -54,6 +54,106 @@ class FinanceiroPlanningTest extends TestCase
         $this->assertSame('previsto', $child->status);
     }
 
+    public function test_agenda_groups_completed_and_scheduled_amounts_by_month_and_day(): void
+    {
+        $this->travelTo(now()->setDate(2026, 11, 18));
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->onDate('2026-11-16')->create(['amount' => 1000]);
+        Lancamento::factory()->for($user)->saida()->onDate('2026-11-17')->create(['amount' => 100]);
+        Lancamento::factory()->for($user)->saida()->previsto()->onDate('2026-10-30')->create(['amount' => 100]);
+        Lancamento::factory()->for($user)->saida()->previsto()->onDate('2026-11-19')->create(['amount' => 250]);
+        Lancamento::factory()->for($user)->entrada()->previsto()->onDate('2026-11-20')->create(['amount' => 500]);
+        Lancamento::factory()->for($user)->saida()->previsto()->onDate('2026-12-04')->create(['amount' => 400]);
+
+        $monthly = $this->actingAs($user)->get('/financeiro')
+            ->assertOk()
+            ->assertSee('Resultado programado do mês')
+            ->assertSee('Já recebido')
+            ->assertSee('Já pago')
+            ->assertViewHas('showAgendaDays', false);
+
+        $months = $monthly->viewData('agendaRows');
+        $this->assertCount(12, $months);
+        $this->assertSame('2026-01', $months[0]['date']->format('Y-m'));
+        $this->assertSame(500.0, $months[10]['receive']);
+        $this->assertSame(250.0, $months[10]['pay']);
+        $this->assertSame(250.0, $months[10]['result']);
+        $this->assertSame(1000.0, $months[10]['received']);
+        $this->assertSame(100.0, $months[10]['paid']);
+        $this->assertSame(1150.0, $months[10]['balance']);
+        $this->assertSame(-400.0, $months[11]['result']);
+        $this->assertSame(750.0, $months[11]['balance']);
+
+        $nextYear = $this->get('/financeiro?agenda=2027')
+            ->assertOk()
+            ->assertSee('Ano atual')
+            ->assertViewHas('showAgendaDays', false)
+            ->assertViewHas('period', 'mes_atual');
+
+        $nextYearMonths = $nextYear->viewData('agendaRows');
+        $this->assertSame('2027-01', $nextYearMonths[0]['date']->format('Y-m'));
+        $this->assertSame('2027-12', $nextYearMonths[11]['date']->format('Y-m'));
+        $this->assertSame(0.0, $nextYearMonths[11]['pay']);
+        $this->assertSame(750.0, $nextYearMonths[0]['balance']);
+        $this->assertSame(750.0, $nextYearMonths[11]['balance']);
+
+        $november = $this->get('/financeiro?agenda=2026-11')->assertOk()->viewData('agendaRows');
+        $this->assertSame(1000.0, $november[15]['received']);
+        $this->assertSame(100.0, $november[16]['paid']);
+        $this->assertSame(650.0, $november[18]['balance']);
+        $this->assertSame(1150.0, $november[19]['balance']);
+        $this->assertSame(1150.0, $november[20]['balance']);
+
+        $daily = $this->get('/financeiro?agenda=2026-12')
+            ->assertOk()
+            ->assertSee('Já recebido')
+            ->assertSee('Já pago')
+            ->assertSee('A receber')
+            ->assertSee('A pagar')
+            ->assertSee('Resultado programado do dia')
+            ->assertSee('Saldo em conta projetado')
+            ->assertViewHas('showAgendaDays', true)
+            ->assertViewHas('period', 'mes_atual');
+
+        $days = $daily->viewData('agendaRows');
+        $this->assertCount(31, $days);
+        $this->assertSame(400.0, $days[3]['pay']);
+        $this->assertSame(-400.0, $days[3]['result']);
+        $this->assertSame(0.0, $days[4]['result']);
+        $this->assertSame(750.0, $days[3]['balance']);
+        $this->assertSame(750.0, $days[4]['balance']);
+    }
+
+    public function test_pausing_a_series_removes_future_pending_occurrences_and_resume_restores_only_those_paused(): void
+    {
+        $this->travelTo(now()->setDate(2026, 1, 20));
+        $user = User::factory()->create();
+        $this->actingAs($user)->postJson('/financeiro/lancamentos', [
+            'type' => 'saida', 'category' => 'Moradia', 'description' => 'Internet mensal', 'amount' => 120,
+            'date' => '2026-01-25', 'is_recurring_template' => true, 'recurrence_period' => 'mensal',
+            'recurrence_day' => 25, 'recurrence_count' => 5,
+        ])->assertOk();
+
+        $template = Lancamento::where('is_recurring_template', true)->firstOrFail();
+        [$confirmed, $cancelled, $pending, $later] = $template->occurrences()->orderBy('date')->get()->all();
+        $confirmed->update(['status' => Lancamento::STATUS_REALIZADO]);
+        $cancelled->update(['status' => Lancamento::STATUS_CANCELADO]);
+
+        $this->get('/financeiro/saidas?period=personalizado&start=2026-04-01&end=2026-04-30')
+            ->assertSee('Pausar recorrência');
+        $this->patchJson(route('financeiro.lancamentos.update', $template), ['recurrence_active' => false])->assertOk();
+        $this->assertSame(Lancamento::STATUS_CANCELADO, $pending->fresh()->status);
+        $this->assertSame(Lancamento::STATUS_REALIZADO, $confirmed->fresh()->status);
+        $this->get('/financeiro')->assertViewHas('cards', fn (array $cards): bool => $cards['a_pagar'] === 120.0);
+
+        $this->travelTo(now()->setDate(2026, 5, 1));
+        $this->patchJson(route('financeiro.lancamentos.update', $template), ['recurrence_active' => true])->assertOk();
+        $this->assertSame(Lancamento::STATUS_PREVISTO, $later->fresh()->status);
+        $this->assertSame(Lancamento::STATUS_CANCELADO, $pending->fresh()->status);
+        $this->assertSame(Lancamento::STATUS_CANCELADO, $cancelled->fresh()->status);
+        $this->assertSame(4, $template->occurrences()->count());
+    }
+
     public function test_installments_preserve_cents_and_month_end_anchor(): void
     {
         $user = User::factory()->create();

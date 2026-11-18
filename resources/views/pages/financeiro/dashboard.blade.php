@@ -15,7 +15,7 @@
 @endphp
 
 <x-layout title="Financeiro" align="start">
-    <div class="w-full min-w-0 max-w-6xl">
+    <div class="app-expand-with-sidebar w-full min-w-0 max-w-6xl">
         <x-financeiro-subnav active="financeiro" />
 
         <div class="mb-6 flex flex-wrap items-start justify-between gap-4">

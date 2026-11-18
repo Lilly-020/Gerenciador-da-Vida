@@ -1,5 +1,5 @@
 <x-layout title="Dashboard" align="start">
-    <div id="life-dashboard" data-preferences-url="{{ route('dashboard.preferences', absolute: false) }}" data-refresh-url="{{ route('dashboard', absolute: false) }}" class="w-full min-w-0 max-w-6xl">
+    <div id="life-dashboard" data-preferences-url="{{ route('dashboard.preferences', absolute: false) }}" data-refresh-url="{{ route('dashboard', request()->only(['agenda', 'foco', 'date', 'view']), absolute: false) }}" class="app-expand-with-sidebar w-full min-w-0 max-w-6xl">
         <script type="application/json" data-dashboard-preferences>@json($preferences)</script>
         <script type="application/json" data-dashboard-defaults>@json(\App\Support\DashboardLayout::defaults())</script>
         <div class="mb-7 flex flex-wrap items-start justify-between gap-5">
@@ -41,9 +41,9 @@
                     $id = $widget['id'];
                     $widgetWidth = $id === 'tarefas' && $taskData['view'] !== 'dashboard' ? 'wide' : $widget['width'];
                 @endphp
-                <section data-dashboard-widget="{{ $id }}" data-width="{{ $widgetWidth }}" @if (! $widget['visible']) hidden @endif @class(['dashboard-widget flex h-[30rem] min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/55 shadow-lg shadow-black/10', 'xl:col-span-2' => $widgetWidth === 'wide']) aria-labelledby="dashboard-heading-{{ $id }}">
+                <section data-dashboard-widget="{{ $id }}" data-width="{{ $widgetWidth }}" @if (! $widget['visible']) hidden @endif @class(['dashboard-widget flex min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-900/55 shadow-lg shadow-black/10', 'h-[30rem]' => $id !== 'financeiro', 'xl:col-span-2' => $widgetWidth === 'wide']) aria-labelledby="dashboard-heading-{{ $id }}">
                     <div class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/5 px-4 py-4 sm:px-5">
-                        <div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-400/15 bg-indigo-500/10 text-indigo-300"><x-dashboard-icon :name="$id" /></span><div><h2 id="dashboard-heading-{{ $id }}" class="text-sm font-semibold text-white">{{ $widgetLabels[$id] }}</h2><p @if ($id === 'tarefas') data-dashboard-task-view-label @endif class="mt-0.5 text-[10px] text-slate-500">{{ ['tarefas' => $taskViews[$taskData['view']], 'financeiro' => 'Seu mês em números', 'sonhos' => 'Pequenos passos, grandes conquistas', 'projetos' => 'Ideias que viram realidade', 'cursos' => 'Seus planos em movimento'][$id] }}</p></div></div>
+                        <div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-400/15 bg-indigo-500/10 text-indigo-300"><x-dashboard-icon :name="$id" /></span><div><h2 id="dashboard-heading-{{ $id }}" class="text-sm font-semibold text-white">{{ $widgetLabels[$id] }}</h2><p @if ($id === 'tarefas') data-dashboard-task-view-label @endif class="mt-0.5 text-[10px] text-slate-500">{{ ['tarefas' => $taskViews[$taskData['view']], 'financeiro' => 'Resumo do mês', 'sonhos' => 'Pequenos passos, grandes conquistas', 'projetos' => 'Ideias que viram realidade', 'cursos' => 'Seus planos em movimento'][$id] }}</p></div></div>
                         <div class="flex items-center gap-1">
                             @if ($id === 'tarefas')<button type="button" data-dashboard-new-task class="mr-2 rounded-lg border border-indigo-400/25 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/20">+ Nova tarefa</button>@endif
                             <div data-dashboard-edit-controls hidden class="flex flex-wrap items-center gap-1">
@@ -60,7 +60,7 @@
                             </div>
                         </div>
                     </div>
-                    <div data-dashboard-content="{{ $id }}" tabindex="0" role="region" aria-labelledby="dashboard-heading-{{ $id }}" class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+                    <div data-dashboard-content="{{ $id }}" tabindex="0" role="region" aria-labelledby="dashboard-heading-{{ $id }}" @class(['min-h-0 flex-1 p-4 sm:p-5', 'overflow-y-auto overscroll-contain' => $id !== 'financeiro', 'sm:overflow-y-auto sm:overscroll-contain' => $id === 'financeiro'])>
                         @if ($id === 'tarefas')
                             @include('partials.tarefas-workspace', [...$taskData, 'dashboardEmbedded' => true])
                         @else

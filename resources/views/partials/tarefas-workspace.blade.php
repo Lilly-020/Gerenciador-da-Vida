@@ -10,7 +10,7 @@
         data-view="{{ $view }}"
         data-selected-date="{{ $selected->toDateString() }}"
         data-today="{{ \Carbon\Carbon::today()->toDateString() }}"
-        class="w-full min-w-0 max-w-6xl"
+        @class(['w-full min-w-0', 'max-w-6xl' => ! ($dashboardEmbedded ?? false)])
     >
         @unless ($dashboardEmbedded ?? false)
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">

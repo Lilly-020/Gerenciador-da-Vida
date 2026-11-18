@@ -219,6 +219,7 @@ class LancamentoController extends Controller
 
         DB::transaction(function () use ($request, $lancamento): void {
             User::whereKey(Carteira::ownerId())->lockForUpdate()->firstOrFail();
+            $lancamento->refresh();
             if ($request->has('category') && CategoriaFinanceira::where('type', $lancamento->type)->where('name', $request->input('category'))->where('is_deleted', true)->exists()) {
                 throw ValidationException::withMessages(['category' => 'Esta categoria foi excluída. Selecione ou crie outra categoria.']);
             }
@@ -226,7 +227,6 @@ class LancamentoController extends Controller
             if ($accountId && ContaFinanceira::onlyTrashed()->whereKey($accountId)->exists()) {
                 throw ValidationException::withMessages(['account_id' => 'Esta conta foi excluída. Selecione uma conta ativa para alterar o lançamento.']);
             }
-            $lancamento->refresh();
             $data = Arr::except($request->validated(), ['partes', 'recurrence_active']);
             if ($lancamento->parent_recurring_id && array_key_exists('status', $data)) {
                 $data['recurrence_active'] = true;

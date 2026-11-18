@@ -30,6 +30,8 @@ class DashboardTest extends TestCase
         $response = $this->actingAs(User::factory()->create())->get('/dashboard');
 
         $response->assertOk()->assertSee('Sua vida, do seu jeito.')->assertSee('Personalizar')
+            ->assertSeeInOrder(['data-dashboard-widget="financeiro"', 'data-dashboard-widget="tarefas"'], false)
+            ->assertSee('Ver agenda')
             ->assertSee('Qual é o seu próximo sonho?')->assertSee('Crie um quadro para organizar seus planos.');
         foreach (array_keys(DashboardLayout::WIDGETS) as $id) {
             $response->assertSee('data-dashboard-widget="'.$id.'"', false);
@@ -114,7 +116,7 @@ class DashboardTest extends TestCase
         return [
             'unknown calendar' => [['task_view' => 'invalid'], 'task_view'],
             'unknown widget' => [['widgets' => [['id' => 'usuarios']]], 'widgets.0.id'],
-            'duplicate widget' => [['widgets' => [1 => ['id' => 'tarefas']]], 'widgets.1.id'],
+            'duplicate widget' => [['widgets' => [1 => ['id' => 'financeiro']]], 'widgets.1.id'],
             'invalid visibility' => [['widgets' => [['visible' => 'yes']]], 'widgets.0.visible'],
             'invalid width' => [['widgets' => [['width' => 'huge']]], 'widgets.0.width'],
             'unvalidated nested property' => [['widgets' => [['user_id' => 123]]], 'widgets.0'],
@@ -186,6 +188,39 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($user)->get('/dashboard');
 
         $response->assertViewHas('financeiro', ['owner' => $user->name, 'income' => 2000.0, 'expense' => 500.0, 'to_pay' => 300.0, 'to_receive' => 100.0]);
+    }
+
+    public function test_dashboard_renders_the_financial_agenda_and_preserves_the_day_view_on_refresh(): void
+    {
+        $this->travelTo(now()->setDate(2026, 11, 18));
+        $user = User::factory()->create();
+        Lancamento::factory()->for($user)->entrada()->onDate('2026-11-18')->create(['amount' => 1000]);
+        Lancamento::factory()->for($user)->saida()->previsto()->onDate('2026-11-25')->create(['amount' => 200]);
+
+        $this->actingAs($user)->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Agenda financeira')
+            ->assertSee('data-agenda-focus="2026-11"', false)
+            ->assertSee('/dashboard?agenda=2026-11#financeiro-calendario', false);
+
+        $this->get('/dashboard?agenda=2026-11')
+            ->assertOk()
+            ->assertSee('Resultado programado do dia')
+            ->assertViewHas('financeAgenda', fn (array $agenda): bool => $agenda['agendaRows'][24]['balance'] === 800.0);
+
+        $this->get('/dashboard?agenda=2026-12&foco=2026-12-01')
+            ->assertOk()
+            ->assertSee('data-agenda-focus="2026-12-01"', false)
+            ->assertSee('/dashboard?agenda=2026-11&amp;foco=2026-11-30#financeiro-calendario', false);
+
+        $this->get('/dashboard?agenda=2026&foco=2026-12')
+            ->assertOk()
+            ->assertSee('data-agenda-focus="2026-12"', false)
+            ->assertSee('/dashboard?agenda=2027&amp;foco=2027-01#financeiro-calendario', false);
+
+        $response = $this->getJson('/dashboard?agenda=2026-11&foco=2026-11-25')->assertOk();
+        $this->assertStringContainsString('Resultado programado do dia', $response->json('widgets.financeiro'));
+        $this->assertStringContainsString('data-agenda-focus="2026-11-25"', $response->json('widgets.financeiro'));
     }
 
     public function test_financial_widget_always_shows_the_authenticated_users_private_summary(): void

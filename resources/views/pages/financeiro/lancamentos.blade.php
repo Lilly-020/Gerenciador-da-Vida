@@ -5,7 +5,7 @@
 @endphp
 
 <x-layout :title="$title" align="start">
-    <div id="lancamentos-page" data-type="{{ $type }}" class="w-full min-w-0 max-w-6xl">
+    <div id="lancamentos-page" data-type="{{ $type }}" class="app-expand-with-sidebar w-full min-w-0 max-w-6xl">
         <x-financeiro-subnav :active="$isEntrada ? 'financeiro.entradas' : 'financeiro.saidas'" />
 
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
