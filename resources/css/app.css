@@ -552,6 +552,9 @@ button.quadro-file-thumb { cursor: pointer; }
 .quadro-checklist-progress-row > span { min-width: 2rem; }
 .quadro-checklist-items:has(> *) { overflow: hidden; border: 1px solid rgb(148 163 184 / 0.2); border-radius: 0.85rem; }
 .quadro-checklist-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; }
+.quadro-checklist-drag-preview { border-radius: 0.75rem; background-color: #1e293b; box-shadow: inset 0 0 0 1px #64748b, 0 12px 24px rgb(0 0 0 / 0.55); }
+[data-checklist-drop-side='before'] { box-shadow: inset 0 3px #818cf8; }
+[data-checklist-drop-side='after'], [data-checklist-drop-side='append'] { box-shadow: inset 0 -3px #818cf8; }
 .quadro-checklist .quadro-checklist-item .quadro-tool { width: 2rem; height: 2rem; border-radius: 0.5rem; }
 .quadro-checklist-item + .quadro-checklist-item { border-top: 1px solid rgb(148 163 184 / 0.15); }
 .quadro-checklist-item > input { width: 0; padding: 0.5rem; font-size: 0.8rem; }

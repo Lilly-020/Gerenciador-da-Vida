@@ -927,37 +927,72 @@ export function setupQuadros() {
         if (!card) return;
         event.preventDefault(); openContextMenu(card, card, { x: event.clientX, y: event.clientY });
     });
+    const setDragPreview = (event, element) => {
+        const bounds = element.getBoundingClientRect();
+        event.dataTransfer.setDragImage(element, event.clientX - bounds.left, event.clientY - bounds.top);
+    };
     const checklistRow = (handle) => handle.closest(`[data-quadro-checklist-${handle.dataset.quadroChecklistDrag}]`);
     let checklistDrag = null;
     cardDialog.addEventListener('dragstart', (event) => {
         const handle = event.target.closest('[data-quadro-checklist-drag]');
         if (!handle) return;
         checklistDrag = { row: checklistRow(handle), type: handle.dataset.quadroChecklistDrag };
+        const { row } = checklistDrag;
+        row.classList.add('quadro-checklist-drag-preview');
+        setDragPreview(event, row);
+        requestAnimationFrame(() => row.classList.remove('quadro-checklist-drag-preview'));
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', checklistDrag.type);
     });
     const checklistDropTarget = (event) => {
         if (!checklistDrag) return null;
-        const target = event.target.closest(`[data-quadro-checklist-${checklistDrag.type}]`);
-        return target && target !== checklistDrag.row && target.parentElement === checklistDrag.row.parentElement ? target : null;
+        const { row, type } = checklistDrag;
+        const section = event.target.closest('[data-quadro-checklist-section]');
+        if (!section || section.closest('form') !== row.closest('form')) return null;
+        if (type === 'section') return section === row ? null : { target: section };
+
+        const items = section.querySelector('[data-quadro-checklist-items]');
+        if (items !== row.parentElement && items.children.length >= 200) return null;
+        const item = event.target.closest('[data-quadro-checklist-item]');
+        if (item === row) return null;
+        return item ? { target: item } : { target: section, appendTo: items };
+    };
+    const clearChecklistDropMarker = () => cardDialog.querySelector('[data-checklist-drop-side]')?.removeAttribute('data-checklist-drop-side');
+    const checklistDropSide = (event, target) => {
+        const bounds = target.getBoundingClientRect();
+        return event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
     };
     cardDialog.addEventListener('dragover', (event) => {
-        if (!checklistDropTarget(event)) return;
+        if (!checklistDrag) return;
+        const destination = checklistDropTarget(event);
+        const target = destination?.target;
+        const marked = cardDialog.querySelector('[data-checklist-drop-side]');
+        if (marked !== target) marked?.removeAttribute('data-checklist-drop-side');
+        if (!target) return;
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
+        target.dataset.checklistDropSide = destination.appendTo ? 'append' : checklistDropSide(event, target);
     });
     cardDialog.addEventListener('drop', (event) => {
-        const target = checklistDropTarget(event);
-        if (!target) return;
+        const destination = checklistDropTarget(event);
+        if (!destination) return;
         event.preventDefault();
         const { row } = checklistDrag;
         checklistDrag = null;
-        const bounds = target.getBoundingClientRect();
-        if (event.clientY < bounds.top + bounds.height / 2) target.before(row);
-        else target.after(row);
+        clearChecklistDropMarker();
+        const { target, appendTo } = destination;
+        if (appendTo) {
+            appendTo.append(row);
+        } else {
+            target[checklistDropSide(event, target)](row);
+        }
+        updateChecklist();
         saveChecklists(row.closest('form'));
     });
-    cardDialog.addEventListener('dragend', () => { checklistDrag = null; });
+    cardDialog.addEventListener('dragend', () => {
+        checklistDrag = null;
+        clearChecklistDropMarker();
+    });
     cardDialog.addEventListener('keydown', (event) => {
         if (event.isComposing) return;
         if (event.target.matches('[data-quadro-checklist-drag]') && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
@@ -1099,8 +1134,7 @@ export function setupQuadros() {
         const card = event.target.closest('[data-quadro-card]');
         if (!handle && !card) return;
         const element = handle ? handle.closest('[data-quadro-list]') : card;
-        const bounds = element.getBoundingClientRect();
-        event.dataTransfer.setDragImage(element, event.clientX - bounds.left, event.clientY - bounds.top);
+        setDragPreview(event, element);
         beginDrag(element, handle ? 'list' : 'card');
         event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', drag.type);
     });

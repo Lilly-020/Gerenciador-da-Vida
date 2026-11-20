@@ -2,7 +2,11 @@ import { setupBoard, setupCardEditModal } from './board';
 
 export function setupSonhos() {
     if (document.getElementById('dreamverse')) {
-        import('./dreamverse').then(({ mountDreamUniverse }) => mountDreamUniverse()).catch(() => { document.getElementById('dreamverse')?.remove(); setupSonhos(); });
+        import('./dreamverse').then(({ mountDreamUniverse }) => mountDreamUniverse()).catch(() => {
+            document.getElementById('dreamverse')?.remove();
+            document.getElementById('dreamverse-fallback').hidden = false;
+            setupSonhos();
+        });
         return;
     }
     const grid = document.getElementById('sonhos-grid');

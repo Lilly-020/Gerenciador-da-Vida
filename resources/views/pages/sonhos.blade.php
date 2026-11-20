@@ -1,7 +1,9 @@
 <x-layout title="Meu Universo" align="start" full-bleed>
-    <div id="dreamverse" data-user-id="{{ auth()->id() }}" data-index-url="{{ route('sonhos', absolute: false) }}" data-store-url="{{ route('sonhos.store', absolute: false) }}" class="w-full"></div>
+    <div id="dreamverse" data-user-id="{{ auth()->id() }}" data-index-url="{{ route('sonhos', absolute: false) }}" data-store-url="{{ route('sonhos.store', absolute: false) }}" class="w-full">
+        <p role="status" class="px-4 py-12 text-center text-sm text-slate-400">Carregando sonhos…</p>
+    </div>
     <script id="dreamverse-data" type="application/json">{!! json_encode(['dreams' => $universe, 'categories' => $categories], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
-    <div id="dreamverse-fallback" class="mx-auto w-full max-w-3xl px-4 py-12">
+    <div id="dreamverse-fallback" hidden class="mx-auto w-full max-w-3xl px-4 py-12">
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-white sm:text-3xl">Meus sonhos</h1>
