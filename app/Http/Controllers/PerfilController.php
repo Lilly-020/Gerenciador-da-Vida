@@ -2,14 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SocialProfile;
 use App\Models\User;
 use App\Rules\UniqueUserEmail;
+use App\Support\SocialAudience;
+use App\Support\SocialImages;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
+use Throwable;
 
 class PerfilController extends Controller
 {
@@ -21,11 +28,16 @@ class PerfilController extends Controller
     {
         $user = $request->user();
 
+        $audience = SocialAudience::people($user)->select('users.id');
+
         return view('pages.perfil', [
             'user' => $user,
+            'socialProfile' => $user->socialProfile,
             'aba' => in_array($request->query('aba'), ['amigos', 'notificacoes'], true) ? 'amigos' : 'perfil',
-            'friends' => $user->friends()->get(),
-            'friendships' => $user->friendships()->with(['lowUser', 'highUser'])->latest()->get(),
+            'friends' => $user->friends()->whereIn('users.id', clone $audience)->get(),
+            'friendships' => $user->friendships()
+                ->whereIn('user_low_id', clone $audience)->whereIn('user_high_id', $audience)
+                ->with(['lowUser', 'highUser'])->latest()->get(),
         ]);
     }
 
@@ -76,6 +88,40 @@ class PerfilController extends Controller
         $user->update($data);
 
         return back()->with('status', 'Perfil atualizado.');
+    }
+
+    public function updateSocialProfile(Request $request): RedirectResponse
+    {
+        $viewer = $request->user();
+        $profile = SocialProfile::firstOrNew(['user_id' => $viewer->id]);
+        Gate::authorize('update', $profile);
+        $data = $request->validateWithBag('socialProfile', ['bio' => ['present', 'nullable', 'string', 'max:500'], 'avatar' => ['sometimes', SocialImages::rule()], 'cover' => ['sometimes', SocialImages::rule()]]);
+        $paths = [];
+
+        try {
+            $old = DB::transaction(function () use ($viewer, $data, &$paths): array {
+                User::whereKey($viewer->id)->lockForUpdate()->firstOrFail();
+                $profile = SocialProfile::firstOrNew(['user_id' => $viewer->id]);
+                $old = [];
+                $profile->bio = $data['bio'];
+                foreach (['avatar', 'cover'] as $field) {
+                    if (isset($data[$field])) {
+                        $key = $field.'_path';
+                        $old[] = $profile->{$key};
+                        $profile->{$key} = $paths[] = SocialImages::store($data[$field]);
+                    }
+                }
+                $profile->save();
+
+                return array_filter($old);
+            });
+        } catch (Throwable $failure) {
+            Storage::disk('local')->delete($paths);
+            throw $failure;
+        }
+        Storage::disk('local')->delete($old);
+
+        return redirect()->to(route('perfil', absolute: false).'#perfil-social')->with('status', 'Perfil social atualizado.');
     }
 
     public function updatePassword(Request $request): RedirectResponse

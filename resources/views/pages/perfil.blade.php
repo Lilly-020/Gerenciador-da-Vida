@@ -64,6 +64,48 @@
                     </div>
                 </form>
 
+                <form id="perfil-social" method="POST" action="{{ route('perfil.social.update', absolute: false) }}" enctype="multipart/form-data" class="space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-lg shadow-black/20 sm:p-6">
+                    @csrf
+                    <div>
+                        <h2 class="text-base font-semibold text-white">Perfil social</h2>
+                        <p class="mt-1 text-sm text-slate-400">Esses dados aparecem no seu perfil do Social.</p>
+                    </div>
+
+                    @if ($errors->socialProfile->any())
+                        <ul role="alert" class="space-y-1 rounded-lg border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
+                            @foreach ($errors->socialProfile->all() as $message)
+                                <li>{{ $message }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+
+                    <label class="block text-sm font-medium text-slate-300">
+                        Biografia
+                        <textarea name="bio" maxlength="500" rows="3" class="app-input mt-1.5 w-full">{{ old('bio', $socialProfile?->bio) }}</textarea>
+                    </label>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label class="min-w-0 text-sm font-medium text-slate-300">
+                            Foto de perfil
+                            @if ($socialProfile?->avatar_path)
+                                <img src="{{ route('social.profile.image', [$user, 'avatar'], absolute: false) }}" alt="Foto de perfil atual" class="my-2 size-14 rounded-full object-cover">
+                            @endif
+                            <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" class="app-input mt-1.5 block w-full">
+                        </label>
+                        <label class="min-w-0 text-sm font-medium text-slate-300">
+                            Imagem de capa
+                            @if ($socialProfile?->cover_path)
+                                <img src="{{ route('social.profile.image', [$user, 'cover'], absolute: false) }}" alt="Imagem de capa atual" class="my-2 h-14 w-32 rounded-lg object-cover">
+                            @endif
+                            <input type="file" name="cover" accept="image/jpeg,image/png,image/webp" class="app-input mt-1.5 block w-full">
+                        </label>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="rounded-full bg-indigo-500/90 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-900/40 transition hover:bg-indigo-500">Salvar perfil social</button>
+                    </div>
+                </form>
+
                 <form method="POST" action="{{ route('perfil.senha', absolute: false) }}" class="rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-lg shadow-black/20 sm:p-6 space-y-4">
                     @csrf
                     @method('PUT')

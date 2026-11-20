@@ -193,6 +193,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/perfil/notificacoes/contador', [PerfilController::class, 'notificationCount'])->name('perfil.notificacoes.count');
     Route::post('/perfil/lembretes/{notification}', [PerfilController::class, 'readReminder'])->name('perfil.lembretes.read');
     Route::put('/perfil', [PerfilController::class, 'update'])->name('perfil.update');
+    Route::post('/perfil/social', [PerfilController::class, 'updateSocialProfile'])->middleware('throttle:15,1,social-profile')->name('perfil.social.update');
     Route::put('/perfil/senha', [PerfilController::class, 'updatePassword'])->name('perfil.senha');
 
     Route::post('/amigos', [AmizadeController::class, 'store'])->middleware('throttle:10,1')->name('amigos.store');
@@ -205,3 +206,5 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
+
+require __DIR__.'/social.php';

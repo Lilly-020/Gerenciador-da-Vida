@@ -22,6 +22,9 @@ class NotificacaoController extends Controller
     {
         $item = $request->user()->notifications()->findOrFail($notification);
         $data = $item->data;
+        if (str_starts_with($data['kind'] ?? '', 'social_')) {
+            return app(SocialController::class)->openNotification($request, $notification);
+        }
         if ($item->type !== QuadroCommentMention::class) {
             $item->markAsRead();
         }

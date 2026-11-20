@@ -71,6 +71,12 @@ function init() {
     setupAppToolbar();
     setupMoneyInputs();
     setupSonhos();
+    const social = document.getElementById('social-app');
+    if (social) {
+        import('./social').then(({ setupSocial }) => setupSocial(social)).catch(() => {
+            social.textContent = 'Não foi possível carregar o Social. Recarregue a página para tentar novamente.';
+        });
+    }
     setupProjetos();
     setupQuadros();
     setupTarefas();

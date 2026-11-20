@@ -6,6 +6,7 @@
         ['route' => 'cursos', 'icon' => 'calendar', 'label' => 'Planner', 'match' => ['cursos', 'quadros.*']],
         ['route' => 'financeiro', 'icon' => 'wallet', 'label' => 'Financeiro', 'match' => 'financeiro*'],
         ['route' => 'tarefas', 'icon' => 'checklist', 'label' => 'Tarefas'],
+        ['route' => 'social.index', 'icon' => 'people', 'label' => 'Social', 'match' => 'social.*'],
         ['route' => 'notas', 'icon' => 'file', 'label' => 'Notas'],
     ];
 @endphp
