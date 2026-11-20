@@ -22,8 +22,34 @@ const loadingComments = ref(false);
 const commentBody = ref('');
 const reply = ref(null);
 const editComment = ref(null);
+const imageDialog = ref(null);
+const imageIndex = ref(null);
+const shareStatus = ref('');
+const visibleImages = computed(() => props.post.images.slice(0, 5));
+const firstImageRow = computed(() => [2, 5].includes(visibleImages.value.length) ? 2 : 1);
 const reactionLabels = { like: 'Curtir', love: 'Adorei', support: 'Apoiar' };
 let commentRequest = 0;
+
+function openImages(index) {
+    imageIndex.value = index;
+    imageDialog.value.showModal();
+}
+
+function moveImage(step) {
+    if (imageIndex.value === null) return;
+    imageIndex.value = Math.max(0, Math.min(props.post.images.length - 1, imageIndex.value + step));
+}
+
+async function copyPostLink() {
+    const url = new URL(props.base, location.origin);
+    url.searchParams.set('post', props.post.id);
+    try {
+        await navigator.clipboard.writeText(url.href);
+        shareStatus.value = 'Link copiado.';
+    } catch {
+        shareStatus.value = 'Não foi possível copiar o link.';
+    }
+}
 
 async function run(operation) {
     if (busy.value) return;
@@ -168,14 +194,44 @@ function removePost() {
         <div v-else-if="body.content_html" class="social-rich-content" v-html="body.content_html"></div>
         <p v-else-if="body.content" class="social-post-text">{{ body.content }}</p>
 
-        <div v-if="post.images.length" class="social-post-images" :class="{ 'social-single-image': post.images.length === 1 }">
-            <img v-for="(image, index) in post.images" :key="image" :src="image" :alt="`Imagem ${index + 1} da publicação de ${post.author.name}`" loading="lazy">
+        <div v-if="post.images.length">
+            <div class="social-image-gallery" :class="{ 'social-image-gallery-three': visibleImages.length === 3 }">
+                <button v-for="(image, index) in visibleImages" :key="image" type="button" class="social-image-thumb"
+                    :class="{ 'social-image-wide': firstImageRow === 1 && index === 0 }"
+                    :style="visibleImages.length === 3 ? null : { gridColumn: `span ${6 / (index < firstImageRow ? firstImageRow : visibleImages.length - firstImageRow)}` }"
+                    :aria-label="`Abrir imagem ${index + 1} de ${post.images.length} da publicação de ${post.author.name}`"
+                    @click="openImages(index)">
+                    <img :src="image" alt="" loading="lazy">
+                    <span v-if="index === visibleImages.length - 1 && post.images.length > visibleImages.length" aria-hidden="true">+{{ post.images.length - visibleImages.length }}</span>
+                </button>
+            </div>
+            <dialog ref="imageDialog" class="social-image-dialog rounded-2xl border border-white/10 bg-slate-900 p-0 text-slate-100 shadow-2xl backdrop:bg-black/70" aria-label="Imagens da publicação" @close="imageIndex = null" @click.self="imageDialog.close()" @keydown.left.prevent="moveImage(-1)" @keydown.right.prevent="moveImage(1)">
+                <div class="space-y-3 p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-semibold">Imagens da publicação</p>
+                        <div class="social-actions"><button type="button" autofocus @click="imageDialog.close()">Fechar</button></div>
+                    </div>
+                    <img v-if="imageIndex !== null" :src="post.images[imageIndex]" :alt="`Imagem ${imageIndex + 1} da publicação de ${post.author.name}`" class="social-image-full">
+                    <div v-if="post.images.length > 1 && imageIndex !== null" class="social-actions justify-between">
+                        <button type="button" :disabled="imageIndex === 0" @click="moveImage(-1)">Anterior</button>
+                        <span class="social-muted" aria-live="polite">{{ imageIndex + 1 }} de {{ post.images.length }}</span>
+                        <button type="button" :disabled="imageIndex === post.images.length - 1" @click="moveImage(1)">Próxima</button>
+                    </div>
+                </div>
+            </dialog>
         </div>
         <div class="social-actions social-post-actions">
             <button type="button" class="social-like" :aria-pressed="liked" :aria-label="`${liked ? 'Descurtir' : 'Curtir'} publicação. ${likesCount} ${likesCount === 1 ? 'curtida' : 'curtidas'}`" :disabled="busy" @click="toggleLike">
                 <svg viewBox="0 0 24 24" :fill="liked ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20.8 4.6a5.6 5.6 0 0 0-7.9 0l-.9.9-.9-.9a5.6 5.6 0 0 0-7.9 7.9l.9.9L12 21l7.9-7.6.9-.9a5.6 5.6 0 0 0 0-7.9Z"/></svg>
             </button>
-            <button :aria-expanded="commentsOpen" @click="emit('toggle-comments')">{{ commentsCount }} {{ commentsCount === 1 ? 'comentário' : 'comentários' }}</button>
+            <button type="button" :aria-expanded="commentsOpen" :aria-label="`${commentsCount} ${commentsCount === 1 ? 'comentário' : 'comentários'}`" @click="emit('toggle-comments')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M21 4H3v13h5l4 4 4-4h5Z"/></svg>
+                {{ commentsCount }}
+            </button>
+            <button type="button" aria-label="Copiar link da publicação" title="Copiar link" @click="copyPostLink">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m14 4 7 7-7 7v-4c-5 0-8 2-11 6 1-8 5-12 11-12Z"/></svg>
+            </button>
+            <span v-if="shareStatus" class="social-muted" role="status">{{ shareStatus }}</span>
         </div>
         <p v-if="error" class="social-error" role="alert">{{ error }}</p>
 

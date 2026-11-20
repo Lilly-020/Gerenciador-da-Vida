@@ -3,6 +3,7 @@
         id="social-app"
         class="w-full min-w-0"
         data-base="{{ route('social.index', absolute: false) }}"
+        data-profile-settings="{{ route('perfil', absolute: false) }}#perfil-social"
         data-viewer="{{ auth()->id() }}"
         data-person="{{ $person->id ?? '' }}"
         data-section="{{ request()->routeIs('social.requests') ? 'requests' : (request()->routeIs('social.friends') ? 'friends' : 'feed') }}"

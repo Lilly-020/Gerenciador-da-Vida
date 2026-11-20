@@ -7,13 +7,12 @@ import SocialRichEditor from './SocialRichEditor.vue';
 import { socialRequest } from './social-request';
 import { useSocialFeed } from './useSocialFeed';
 
-const props = defineProps({ base: String, viewer: Number, person: Number, section: String });
+const props = defineProps({ base: String, profileSettings: String, viewer: Number, person: Number, section: String });
 const searchText = ref('');
 const peopleMode = ref(['friends', 'requests'].includes(props.section) ? props.section : '');
 const people = ref([]);
 const peopleNext = ref(null);
 const suggestions = ref([]);
-const friends = ref([]);
 const requests = ref([]);
 const ownProfile = ref(null);
 const profile = ref(null);
@@ -26,6 +25,10 @@ const writing = ref(false);
 const error = ref('');
 const status = ref('');
 const composer = ref(null);
+const composerOpen = ref(false);
+const feedAuthor = ref('');
+const feedOrder = ref('recent');
+const feedFilters = [{ key: '', label: 'Todos' }, { key: 'friends', label: 'Amigos' }, { key: 'me', label: 'Você' }];
 const fileInput = ref(null);
 const files = ref([]);
 const content = ref({ content: '', content_html: '' });
@@ -50,8 +53,9 @@ const {
     feed, posts, next: feedNext, loading: feedLoading, visiblePosts, beforeHeight, afterHeight,
     trackItem, loadMore, reload: loadFeed, refreshNewPosts, removePost: removeFeedPost, updatePost,
 } = useSocialFeed({
-    requestUrl: parameters => endpoint('/feed', { person: props.person, post: focusedPost, ...parameters }),
+    requestUrl: parameters => endpoint('/feed', { person: props.person, post: focusedPost, author: feedAuthor.value, order: feedOrder.value, ...parameters }),
     enabled: showFeed,
+    order: feedOrder,
     singlePost: Boolean(focusedPost),
     onError: showFailure,
 });
@@ -74,13 +78,11 @@ async function loadProfile() {
 }
 
 async function loadSidebar() {
-    const [suggested, pending, connected] = await Promise.all([
+    const [suggested, pending] = await Promise.all([
         socialRequest(endpoint('/people', { type: 'suggestions' })),
         socialRequest(endpoint('/people', { type: 'requests' })),
-        socialRequest(endpoint('/people', { type: 'friends' })),
     ]);
-    suggestions.value = suggested.items.slice(0, 4);
-    friends.value = connected.items.slice(0, 4);
+    suggestions.value = suggested.items.slice(0, 3);
     requests.value = pending.items.filter(person => person.relationship === 'received').slice(0, 3);
 }
 
@@ -109,7 +111,29 @@ async function loadNotifications(cursor = null) {
 
 function focusComposer() {
     peopleMode.value = '';
+    composerOpen.value = true;
     nextTick(() => composer.value?.focus());
+}
+
+function selectImages(event) {
+    files.value = [...event.target.files];
+    if (files.value.length) composerOpen.value = true;
+}
+
+function filterFeed(author) {
+    if (feedAuthor.value === author) return;
+    feedAuthor.value = author;
+    openCommentsPost.value = null;
+    error.value = '';
+    return loadFeed();
+}
+
+function sortFeed(order) {
+    if (feedOrder.value === order) return;
+    feedOrder.value = order;
+    openCommentsPost.value = null;
+    error.value = '';
+    return loadFeed();
 }
 
 function toggleNotifications() {
@@ -140,8 +164,10 @@ async function publish() {
         content.value = { content: '', content_html: '' };
         files.value = [];
         fileInput.value.value = '';
+        composerOpen.value = false;
         status.value = 'Publicação criada.';
-        await Promise.all([refreshNewPosts(), loadProfile()]).catch(showFailure);
+        const updateFeed = feedAuthor.value === 'friends' ? filterFeed('') : refreshNewPosts();
+        await Promise.all([updateFeed, loadProfile()]).catch(showFailure);
     } catch (failure) { showFailure(failure); }
     finally { writing.value = false; }
 }
@@ -155,15 +181,18 @@ onMounted(() => {
     if (props.section === 'feed') loadFeed();
     if (peopleMode.value) loadPeople(peopleMode.value);
     Promise.all([loadProfile(), loadSidebar(), loadNotifications()]).catch(showFailure);
-    if (new URLSearchParams(location.search).has('create')) nextTick(() => composer.value?.focus());
+    if (new URLSearchParams(location.search).has('create')) focusComposer();
 });
 </script>
 
 <template>
     <section class="social-page w-full" aria-labelledby="social-heading">
-        <div class="space-y-5">
+        <div class="social-shell space-y-5">
             <header class="social-header">
-                <h1 id="social-heading" class="text-2xl font-semibold text-white sm:text-3xl">Social</h1>
+                <div>
+                    <h1 id="social-heading" class="text-2xl font-semibold text-white sm:text-3xl">Social</h1>
+                    <p class="mt-1 text-sm text-slate-400">Compartilhe momentos e acompanhe seus amigos.</p>
+                </div>
                 <div class="social-actions social-header-actions">
                     <a v-if="person || section !== 'feed' || focusedPost" :href="`${base}?create=1`" class="social-primary">Criar publicação</a>
                     <button v-else class="social-primary" @click="focusComposer">Criar publicação</button>
@@ -202,7 +231,7 @@ onMounted(() => {
             <p v-if="status" class="social-status" role="status">{{ status }}</p>
 
             <div class="social-columns">
-                <div class="social-stack">
+                <div class="social-stack social-main-column">
                     <section v-if="peopleMode" class="social-card">
                         <div class="social-section-heading">
                             <h2>{{ peopleLabels[peopleMode] }}</h2>
@@ -229,15 +258,42 @@ onMounted(() => {
                             </div>
                         </section>
 
-                        <form v-if="!person && !focusedPost" class="social-card social-form" @submit.prevent="publish">
-                            <span class="text-sm font-semibold">No que você está pensando?</span>
-                            <SocialRichEditor ref="composer" v-model="content" label="No que você está pensando?" placeholder="Escreva sua publicação…" />
+                        <form v-if="!person && !focusedPost" class="social-card social-form social-composer" @submit.prevent="publish">
+                            <div class="social-composer-heading">
+                                <SocialAvatar v-if="ownProfile" :person="ownProfile" />
+                                <button v-if="!composerOpen" type="button" class="social-composer-prompt" aria-expanded="false" @click="focusComposer">O que você está pensando?</button>
+                                <template v-else>
+                                    <span class="text-sm font-semibold">Criar publicação</span>
+                                    <button type="button" class="social-composer-collapse" aria-expanded="true" @click="composerOpen = false">Recolher</button>
+                                </template>
+                            </div>
+                            <SocialRichEditor v-if="composerOpen" ref="composer" v-model="content" label="O que você está pensando?" placeholder="Escreva sua publicação…" />
                             <div class="social-composer-actions">
-                                <span class="social-muted">Visível apenas para amigos</span>
-                                <label class="social-upload"><input ref="fileInput" type="file" multiple accept="image/jpeg,image/png,image/webp" @change="files = [...$event.target.files]"><span>{{ files.length ? `${files.length} imagem(ns)` : 'Adicionar imagens' }}</span></label>
-                                <button type="submit" class="social-primary" :disabled="writing || (!content.content.trim() && !files.length)">{{ writing ? 'Publicando…' : 'Publicar' }}</button>
+                                <label class="social-upload">
+                                    <input ref="fileInput" aria-label="Adicionar fotos" type="file" multiple accept="image/jpeg,image/png,image/webp" @change="selectImages">
+                                    <span>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1"/></svg>
+                                        {{ files.length ? `${files.length} foto(s)` : 'Foto' }}
+                                    </span>
+                                </label>
+                                <span v-if="composerOpen" class="social-muted">Visível para amigos</span>
+                                <button type="submit" class="social-primary" :disabled="writing || (!content.content.trim() && !files.length)">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-8-8 18-2-8-8-2Zm8 2L21 3"/></svg>
+                                    {{ writing ? 'Publicando…' : 'Publicar' }}
+                                </button>
                             </div>
                         </form>
+                        <div v-if="!person && !focusedPost" class="social-feed-tools">
+                            <div class="social-feed-filters" role="group" aria-label="Filtrar publicações">
+                                <button v-for="filter in feedFilters" :key="filter.key" type="button" :aria-pressed="feedAuthor === filter.key" @click="filterFeed(filter.key)">{{ filter.label }}</button>
+                            </div>
+                            <div class="social-feed-order">
+                                <select :value="feedOrder" aria-label="Ordenar publicações" @change="sortFeed($event.target.value)">
+                                    <option value="recent">Mais recentes</option>
+                                    <option value="oldest">Mais antigas</option>
+                                </select>
+                            </div>
+                        </div>
                         <p v-if="feedLoading && !posts.length" class="social-card" role="status">Carregando publicações…</p>
                         <p v-else-if="!posts.length && !error" class="social-card">Nenhuma publicação disponível.</p>
                         <div ref="feed" class="social-feed">
@@ -255,29 +311,36 @@ onMounted(() => {
                 </div>
 
                 <aside class="social-stack social-sidebar" aria-label="Perfil e amizades">
-                    <section v-if="ownProfile" class="social-card">
-                        <h2>Meu perfil</h2>
-                        <a class="social-profile-link" :href="`${base}/profile/${viewer}`"><SocialAvatar :person="ownProfile" /><strong>{{ ownProfile.name }}</strong></a>
-                        <div class="social-actions"><a :href="`${base}/friends`">{{ ownProfile.friends_count }} amigos</a></div>
+                    <section v-if="ownProfile" class="social-card social-profile-summary" aria-label="Meu perfil">
+                        <div class="social-profile-banner" aria-hidden="true"><img v-if="ownProfile.cover" :src="ownProfile.cover" alt=""></div>
+                        <div class="social-profile-overview">
+                            <a class="social-profile-identity" :href="`${base}/profile/${viewer}`">
+                                <SocialAvatar :person="ownProfile" />
+                                <span><strong>{{ ownProfile.name }}</strong><small v-if="ownProfile.handle">{{ ownProfile.handle }}</small></span>
+                            </a>
+                            <div class="social-profile-stats">
+                                <a :href="`${base}/profile/${viewer}`"><strong>{{ ownProfile.posts_count }}</strong><small>Publicações</small></a>
+                                <a :href="`${base}/friends`"><strong>{{ ownProfile.friends_count }}</strong><small>Amigos</small></a>
+                                <a :href="`${base}/requests`"><strong>{{ ownProfile.requests_count }}</strong><small>Solicitações</small></a>
+                            </div>
+                            <div class="social-actions social-profile-edit">
+                                <a :href="profileSettings">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m15 5 4 4M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/></svg>
+                                    Editar perfil
+                                </a>
+                            </div>
+                        </div>
                     </section>
-                    <section v-if="friends.length" class="social-card">
-                        <div class="social-section-heading"><h2>Amigos</h2><a :href="`${base}/friends`">Ver todos</a></div>
-                        <ul class="social-people">
-                            <li v-for="friend in friends" :key="friend.id">
-                                <SocialAvatar :person="friend" />
-                                <div class="social-person"><a :href="`${base}/profile/${friend.id}`">{{ friend.name }}</a></div>
-                            </li>
-                        </ul>
-                    </section>
-                    <section class="social-card">
-                        <div class="social-section-heading"><h2>Solicitações</h2><a :href="`${base}/requests`">Ver todas</a></div>
+                    <section class="social-card social-people-card">
+                        <div class="social-section-heading"><h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2ZM19 7v6m-3-3h6"/></svg>Solicitações</h2><a :href="`${base}/requests`">Ver todas</a></div>
                         <p v-if="!requests.length">Nenhuma solicitação recebida.</p>
                         <SocialPeople v-else :people="requests" :base="base" @changed="relationshipChanged" />
                     </section>
-                    <section class="social-card">
-                        <div class="social-section-heading"><h2>Pessoas que talvez conheça</h2></div>
+                    <section class="social-card social-people-card">
+                        <div class="social-section-heading"><h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2M16 4a3 3 0 0 1 0 6m1 3a5 5 0 0 1 4 5v2"/></svg>Pessoas que talvez conheça</h2></div>
                         <p v-if="!suggestions.length">Sem sugestões no momento.</p>
                         <SocialPeople v-else :people="suggestions" :base="base" @changed="relationshipChanged" />
+                        <button v-if="suggestions.length" class="social-more-people" type="button" @click="loadPeople('suggestions')">Ver mais sugestões</button>
                     </section>
                 </aside>
             </div>

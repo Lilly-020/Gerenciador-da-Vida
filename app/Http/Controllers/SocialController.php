@@ -39,6 +39,8 @@ class SocialController extends Controller
             'person' => ['nullable', 'integer', 'min:1'],
             'post' => ['nullable', 'integer', 'min:1'],
             'after' => ['nullable', 'integer', 'min:0'],
+            'author' => ['nullable', 'in:friends,me'],
+            'order' => ['nullable', 'in:recent,oldest'],
         ]);
         $query = SocialAudience::posts($viewer);
         if (isset($data['person'])) {
@@ -48,7 +50,13 @@ class SocialController extends Controller
         if (isset($data['post'])) {
             $query->whereKey($data['post']);
         }
+        match ($data['author'] ?? null) {
+            'friends' => $query->where('user_id', '!=', $viewer->id),
+            'me' => $query->where('user_id', $viewer->id),
+            default => null,
+        };
         $after = $data['after'] ?? null;
+        $ascending = $after !== null || ($data['order'] ?? null) === 'oldest';
         if ($after !== null) {
             $query->where('id', '>', $after);
         }
@@ -57,7 +65,7 @@ class SocialController extends Controller
         $posts = $query->with(['user:id,name', 'user.socialProfile:user_id,avatar_path', 'media'])
             ->withCount(['likes' => $people, 'comments' => fn (Builder $query) => $query->whereHas('user', $people)])
             ->withExists(['likes as liked' => fn (Builder $query) => $query->whereKey($viewer->id)])
-            ->orderBy('id', $after === null ? 'desc' : 'asc')->cursorPaginate(15);
+            ->orderBy('id', $ascending ? 'asc' : 'desc')->cursorPaginate(15);
         abort_if(isset($data['post']) && $posts->isEmpty(), 404);
 
         return response()->json([
@@ -123,9 +131,14 @@ class SocialController extends Controller
             ...$this->personData($person),
             ...$this->relationship($viewer, $friendship),
             'bio' => $profile->bio,
+            'handle' => $person->apelido ? '@'.$person->apelido : null,
             'cover' => $profile->cover_path ? route('social.profile.image', [$person, 'cover'], absolute: false) : null,
             'friends_count' => SocialAudience::people($viewer)->whereIn('users.id', SocialAudience::friendIds($person))->count(),
             'posts_count' => SocialAudience::posts($viewer)->where('user_id', $person->id)->count(),
+            'requests_count' => $viewer->is($person)
+                ? $viewer->friendships()->where('status', 'pending')
+                    ->whereIn('requester_id', SocialAudience::people($viewer)->whereKeyNot($viewer->id)->select('users.id'))->count()
+                : null,
             'editable' => $viewer->id === $person->id,
         ])->header('Cache-Control', 'private, no-store');
     }

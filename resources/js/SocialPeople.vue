@@ -44,9 +44,9 @@ async function change(person, operation) {
                 <div class="social-actions">
                     <button v-if="blocked" :disabled="busyId !== null" @click="change(person, 'unblock')">Desbloquear</button>
                     <template v-else>
-                        <button v-if="person.relationship === 'none'" :disabled="busyId !== null" @click="change(person, 'add')">Adicionar</button>
+                        <button v-if="person.relationship === 'none'" class="social-primary" :disabled="busyId !== null" @click="change(person, 'add')">Adicionar</button>
                         <template v-else-if="person.relationship === 'received'">
-                            <button :disabled="busyId !== null" @click="change(person, 'accepted')">Aceitar</button>
+                            <button class="social-primary" :disabled="busyId !== null" @click="change(person, 'accepted')">Aceitar</button>
                             <button :disabled="busyId !== null" @click="change(person, 'declined')">Recusar</button>
                         </template>
                         <button v-else :disabled="busyId !== null" @click="change(person, 'remove')">{{ person.relationship === 'friends' ? 'Desfazer amizade' : 'Cancelar' }}</button>

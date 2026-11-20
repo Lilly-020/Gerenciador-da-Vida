@@ -199,6 +199,11 @@ class SocialTest extends TestCase
             ->assertJsonPath('items.0.id', $posts->last()->id)->json('next');
         $this->getJson('/social/feed?cursor='.urlencode($first))->assertJsonCount(1, 'items')
             ->assertJsonPath('items.0.id', $posts->first()->id)->assertJsonPath('next', null);
+
+        $oldest = $this->getJson('/social/feed?order=oldest')->assertOk()->assertJsonCount(15, 'items')
+            ->assertJsonPath('items.0.id', $posts->first()->id)->json('next');
+        $this->getJson('/social/feed?order=oldest&cursor='.urlencode($oldest))->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $posts->last()->id)->assertJsonPath('next', null);
     }
 
     public function test_live_feed_returns_only_new_visible_posts_and_does_not_skip_a_burst(): void
@@ -216,6 +221,10 @@ class SocialTest extends TestCase
         $this->getJson('/social/feed?after='.$batch[14]['id'])
             ->assertOk()->assertJsonCount(1, 'items')->assertJsonPath('items.0.id', $new->last()->id);
         $this->getJson('/social/feed?after='.$new->last()->id)->assertOk()->assertJsonCount(0, 'items');
+        $this->getJson('/social/feed?author=me')->assertOk()->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $initial->id);
+        $this->getJson('/social/feed?author=friends&after='.$new[14]->id)->assertOk()->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $new->last()->id);
     }
 
     public function test_legacy_public_posts_are_limited_to_friends_and_private_posts_remain_private(): void

@@ -4,7 +4,7 @@ import { socialRequest } from './social-request';
 const pageSize = 15;
 const estimatedHeight = 280;
 
-export function useSocialFeed({ requestUrl, enabled, singlePost, onError }) {
+export function useSocialFeed({ requestUrl, enabled, order, singlePost, onError }) {
     const feed = ref(null);
     const posts = ref([]);
     const next = ref(null);
@@ -66,6 +66,7 @@ export function useSocialFeed({ requestUrl, enabled, singlePost, onError }) {
             const result = await socialRequest(requestUrl({ cursor: next.value }));
             if (version !== generation) return;
             posts.value.push(...result.items);
+            if (order.value === 'oldest') newestId = result.items.at(-1)?.id ?? newestId;
             next.value = result.next;
             automaticRetry = true;
             await nextTick();
@@ -93,7 +94,7 @@ export function useSocialFeed({ requestUrl, enabled, singlePost, onError }) {
             if (version !== generation) return;
             posts.value = result.items;
             next.value = result.next;
-            newestId = result.items[0]?.id ?? 0;
+            newestId = (order.value === 'oldest' ? result.items.at(-1) : result.items[0])?.id ?? 0;
             ready = true;
             await nextTick();
             scheduleWindow();
@@ -106,13 +107,21 @@ export function useSocialFeed({ requestUrl, enabled, singlePost, onError }) {
 
     async function refreshNewPosts() {
         if (!ready || polling || !enabled.value || singlePost || document.hidden) return;
+        const oldestFirst = order.value === 'oldest';
+        if (oldestFirst && (next.value || loading.value)) return;
         polling = true;
         const version = generation;
         try {
             const result = await socialRequest(requestUrl({ after: newestId }));
             if (version !== generation || !result.items.length) return;
+            newestId = result.items.at(-1).id;
+            if (oldestFirst) {
+                posts.value.push(...result.items);
+                await nextTick();
+                scheduleWindow();
+                return;
+            }
             const incoming = [...result.items].reverse();
-            newestId = incoming[0].id;
             const keepPosition = feed.value && feed.value.getBoundingClientRect().top < 0;
             restoringPosition = Boolean(keepPosition);
             if (keepPosition) start.value += incoming.length;
