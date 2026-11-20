@@ -1,7 +1,7 @@
 @props(['checklist'])
 <section data-quadro-checklist-section data-id="{{ $checklist['id'] }}" class="quadro-card-section quadro-checklist">
     <div class="quadro-checklist-heading">
-        <x-card-icon name="checklist" />
+        <button type="button" draggable="true" data-quadro-checklist-drag="section" class="quadro-drag-handle shrink-0" aria-label="Reordenar checklist com as setas para cima e para baixo" title="Arrastar checklist"><x-card-icon name="grip" /></button>
         <input data-quadro-checklist-title value="{{ $checklist['title'] }}" required maxlength="100" aria-label="Nome do checklist" class="min-w-0 flex-1">
         <span data-quadro-checklist-count class="shrink-0 text-xs text-slate-400"></span>
         <button type="button" data-quadro-checklist-delete class="quadro-tool" aria-label="Excluir checklist"><x-card-icon name="trash" /></button>

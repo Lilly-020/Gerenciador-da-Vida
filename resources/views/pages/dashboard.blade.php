@@ -60,7 +60,7 @@
                             </div>
                         </div>
                     </div>
-                    <div data-dashboard-content="{{ $id }}" tabindex="0" role="region" aria-labelledby="dashboard-heading-{{ $id }}" @class(['min-h-0 flex-1 p-4 sm:p-5', 'overflow-y-auto overscroll-contain' => $id !== 'financeiro', 'sm:overflow-y-auto sm:overscroll-contain' => $id === 'financeiro'])>
+                    <div data-dashboard-content="{{ $id }}" tabindex="0" role="region" aria-labelledby="dashboard-heading-{{ $id }}" @class(['min-h-0 flex-1 p-4 sm:p-5', 'overflow-y-auto' => $id !== 'financeiro', 'sm:overflow-y-auto' => $id === 'financeiro'])>
                         @if ($id === 'tarefas')
                             @include('partials.tarefas-workspace', [...$taskData, 'dashboardEmbedded' => true])
                         @else

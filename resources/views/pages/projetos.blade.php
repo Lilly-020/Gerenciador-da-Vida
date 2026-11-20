@@ -1,5 +1,5 @@
 <x-layout title="Projetos" align="start">
-    <div class="w-full max-w-7xl">
+    <div class="app-expand-with-sidebar w-full min-w-0 max-w-7xl">
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-white sm:text-3xl">Projetos</h1>

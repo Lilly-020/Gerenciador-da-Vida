@@ -552,6 +552,7 @@ button.quadro-file-thumb { cursor: pointer; }
 .quadro-checklist-progress-row > span { min-width: 2rem; }
 .quadro-checklist-items:has(> *) { overflow: hidden; border: 1px solid rgb(148 163 184 / 0.2); border-radius: 0.85rem; }
 .quadro-checklist-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; }
+.quadro-checklist .quadro-checklist-item .quadro-tool { width: 2rem; height: 2rem; border-radius: 0.5rem; }
 .quadro-checklist-item + .quadro-checklist-item { border-top: 1px solid rgb(148 163 184 / 0.15); }
 .quadro-checklist-item > input { width: 0; padding: 0.5rem; font-size: 0.8rem; }
 .quadro-checklist-item > input[readonly] { border-color: transparent; background: transparent; box-shadow: none; }
@@ -916,7 +917,7 @@ html[data-theme='light'] { --app-scroll-thumb: #a5b4fc; --app-scroll-thumb-hover
 @media (min-width: 64rem) {
     .app-toolbar #open-navigation { display: none; }
     html[data-sidebar='collapsed'] .app-shell-sidebar { padding-left: 4.75rem; }
-    html[data-sidebar='collapsed'] .app-shell-sidebar .app-expand-with-sidebar { max-width: none; }
+    .app-shell-sidebar .app-expand-with-sidebar { max-width: none; }
     html[data-sidebar='collapsed'] .app-sidebar { width: 4.75rem; padding-inline: 0.55rem; }
     html[data-sidebar='collapsed'] .app-sidebar .app-sidebar-label { display: none; }
     html[data-sidebar='collapsed'] .app-sidebar :is(.app-sidebar-brand, .app-main-navigation a, button) { justify-content: center; padding-inline: 0; }

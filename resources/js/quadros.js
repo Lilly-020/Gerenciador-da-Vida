@@ -927,8 +927,50 @@ export function setupQuadros() {
         if (!card) return;
         event.preventDefault(); openContextMenu(card, card, { x: event.clientX, y: event.clientY });
     });
+    const checklistRow = (handle) => handle.closest(`[data-quadro-checklist-${handle.dataset.quadroChecklistDrag}]`);
+    let checklistDrag = null;
+    cardDialog.addEventListener('dragstart', (event) => {
+        const handle = event.target.closest('[data-quadro-checklist-drag]');
+        if (!handle) return;
+        checklistDrag = { row: checklistRow(handle), type: handle.dataset.quadroChecklistDrag };
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', checklistDrag.type);
+    });
+    const checklistDropTarget = (event) => {
+        if (!checklistDrag) return null;
+        const target = event.target.closest(`[data-quadro-checklist-${checklistDrag.type}]`);
+        return target && target !== checklistDrag.row && target.parentElement === checklistDrag.row.parentElement ? target : null;
+    };
+    cardDialog.addEventListener('dragover', (event) => {
+        if (!checklistDropTarget(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    });
+    cardDialog.addEventListener('drop', (event) => {
+        const target = checklistDropTarget(event);
+        if (!target) return;
+        event.preventDefault();
+        const { row } = checklistDrag;
+        checklistDrag = null;
+        const bounds = target.getBoundingClientRect();
+        if (event.clientY < bounds.top + bounds.height / 2) target.before(row);
+        else target.after(row);
+        saveChecklists(row.closest('form'));
+    });
+    cardDialog.addEventListener('dragend', () => { checklistDrag = null; });
     cardDialog.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter' || event.isComposing) return;
+        if (event.isComposing) return;
+        if (event.target.matches('[data-quadro-checklist-drag]') && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
+            event.preventDefault();
+            const row = checklistRow(event.target);
+            if (event.key === 'ArrowUp' && row.previousElementSibling) row.previousElementSibling.before(row);
+            else if (event.key === 'ArrowDown' && row.nextElementSibling) row.nextElementSibling.after(row);
+            else return;
+            event.target.focus();
+            saveChecklists(row.closest('form'));
+            return;
+        }
+        if (event.key !== 'Enter') return;
         if (event.target.matches('[data-quadro-checklist-new]')) { event.preventDefault(); addChecklistItem(event.target.closest('[data-quadro-checklist-section]')); }
         else if (event.target.matches('[data-quadro-checklist-title], [data-quadro-checklist-text]')) { event.preventDefault(); event.target.blur(); }
     });
@@ -1056,7 +1098,10 @@ export function setupQuadros() {
         const handle = event.target.closest('[data-quadro-list-handle]');
         const card = event.target.closest('[data-quadro-card]');
         if (!handle && !card) return;
-        beginDrag(handle ? handle.closest('[data-quadro-list]') : card, handle ? 'list' : 'card');
+        const element = handle ? handle.closest('[data-quadro-list]') : card;
+        const bounds = element.getBoundingClientRect();
+        event.dataTransfer.setDragImage(element, event.clientX - bounds.left, event.clientY - bounds.top);
+        beginDrag(element, handle ? 'list' : 'card');
         event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', drag.type);
     });
     page.addEventListener('dragover', (event) => {
@@ -1149,7 +1194,9 @@ export function setupQuadros() {
         if (target && placeDrag({ target, clientX: event.clientX, clientY: event.clientY }, 0)) await finishDrop();
         else clearDrag();
     });
-    page.addEventListener('pointercancel', clearDrag);
+    page.addEventListener('pointercancel', (event) => {
+        if (touchDrag?.pointerId === event.pointerId || touchPending?.pointerId === event.pointerId) clearDrag();
+    });
     page.addEventListener('lostpointercapture', (event) => { if (touchDrag?.pointerId === event.pointerId) clearDrag(); });
     page.addEventListener('dragend', () => { if (drag) lastDrop = Date.now(); clearDrag(); });
     window.addEventListener('blur', clearDrag);

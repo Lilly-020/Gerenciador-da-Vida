@@ -9,7 +9,7 @@
 @endphp
 
 <x-layout title="Perfil" align="start">
-    <div class="w-full max-w-2xl">
+    <div class="app-expand-with-sidebar w-full min-w-0 max-w-2xl">
         <div class="mb-6">
             <h1 class="text-2xl font-semibold text-white sm:text-3xl">Perfil</h1>
             <p class="mt-1 text-sm text-slate-400">Seus dados e os convites de participação.</p>
