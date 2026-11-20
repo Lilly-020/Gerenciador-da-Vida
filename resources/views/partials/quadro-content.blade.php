@@ -67,17 +67,30 @@
     @endif
 </div>
 <div data-quadro-table hidden class="h-full overflow-auto p-4 app-scroll">
-    <table class="w-full min-w-[800px] border-collapse overflow-hidden rounded-xl bg-slate-950/85 text-left text-xs">
-        <thead class="sticky top-0 bg-slate-900 text-slate-400"><tr>
-            @foreach (['title' => 'Cartão', 'list' => 'Lista', 'status' => 'Status', 'labels' => 'Etiquetas', 'assignees' => 'Responsáveis', 'due' => 'Entrega', 'response' => 'Última resposta'] as $key => $heading)
-                <th aria-sort="none" class="border-b border-white/10 font-medium"><button type="button" data-quadro-table-sort="{{ $key }}" class="quadro-table-sort" aria-label="Ordenar por {{ $heading }}"><span>{{ $heading }}</span><svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path data-quadro-sort-up d="m5 8 5-5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><path data-quadro-sort-down d="m5 12 5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg></button></th>
-            @endforeach
-        </tr></thead>
-        <tbody>@foreach ($quadro->listas as $list)@foreach ($list->cartoes as $card)
-            @php($lastResponse = $card->comentarios->first())
-            <tr data-quadro-table-row data-quadro-row-id="{{ $card->id }}" data-sort-title="{{ $card->title }}" data-sort-list="{{ $list->title }}" data-sort-status="{{ array_search($card->status, array_keys(\App\Models\QuadroCartao::STATUSES), true) }}" data-sort-labels="{{ implode(', ', $card->labels ?? []) }}" data-sort-assignees="{{ $people->whereIn('id', $card->assignee_ids ?? [])->pluck('name')->sort()->join(', ') }}" data-sort-due="{{ $card->due_at?->getTimestamp() }}" data-sort-response="{{ $lastResponse?->created_at?->getTimestamp() }}" data-title="{{ $card->title }}" data-status="{{ $card->status }}" class="border-b border-white/5 text-slate-300 hover:bg-white/5">
-                <td class="px-4 py-4"><button type="button" data-quadro-card-open data-url="{{ route('quadros.cartoes.show', [$quadro, $card], absolute: false) }}" class="text-left font-semibold hover:text-indigo-200">{{ $card->title }}</button></td><td class="px-4 py-4">{{ $list->title }}</td><td class="px-4 py-4">{{ \App\Models\QuadroCartao::STATUSES[$card->status] }}</td><td class="px-4 py-4"><span class="flex flex-wrap gap-1">@foreach ($card->labels ?? [] as $label)<span class="quadro-tag" style="{{ $quadro->labelStyle($label) }}">{{ $label }}</span>@endforeach</span></td><td class="px-4 py-4">@foreach ($card->assignee_ids ?? [] as $personId)@if ($people->has($personId))<span class="mb-1 block">{{ $people[$personId]->name }}</span>@endif @endforeach</td><td class="whitespace-nowrap px-4 py-4">{{ $card->due_at?->format('d/m/Y H:i') ?? '—' }}</td><td class="px-4 py-4">@if ($last = $card->comentarios->first())<time class="block whitespace-nowrap">{{ $last->created_at->format('d/m/Y H:i') }}</time><span class="mt-1 block text-slate-500">{{ $last->user?->name ?? 'Usuário removido' }}</span>@else — @endif</td>
-            </tr>
-        @endforeach @endforeach</tbody>
-    </table>
+    @if ($quadro->listas->contains(fn ($list) => $list->cartoes->isNotEmpty()))
+        <div class="min-h-full min-w-[800px] overflow-clip rounded-xl bg-slate-950/85">
+            <table class="w-full border-collapse text-left text-xs">
+                <thead class="sticky top-0 bg-slate-900 text-slate-400"><tr>
+                    @foreach (['title' => 'Cartão', 'list' => 'Lista', 'status' => 'Status', 'labels' => 'Etiquetas', 'assignees' => 'Responsáveis', 'due' => 'Entrega', 'response' => 'Última resposta'] as $key => $heading)
+                        <th aria-sort="none" class="border-b border-white/10 font-medium"><button type="button" data-quadro-table-sort="{{ $key }}" class="quadro-table-sort" aria-label="Ordenar por {{ $heading }}"><span>{{ $heading }}</span><svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path data-quadro-sort-up d="m5 8 5-5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><path data-quadro-sort-down d="m5 12 5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg></button></th>
+                    @endforeach
+                </tr></thead>
+                <tbody>@foreach ($quadro->listas as $list)@foreach ($list->cartoes as $card)
+                    @php($lastResponse = $card->comentarios->first())
+                    <tr data-quadro-table-row data-quadro-card-open data-url="{{ route('quadros.cartoes.show', [$quadro, $card], absolute: false) }}" data-quadro-row-id="{{ $card->id }}" data-sort-title="{{ $card->title }}" data-sort-list="{{ $list->title }}" data-sort-status="{{ array_search($card->status, array_keys(\App\Models\QuadroCartao::STATUSES), true) }}" data-sort-labels="{{ implode(', ', $card->labels ?? []) }}" data-sort-assignees="{{ $people->whereIn('id', $card->assignee_ids ?? [])->pluck('name')->sort()->join(', ') }}" data-sort-due="{{ $card->due_at?->getTimestamp() }}" data-sort-response="{{ $lastResponse?->created_at?->getTimestamp() }}" data-title="{{ $card->title }}" data-status="{{ $card->status }}" class="cursor-pointer border-b border-white/5 text-slate-300 hover:bg-white/5 focus-within:bg-white/5">
+                        <td class="px-4 py-4"><button type="button" class="text-left font-semibold hover:text-indigo-200">{{ $card->title }}</button></td><td class="px-4 py-4">{{ $list->title }}</td><td class="px-4 py-4">{{ \App\Models\QuadroCartao::STATUSES[$card->status] }}</td><td class="px-4 py-4"><span class="flex flex-wrap gap-1">@foreach ($card->labels ?? [] as $label)<span class="quadro-tag" style="{{ $quadro->labelStyle($label) }}">{{ $label }}</span>@endforeach</span></td><td class="px-4 py-4">@foreach ($card->assignee_ids ?? [] as $personId)@if ($people->has($personId))<span class="mb-1 block">{{ $people[$personId]->name }}</span>@endif @endforeach</td><td class="whitespace-nowrap px-4 py-4">{{ $card->due_at?->format('d/m/Y H:i') ?? '—' }}</td><td class="px-4 py-4">@if ($last = $card->comentarios->first())<time class="block whitespace-nowrap">{{ $last->created_at->format('d/m/Y H:i') }}</time><span class="mt-1 block text-slate-500">{{ $last->user?->name ?? 'Usuário removido' }}</span>@else — @endif</td>
+                    </tr>
+                @endforeach @endforeach</tbody>
+            </table>
+        </div>
+    @else
+        <div class="grid min-h-full place-content-center gap-2 rounded-xl bg-slate-950/85 p-6 text-center">
+            <p class="text-base font-semibold text-white">Nenhum cartão neste quadro</p>
+            @if ($canEdit)
+                <p class="text-sm text-slate-300">Na visualização Quadro, escolha uma lista e clique em “Adicionar cartão”.</p>
+            @else
+                <p class="text-sm text-slate-300">Os cartões aparecerão aqui quando forem adicionados ao quadro.</p>
+            @endif
+        </div>
+    @endif
 </div>

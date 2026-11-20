@@ -145,6 +145,7 @@ export function setupQuadros() {
         });
         if (!tableSort.key) return;
         const tbody = page.querySelector('[data-quadro-table] tbody');
+        if (!tbody) return;
         const rows = [...tbody.querySelectorAll('[data-quadro-table-row]')];
         const numeric = ['status', 'due', 'response'].includes(tableSort.key);
         rows.sort((a, b) => {

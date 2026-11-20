@@ -744,7 +744,7 @@ button.quadro-file-thumb { cursor: pointer; }
 .quadro-drag-handle { display: inline-flex; width: 2.75rem; height: 2.75rem; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 0.65rem; color: inherit; cursor: grab; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .quadro-drag-handle:active { cursor: grabbing; }
 .quadro-drag-handle:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }
-.quadro-card-drag-handle { position: absolute; top: 0.45rem; right: 3.5rem; z-index: 1; display: none; border: 1px solid rgb(148 163 184 / 0.3); background: #183647; color: #cbd5e1; }
+.quadro-card-drag-handle { position: absolute; top: 0.45rem; left: 0.45rem; z-index: 1; display: none; border: 1px solid rgb(148 163 184 / 0.3); background: #183647; color: #cbd5e1; }
 @media (pointer: coarse), (max-width: 47.999rem) {
     .quadro-card-drag-handle { display: inline-flex; }
     .quadro-card-tile:not(:has(.quadro-tile-cover)) { padding-top: 3.5rem; }
@@ -896,6 +896,12 @@ html[data-theme='light'] .app-toolbar-icon { color: #475569; }
 html[data-theme='light'] :is(.app-notifications, .quadro-dialog, .quadro-filter-popover, .quadro-mention-options, .quadro-card-main, .quadro-rich-editor, .quadro-rich-content, .quadro-card-tile) { background-color: #fff; border-color: #dbe4ee; color: #0f172a; }
 html[data-theme='light'] :is(.quadro-card-conversation, .quadro-comment-bubble, .quadro-rich-toolbar) { background-color: #f1f5f9; color: #334155; border-color: #dbe4ee; }
 html[data-theme='light'] :is(.quadro-tool, .quadro-context-item, .quadro-tile-title, .quadro-rich-toolbar button, .quadro-card-title-input) { color: #334155; }
+html[data-theme='light'] :is([data-quadro-card-delete], [data-quadro-comment-delete]) {
+    border-color: #fda4af;
+    background-color: #fff1f2;
+    color: #881337;
+}
+html[data-theme='light'] :is([data-quadro-card-delete], [data-quadro-comment-delete]):hover { background-color: #ffe4e6; }
 html[data-theme='light'] .quadro-primary { color: #fff; }
 html[data-theme='light'] .quadro-card-tile:hover { background: #eef2ff; }
 html[data-theme='light'] .quadro-column .quadro-column-header :is(h2, button, span) { color: var(--quadro-list-text); }
