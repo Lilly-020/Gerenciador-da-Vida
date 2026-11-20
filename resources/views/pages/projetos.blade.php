@@ -1,10 +1,7 @@
 <x-layout title="Projetos" align="start">
     <div class="app-expand-with-sidebar w-full min-w-0 max-w-7xl">
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-white sm:text-3xl">Projetos</h1>
-                <p class="mt-1 text-sm text-slate-400">Acompanhe o progresso dos seus projetos.</p>
-            </div>
+            <x-page-heading eyebrow="Das ideias à execução" title="Projetos" description="Acompanhe o progresso dos seus projetos." />
             <button
                 type="button"
                 id="open-new-projeto-modal"

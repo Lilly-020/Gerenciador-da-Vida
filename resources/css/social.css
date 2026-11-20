@@ -11,8 +11,6 @@
     --social-button: #4f46e5;
     --social-button-hover: #4338ca;
     --social-error: #fda4af;
-    --social-feed-width: 39rem;
-    --social-shell-width: 67rem;
     container-type: inline-size;
     color: var(--social-text);
 }
@@ -30,16 +28,15 @@ html[data-theme='light'] .social-page {
     --social-error: #9f1239;
 }
 
-.social-shell { width: 100%; max-width: var(--social-shell-width); margin-inline: auto; }
 .social-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem 1rem; }
-.social-search { display: flex; width: 100%; max-width: var(--social-feed-width); margin-inline: auto; gap: 0.5rem; }
+.social-search { display: flex; width: 100%; max-width: 39rem; margin-inline: auto; gap: 0.5rem; }
 .social-search input { min-width: 0; flex: 1; }
 .social-nav { display: grid; width: fit-content; max-width: 100%; margin-inline: auto; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.25rem; padding: 0.375rem; }
 .social-nav, .social-card { border: 1px solid var(--social-border); border-radius: 1rem; background: var(--social-card); }
 .social-nav a { display: grid; min-height: 2.5rem; place-items: center; padding: 0.5rem 0.75rem; border-radius: 0.75rem; text-align: center; font-size: 0.875rem; font-weight: 600; }
 .social-nav a:hover { background: var(--social-soft); }
 .social-nav a[aria-current='page'] { background: var(--social-soft); color: var(--social-accent); box-shadow: inset 0 0 0 1px rgb(129 140 248 / 0.3); }
-.social-columns { display: grid; width: 100%; max-width: var(--social-feed-width); margin-inline: auto; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 1rem; }
+.social-columns { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 1rem; }
 .social-stack { display: grid; min-width: 0; gap: 1rem; align-content: start; }
 .social-card { min-width: 0; padding: clamp(0.85rem, 2vw, 1.35rem); box-shadow: 0 4px 16px rgb(2 6 23 / 0.1); }
 .social-card h2 { margin-bottom: 0.55rem; font-size: 1rem; font-weight: 650; }
@@ -69,8 +66,13 @@ html[data-theme='light'] .social-page .social-actions .social-like[aria-pressed=
 .social-composer-heading .social-avatar, .social-post-header .social-avatar { border: 2px solid var(--social-focus); }
 .social-composer-prompt { flex: 1; min-height: 2.65rem; padding: 0.45rem 0.65rem; border-radius: 0.75rem; color: var(--social-muted); text-align: left; font-size: 0.92rem; }
 .social-composer-prompt:hover, .social-composer-collapse:hover { background: var(--social-soft); }
-.social-composer-collapse { margin-left: auto; padding: 0.4rem 0.6rem; border-radius: 0.5rem; color: var(--social-accent); font-size: 0.75rem; }
+.social-composer-options { display: flex; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+.social-composer-collapse { padding: 0.4rem 0.6rem; border-radius: 0.5rem; color: var(--social-accent); font-size: 0.75rem; }
 .social-composer .social-rich-editor { margin-inline: 1rem; }
+.social-composer-files { margin-inline: 1rem; padding: 0; list-style: none; }
+.social-composer-files li { display: flex; max-width: 100%; min-width: 0; align-items: center; gap: 0.35rem; padding-left: 0.6rem; border-radius: 0.6rem; background: var(--social-soft); }
+.social-composer-files li span { max-width: 15rem; overflow: hidden; color: var(--social-text); font-size: 0.78rem; text-overflow: ellipsis; white-space: nowrap; }
+.social-page .social-composer-files button { min-width: 2rem; min-height: 2rem; flex-shrink: 0; padding: 0; background: transparent; font-size: 1rem; }
 .social-composer-actions { min-width: 0; justify-content: flex-start; padding: 0.7rem 1rem; border-top: 1px solid var(--social-border); }
 .social-composer-actions > .social-primary { margin-left: auto; }
 .social-composer-actions svg, .social-section-heading h2 svg { width: 1.1rem; height: 1.1rem; flex: none; }
@@ -156,7 +158,7 @@ html[data-theme='light'] .social-profile-banner::after { background: linear-grad
 .social-sidebar { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
 
 @container (min-width: 53rem) {
-    .social-columns { max-width: var(--social-shell-width); grid-template-columns: minmax(0, 1.55fr) minmax(17rem, 1fr); gap: clamp(1rem, 2cqw, 1.5rem); }
+    .social-columns { grid-template-columns: minmax(0, 1.1fr) minmax(17rem, 1fr); gap: clamp(1rem, 2cqw, 1.5rem); }
     .social-sidebar { grid-template-columns: minmax(0, 1fr); }
 }
 

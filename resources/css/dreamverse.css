@@ -5,9 +5,6 @@
 .dreamverse :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid #9c98ff; outline-offset: 4px; }
 .dreamverse-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1.75rem; }
 .dream-eyebrow { color: #9c98ff; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.12em; line-height: 1.6; }
-.dreamverse-header h1 { margin: 0.3rem 0 0.45rem; font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 600; letter-spacing: -0.045em; line-height: 1.15; }
-.dreamverse-header h1 > span { color: #9c98ff; }
-.dreamverse-header > div > p:last-child { color: var(--dream-muted); font-size: 0.9rem; }
 .dream-header-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
 .dream-view-switch { display: flex; gap: 0.2rem; padding: 0.25rem; border: 1px solid var(--dream-border); border-radius: 0.75rem; background: var(--dream-input); }
 .dream-view-switch button { min-height: 2.4rem; padding: 0.4rem 1rem; border-radius: 0.5rem; color: var(--dream-muted); font-size: 0.8rem; }
@@ -134,7 +131,7 @@ html[data-theme='light'] .dreamverse :is(.dream-list-progress > span:first-child
 html[data-theme='light'] .dreamverse .dream-danger { color: #be123c; }
 html[data-theme='light'] .dreamverse .dream-achievement-note { color: #854d0e; background: #fefce8; }
 @media (max-width: 47.999rem) {
-    .dreamverse { padding: 1.25rem 1rem; }.dreamverse-header { gap: 1.25rem; }.dream-header-actions { width: 100%; justify-content: space-between; gap: 0.5rem; }.dreamverse-header h1 { font-size: 2.25rem; }.dream-header-actions .dream-primary { flex: 1; max-width: 13rem; }.dream-overview { gap: 0.7rem; font-size: 0.65rem; }.dream-filters .dream-search { flex-basis: 100%; }.dream-filters > label:not(.dream-search) { flex: 1; }.dream-filters select { width: 100%; }.dream-map { height: 66dvh; min-height: 30rem; }.dream-map-help { bottom: 4.5rem; font-size: 0.6rem; }.dream-map-controls { left: 1rem; right: auto; }.dreamverse-footer { gap: 0.6rem 1rem; }.dreamverse-footer > p { margin-left: 0; width: 100%; }.dream-list { grid-template-columns: minmax(0, 1fr); }.dream-panel-header, .dream-panel-scroll, .dream-panel-footer { padding: 1rem; }.dream-panel-header h2 { font-size: 1.2rem; }.dream-task-create { flex-wrap: wrap; }.dream-task-create .dream-primary { width: 100%; }.dream-tooltip { top: 2.5rem; }.dream-field-grid { gap: 0.7rem; }
+    .dreamverse { padding: 1.25rem 1rem; }.dreamverse-header { gap: 1.25rem; }.dream-header-actions { width: 100%; justify-content: space-between; gap: 0.5rem; }.dream-header-actions .dream-primary { flex: 1; max-width: 13rem; }.dream-overview { gap: 0.7rem; font-size: 0.65rem; }.dream-filters .dream-search { flex-basis: 100%; }.dream-filters > label:not(.dream-search) { flex: 1; }.dream-filters select { width: 100%; }.dream-map { height: 66dvh; min-height: 30rem; }.dream-map-help { bottom: 4.5rem; font-size: 0.6rem; }.dream-map-controls { left: 1rem; right: auto; }.dreamverse-footer { gap: 0.6rem 1rem; }.dreamverse-footer > p { margin-left: 0; width: 100%; }.dream-list { grid-template-columns: minmax(0, 1fr); }.dream-panel-header, .dream-panel-scroll, .dream-panel-footer { padding: 1rem; }.dream-panel-header h2 { font-size: 1.2rem; }.dream-task-create { flex-wrap: wrap; }.dream-task-create .dream-primary { width: 100%; }.dream-tooltip { top: 2.5rem; }.dream-field-grid { gap: 0.7rem; }
     .dreamverse :is(input:not([type='checkbox']), textarea, select) { font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -149,8 +146,6 @@ body.dreamverse-immersive { overflow: hidden; }
 .dreamverse.is-immersive { position: relative; height: calc(100dvh - 4rem); min-height: 22rem; overflow: hidden; padding: 0; background: #030617; }
 .dreamverse.is-immersive .dream-map { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 0; }
 .dreamverse.is-immersive .dreamverse-header { position: absolute; top: 1.25rem; left: 1.25rem; z-index: 3; display: block; width: 21rem; max-width: calc(100% - 2.5rem); margin: 0; border: 1px solid var(--dream-border); border-radius: 1rem; padding: 1.2rem; background: var(--dream-surface); box-shadow: 0 3px 12px rgb(0 0 0 / 0.08); }
-.dreamverse.is-immersive .dreamverse-header h1 { font-size: 2rem; margin-top: 0.25rem; }
-.dreamverse.is-immersive .dreamverse-header > div > p:last-child { font-size: 0.72rem; line-height: 1.6; }
 .dreamverse.is-immersive .dream-header-actions { margin-top: 1rem; justify-content: space-between; gap: 0.5rem; }
 .dreamverse.is-immersive .dream-header-actions :is(.dream-primary, .dream-view-switch button) { min-height: 2.35rem; padding: 0.5rem 0.7rem; font-size: 0.72rem; }
 .dream-floating-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin-top: 1rem; }
@@ -184,12 +179,13 @@ body.dreamverse-immersive { overflow: hidden; }
 .dream-star.is-in_progress .dream-star-core { filter: drop-shadow(0 0 6px rgb(156 152 255 / 0.6)); }
 .dream-star.is-completed .dream-star-core { filter: drop-shadow(0 0 6px rgb(245 200 91 / 0.55)); }
 .dreamverse.is-immersive.is-narrow .dreamverse-header { top: 0.75rem; left: 0.75rem; right: 0.75rem; display: grid; grid-template-columns: 1fr auto; gap: 0.65rem; width: auto; max-width: none; padding: 0.85rem; }
-.dreamverse.is-immersive.is-narrow .dreamverse-header h1 { margin: 0; font-size: 1.35rem; }
-.dreamverse.is-immersive.is-narrow .dreamverse-header > div:first-child > p, .dreamverse.is-immersive.is-narrow .dream-floating-summary { display: none; }
+.dreamverse.is-immersive.is-narrow .dream-page-heading h1 { font-size: 1.35rem; }
+.dreamverse.is-immersive.is-narrow .dream-page-heading p { margin-block: 0.2rem; font-size: 0.65rem; }
+.dreamverse.is-immersive.is-narrow .dream-floating-summary { display: none; }
 .dreamverse.is-immersive.is-narrow .dream-header-actions { grid-column: 1 / -1; grid-row: 2; width: 100%; margin: 0; justify-content: space-between; }
 .dreamverse.is-immersive.is-narrow .dream-header-actions .dream-primary { flex: 0 1 auto; max-width: none; }
 .dreamverse.is-immersive.is-narrow .dream-filter-toggle { width: auto; min-height: 2rem; margin: 0; border: 0; padding: 0; font-size: 0.65rem; }
-.dreamverse.is-immersive.is-narrow .dream-filters { top: 9rem; left: 0.75rem; right: 0.75rem; width: auto; max-height: calc(100% - 15rem); }
+.dreamverse.is-immersive.is-narrow .dream-filters { top: 11rem; left: 0.75rem; right: 0.75rem; width: auto; max-height: calc(100% - 15rem); }
 .dreamverse.is-immersive.is-narrow .dream-constellation-toggle { position: absolute; z-index: 3; left: 0.75rem; bottom: 4.75rem; display: flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; border: 1px solid var(--dream-border); border-radius: 0.65rem; padding: 0.6rem 0.75rem; background: var(--dream-surface); color: var(--dream-text); font-size: 0.7rem; }
 .dreamverse.is-immersive.is-narrow .dream-constellations { top: auto; bottom: 8rem; left: 0.75rem; right: auto; width: 14rem; max-height: calc(100% - 17rem); }
 .dreamverse.is-immersive.is-narrow .dream-map-caption { display: none; }

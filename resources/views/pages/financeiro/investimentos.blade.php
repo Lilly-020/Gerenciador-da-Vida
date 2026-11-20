@@ -3,10 +3,7 @@
         <x-financeiro-subnav active="financeiro.investimentos" />
 
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-white sm:text-3xl">Investimentos</h1>
-                <p class="mt-1 text-sm text-slate-400">Acompanhe seus aportes e o rendimento estimado.</p>
-            </div>
+            <x-page-heading eyebrow="Seu patrimônio" title="Investimentos" description="Acompanhe seus aportes e o rendimento estimado." />
             <button
                 type="button"
                 id="open-new-investimento-modal"

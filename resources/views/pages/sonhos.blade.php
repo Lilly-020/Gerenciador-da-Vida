@@ -5,10 +5,7 @@
     <script id="dreamverse-data" type="application/json">{!! json_encode(['dreams' => $universe, 'categories' => $categories], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
     <div id="dreamverse-fallback" hidden class="mx-auto w-full max-w-3xl px-4 py-12">
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-white sm:text-3xl">Meus sonhos</h1>
-                <p class="mt-1 text-sm text-slate-400">Transforme seus objetivos em conquistas.</p>
-            </div>
+            <x-page-heading eyebrow="Seu futuro, em construção" title="Meus sonhos" description="Transforme seus objetivos em conquistas." />
             <button
                 type="button"
                 id="open-new-sonho-modal"

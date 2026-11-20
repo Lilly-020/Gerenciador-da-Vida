@@ -14,10 +14,7 @@
     >
         @unless ($dashboardEmbedded ?? false)
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-white sm:text-3xl">Tarefas</h1>
-                <p class="mt-1 text-sm text-slate-400">Suas tarefas do dia, e como está o seu progresso.</p>
-            </div>
+            <x-page-heading eyebrow="Sua rotina" title="Tarefas" description="Organize suas tarefas do dia e acompanhe seu progresso." />
 
             <div class="flex w-full max-w-full flex-wrap items-center gap-2 sm:w-auto">
                 <nav aria-label="Visualizações de tarefas" class="grid w-full min-w-0 grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-slate-900/70 p-1.5 sm:inline-grid sm:w-auto sm:grid-cols-4">

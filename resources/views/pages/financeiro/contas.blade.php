@@ -8,10 +8,7 @@
     <div class="app-expand-with-sidebar w-full min-w-0 max-w-6xl">
         <x-financeiro-subnav active="financeiro.contas" />
         <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-white">Contas e categorias</h1>
-                <p class="mt-2 max-w-2xl text-sm text-slate-400">Contas mostram onde o dinheiro está. Categorias mostram com o que você ganha ou gasta.</p>
-            </div>
+            <x-page-heading class="max-w-2xl" eyebrow="Organização financeira" title="Contas e categorias" description="Contas mostram onde o dinheiro está. Categorias mostram com o que você ganha ou gasta." />
             @if ($canManage)<a href="#nova-conta" class="rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">+ Nova conta</a>@endif
         </div>
         <nav aria-label="Nesta página" class="mb-6 flex flex-wrap gap-2 text-xs text-slate-300">

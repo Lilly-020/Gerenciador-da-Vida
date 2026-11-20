@@ -3,12 +3,9 @@
         <script type="application/json" data-dashboard-preferences>@json($preferences)</script>
         <script type="application/json" data-dashboard-defaults>@json(\App\Support\DashboardLayout::defaults())</script>
         <div class="mb-7 flex flex-wrap items-start justify-between gap-5">
-            <div>
-                <p class="mb-3 inline-flex items-center gap-2 text-[10px] font-semibold tracking-[0.2em] text-indigo-300"><span class="h-1.5 w-1.5 rounded-full bg-indigo-400"></span> SEU ESPAÇO</p>
-                <h1 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Sua vida, do seu jeito.</h1>
-                <p class="mt-3 text-sm text-slate-400">Olá, {{ explode(' ', trim(auth()->user()->name))[0] }}. Tudo o que importa, em um só lugar.</p>
+            <x-page-heading eyebrow="Seu espaço" title="Sua vida, do seu jeito." :description="'Olá, '.explode(' ', trim(auth()->user()->name))[0].'. Tudo o que importa, em um só lugar.'">
                 <p class="mt-2 text-xs text-slate-500">{{ \App\Models\Tarefa::weekdayLabel(today()) }}, {{ today()->format('d') }} de {{ mb_strtolower(\App\Models\Tarefa::monthLabel(today())) }} de {{ today()->year }}</p>
-            </div>
+            </x-page-heading>
             <div class="flex flex-wrap items-center gap-2">
                 <button type="button" data-dashboard-refresh class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/10 bg-slate-900/60 px-3 text-xs font-semibold text-slate-300 hover:bg-white/5" aria-label="Atualizar dashboard"><span aria-hidden="true">↻</span> Atualizar</button>
                 <button type="button" data-dashboard-customize aria-expanded="false" aria-controls="dashboard-customization" class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-indigo-400/30 bg-indigo-500/15 px-4 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/25"><x-dashboard-icon name="settings" class="h-4 w-4" /> Personalizar</button>

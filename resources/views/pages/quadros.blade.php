@@ -1,6 +1,9 @@
 <x-layout title="Planner" align="start">
     <div data-quadros-index data-url="{{ route('cursos', absolute: false) }}" class="app-expand-with-sidebar w-full min-w-0 max-w-7xl">
-        <header class="mb-8 flex flex-wrap items-center justify-between gap-4"><div><p class="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Seu planejamento, do seu jeito</p><h1 class="text-3xl font-semibold text-white">Planner</h1><p class="mt-2 text-sm text-slate-400">Crie quadros, organize suas listas e avance um cartão por vez.</p></div><button type="button" data-quadro-create class="quadro-primary">+ Criar quadro</button></header>
+        <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
+            <x-page-heading eyebrow="Seu planejamento, do seu jeito" title="Planner" description="Crie quadros, organize suas listas e avance um cartão por vez." />
+            <button type="button" data-quadro-create class="quadro-primary">+ Criar quadro</button>
+        </header>
         <div class="mb-7 grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_1fr_auto]">
             <label class="grid gap-2 text-xs text-slate-400">Buscar quadro<input type="search" data-quadro-index-search placeholder="Buscar quadro pelo nome..." class="w-full"></label>
             <label class="grid gap-2 text-xs text-slate-400">Categoria<select data-quadro-index-category><option value="">Todas as categorias</option>@foreach ($quadros->pluck('category')->filter()->unique()->sort() as $category)<option value="{{ $category }}">{{ $category }}</option>@endforeach</select></label>

@@ -6,6 +6,7 @@ import SocialPostCard from './SocialPostCard.vue';
 import SocialRichEditor from './SocialRichEditor.vue';
 import { socialRequest } from './social-request';
 import { useSocialFeed } from './useSocialFeed';
+import { confirmDialog } from './dialog';
 
 const props = defineProps({ base: String, profileSettings: String, viewer: Number, person: Number, section: String });
 const searchText = ref('');
@@ -116,8 +117,29 @@ function focusComposer() {
 }
 
 function selectImages(event) {
-    files.value = [...event.target.files];
+    const selected = [...event.target.files];
+    event.target.value = '';
+    if (!selected.length) return;
+    files.value = selected;
     if (files.value.length) composerOpen.value = true;
+}
+
+function removeImage(index) {
+    files.value.splice(index, 1);
+}
+
+function resetComposer() {
+    content.value = { content: '', content_html: '' };
+    files.value = [];
+    if (fileInput.value) fileInput.value.value = '';
+    composerOpen.value = false;
+}
+
+async function cancelPublication() {
+    if (writing.value) return;
+    const hasDraft = content.value.content.trim().length > 0 || files.value.length > 0;
+    if (hasDraft && !await confirmDialog('Descartar o texto e as fotos desta publicação?', { confirmLabel: 'Descartar', cancelLabel: 'Continuar editando', danger: true })) return;
+    resetComposer();
 }
 
 function filterFeed(author) {
@@ -161,10 +183,7 @@ async function publish() {
 
     try {
         await socialRequest(endpoint('/posts'), { method: 'POST', data });
-        content.value = { content: '', content_html: '' };
-        files.value = [];
-        fileInput.value.value = '';
-        composerOpen.value = false;
+        resetComposer();
         status.value = 'Publicação criada.';
         const updateFeed = feedAuthor.value === 'friends' ? filterFeed('') : refreshNewPosts();
         await Promise.all([updateFeed, loadProfile()]).catch(showFailure);
@@ -187,11 +206,12 @@ onMounted(() => {
 
 <template>
     <section class="social-page w-full" aria-labelledby="social-heading">
-        <div class="social-shell space-y-5">
+        <div class="space-y-5">
             <header class="social-header">
                 <div>
-                    <h1 id="social-heading" class="text-2xl font-semibold text-white sm:text-3xl">Social</h1>
-                    <p class="mt-1 text-sm text-slate-400">Compartilhe momentos e acompanhe seus amigos.</p>
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Seu círculo de amigos</p>
+                    <h1 id="social-heading" class="text-3xl font-semibold text-white">Social</h1>
+                    <p class="mt-2 text-sm text-slate-400">Compartilhe momentos e acompanhe seus amigos.</p>
                 </div>
                 <div class="social-actions social-header-actions">
                     <a v-if="person || section !== 'feed' || focusedPost" :href="`${base}?create=1`" class="social-primary">Criar publicação</a>
@@ -264,13 +284,22 @@ onMounted(() => {
                                 <button v-if="!composerOpen" type="button" class="social-composer-prompt" aria-expanded="false" @click="focusComposer">O que você está pensando?</button>
                                 <template v-else>
                                     <span class="text-sm font-semibold">Criar publicação</span>
-                                    <button type="button" class="social-composer-collapse" aria-expanded="true" @click="composerOpen = false">Recolher</button>
+                                    <div class="social-composer-options">
+                                        <button type="button" class="social-composer-collapse" aria-expanded="true" @click="composerOpen = false">Recolher</button>
+                                        <button type="button" class="social-composer-collapse" :disabled="writing" @click="cancelPublication">Cancelar</button>
+                                    </div>
                                 </template>
                             </div>
                             <SocialRichEditor v-if="composerOpen" ref="composer" v-model="content" label="O que você está pensando?" placeholder="Escreva sua publicação…" />
+                            <ul v-if="composerOpen && files.length" class="social-composer-files social-actions" aria-label="Fotos anexadas">
+                                <li v-for="(file, index) in files" :key="index">
+                                    <span :title="file.name">{{ file.name }}</span>
+                                    <button type="button" :aria-label="`Remover foto ${file.name}`" title="Remover foto" :disabled="writing" @click="removeImage(index)">×</button>
+                                </li>
+                            </ul>
                             <div class="social-composer-actions">
                                 <label class="social-upload">
-                                    <input ref="fileInput" aria-label="Adicionar fotos" type="file" multiple accept="image/jpeg,image/png,image/webp" @change="selectImages">
+                                    <input ref="fileInput" aria-label="Adicionar fotos" type="file" multiple accept="image/jpeg,image/png,image/webp" :disabled="writing" @change="selectImages">
                                     <span>
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1"/></svg>
                                         {{ files.length ? `${files.length} foto(s)` : 'Foto' }}

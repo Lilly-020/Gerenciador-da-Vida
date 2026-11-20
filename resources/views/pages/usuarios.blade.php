@@ -1,7 +1,7 @@
 <x-layout title="Usuários" align="start">
     <div class="app-expand-with-sidebar w-full min-w-0 max-w-6xl space-y-6">
         <header class="flex flex-wrap items-center justify-between gap-4">
-            <h1 class="text-2xl font-semibold text-white sm:text-3xl">Usuários</h1>
+            <x-page-heading eyebrow="Administração" title="Usuários" description="Gerencie as contas e os acessos ao sistema." />
             <a href="{{ route('admin.usuarios.create', absolute: false) }}" class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">
                 <span aria-hidden="true">+</span> Criar usuário
             </a>

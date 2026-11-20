@@ -9,12 +9,7 @@
         <x-financeiro-subnav :active="$isEntrada ? 'financeiro.entradas' : 'financeiro.saidas'" />
 
         <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-white sm:text-3xl">{{ $title }}</h1>
-                <p class="mt-1 text-sm text-slate-400">
-                    {{ $isEntrada ? 'Registre o que você recebeu.' : 'Registre o que você gastou.' }}
-                </p>
-            </div>
+            <x-page-heading eyebrow="Movimentações financeiras" :title="$title" :description="$isEntrada ? 'Registre o que você recebeu.' : 'Registre o que você gastou.'" />
             <button
                 type="button"
                 id="open-new-lancamento-modal"
