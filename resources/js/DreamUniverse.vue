@@ -19,6 +19,8 @@ const constellationsOpen = ref(false);
 try { if (localStorage.getItem(preferenceKey) === 'list') mode.value = 'list'; } catch {}
 const selectedId = ref(null);
 const hoveredId = ref(null);
+const previewId = ref(null);
+const compactSummary = window.matchMedia('(max-width: 47.999rem), (hover: none)');
 const selected = computed(() => dreams.value.find(dream => dream.id === selectedId.value));
 const normalize = value => (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 const visible = computed(() => {
@@ -55,7 +57,7 @@ const regions = computed(() => Object.entries(categories).map(([key, label]) => 
     const group = stars.value.filter(star => star.category === key);
     return group.length ? { key, label, count: group.length, x: Math.min(...group.map(star => star.x)) - 60, y: Math.min(...group.map(star => star.y)) - 100 } : null;
 }).filter(Boolean));
-const hovered = computed(() => visible.value.find(dream => dream.id === hoveredId.value));
+const summary = computed(() => visible.value.find(dream => dream.id === (previewId.value ?? hoveredId.value)));
 const activeCount = computed(() => dreams.value.filter(dream => !dream.archived).length);
 const achievedCount = computed(() => dreams.value.filter(dream => !dream.archived && dream.status === 'completed').length);
 const busy = ref(false);
@@ -110,6 +112,7 @@ function pointerDown(event) {
     svg.value.setPointerCapture(event.pointerId);
     drag.value = true;
     hoveredId.value = null;
+    previewId.value = null;
     if (pointers.size === 2) { const [a, b] = [...pointers.values()]; lastPinch = Math.hypot(a.x - b.x, a.y - b.y); }
 }
 function pointerMove(event) {
@@ -124,7 +127,7 @@ function pointerMove(event) {
         lastPinch = distance;
     } else { camera.x += dx; camera.y += dy; }
 }
-function pointerUp(event) { if (!pointers.has(event.pointerId)) return; pointers.delete(event.pointerId); lastPinch = null; drag.value = pointers.size > 0; if (!drag.value) { if (!moved && tapDreamId && event.type === 'pointerup') select(Number(tapDreamId)); tapDreamId = null; later(() => { moved = false; }, 0); } }
+function pointerUp(event) { if (!pointers.has(event.pointerId)) return; pointers.delete(event.pointerId); lastPinch = null; drag.value = pointers.size > 0; if (!drag.value) { if (!moved && tapDreamId && event.type === 'pointerup') activateStar(Number(tapDreamId), event.pointerType === 'touch'); tapDreamId = null; later(() => { moved = false; }, 0); } }
 function wheel(event) { if (!event.shiftKey && !event.ctrlKey && !event.metaKey) return; event.preventDefault(); const p = point(event); const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX; zoomAt(Math.exp(-delta * 0.005), p.x, p.y); }
 function keyboard(event) {
     const steps = { ArrowLeft: [70, 0], ArrowRight: [-70, 0], ArrowUp: [0, 70], ArrowDown: [0, -70] };
@@ -132,9 +135,25 @@ function keyboard(event) {
     if (['+', '=', '-'].includes(event.key)) { event.preventDefault(); zoomAt(event.key === '-' ? 0.8 : 1.25); }
     if (event.key === 'Home') { event.preventDefault(); fit(); }
 }
-function select(id) { if (moved) return; returnFocus = mode.value === 'universe' ? svg.value?.querySelector(`[data-dream-id="${id}"]`) : document.activeElement; selectedId.value = id; hoveredId.value = null; }
-function closePanel() { selectedId.value = null; nextTick(() => returnFocus?.isConnected && returnFocus.focus()); }
-function setMode(value) { mode.value = value; try { localStorage.setItem(preferenceKey, value); } catch {} if (value === 'universe') nextTick(fit); }
+function activateStar(id, isTouch = false) {
+    if (moved) return;
+    if (isTouch || compactSummary.matches) {
+        previewId.value = id;
+        return;
+    }
+    select(id);
+}
+function showStarHover(id) {
+    if (!compactSummary.matches && selectedId.value === null) hoveredId.value = id;
+}
+function select(id) { if (moved) return; returnFocus = mode.value === 'universe' ? svg.value?.querySelector(`[data-dream-id="${id}"]`) : document.activeElement; selectedId.value = id; hoveredId.value = null; previewId.value = null; }
+function closePanel() {
+    previewId.value = null;
+    hoveredId.value = null;
+    selectedId.value = null;
+    nextTick(() => returnFocus?.isConnected && returnFocus.focus());
+}
+function setMode(value) { previewId.value = null; mode.value = value; try { localStorage.setItem(preferenceKey, value); } catch {} if (value === 'universe') nextTick(fit); }
 function clearFilters() { Object.assign(filters, { query: '', category: '', status: '', sort: '', from: '', to: '' }); }
 const date = value => value ? new Intl.DateTimeFormat('pt-BR').format(new Date(`${value}T12:00:00`)) : 'Sem prazo';
 
@@ -174,7 +193,7 @@ const createDialog = ref(null);
 const draft = reactive({ title: '', notes: '', category: 'other', priority: 'medium', target_date: '', financial_goal: '', saved_amount: '', image_url: '' });
 function openCreate() { error.value = ''; createDialog.value.showModal(); nextTick(() => createDialog.value.querySelector('[name=title]')?.focus()); }
 function create() { mutate({ url: props.storeUrl, method: 'POST', body: { ...draft }, created: true, done: () => { createDialog.value.close(); Object.assign(draft, { title: '', notes: '', category: 'other', priority: 'medium', target_date: '', financial_goal: '', saved_amount: '', image_url: '' }); } }); }
-watch(() => [filters.query, filters.category, filters.status, filters.from, filters.to], () => { hoveredId.value = null; nextTick(fit); });
+watch(() => [filters.query, filters.category, filters.status, filters.from, filters.to], () => { hoveredId.value = null; previewId.value = null; nextTick(fit); });
 watch(() => selectedId.value, (id) => { document.body.style.overflow = id ? 'hidden' : ''; });
 watch(mode, value => { document.body.classList.toggle('dreamverse-immersive', value === 'universe'); }, { immediate: true });
 const visibility = () => { pageHidden.value = document.hidden; };
@@ -209,11 +228,20 @@ onBeforeUnmount(() => { destroyed = true; controller.abort(); observer?.disconne
                 <g :transform="`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`">
                     <g class="dream-connections" aria-hidden="true"><line v-for="edge in edges" :key="edge.key" :x1="edge.a.x" :y1="edge.a.y" :x2="edge.b.x" :y2="edge.b.y" :class="{ 'is-achieved': edge.achieved }" vector-effect="non-scaling-stroke" /></g>
                     <text v-for="region in regions" :key="region.key" :x="region.x" :y="region.y" class="dream-region-name" :font-size="12 / camera.zoom" aria-hidden="true">{{ region.label.toLocaleUpperCase('pt-BR') }}</text>
-                    <DreamStar v-for="star in stars" :key="star.id" :dream="star" :zoom="camera.zoom" :selected="selectedId === star.id" :animation="animations[star.id]" @select="select" @hover="hoveredId = $event" @leave="hoveredId = null" />
+                    <DreamStar v-for="star in stars" :key="star.id" :dream="star" :zoom="camera.zoom" :selected="selectedId === star.id || previewId === star.id" :animation="animations[star.id]" @select="activateStar" @hover="showStarHover" @leave="hoveredId = null" />
                 </g>
             </svg>
             <div v-if="!visible.length" class="dream-map-empty"><svg viewBox="0 0 80 80" fill="none" aria-hidden="true"><circle cx="40" cy="40" r="25" stroke="#635bff" stroke-opacity="0.35" /><path d="m40 21 4 15 15 4-15 4-4 15-4-15-15-4 15-4Z" fill="#9c98ff" /></svg><h2>{{ dreams.length ? 'Nenhum sonho nesta órbita' : 'Seu universo começa aqui' }}</h2><p>{{ dreams.length ? 'Experimente outra constelação ou ajuste os filtros.' : 'Todo universo começa com uma primeira estrela.' }}</p><button type="button" class="dream-primary" @click="dreams.length ? clearFilters() : openCreate()">{{ dreams.length ? 'Limpar filtros' : '+ Criar meu primeiro sonho' }}</button></div>
-            <div v-if="hovered && !drag" class="dream-tooltip" role="status"><span class="dream-eyebrow">{{ categories[hovered.category] }}</span><h3>{{ hovered.title }}</h3><p>{{ hovered.status_label }} · {{ hovered.progress }}%</p><span>{{ hovered.tasks.filter(task => task.completed).length }} de {{ hovered.tasks.length }} tarefas concluídas</span><small>Clique ou pressione Enter para explorar</small></div>
+            <div v-if="summary && !drag" class="dream-tooltip" :class="{ 'dream-tooltip-interactive': previewId !== null }">
+                <div role="status">
+                    <span class="dream-eyebrow">{{ categories[summary.category] }}</span>
+                    <h3>{{ summary.title }}</h3>
+                    <p>{{ summary.status_label }} · {{ summary.progress }}%</p>
+                    <span class="dream-tooltip-progress">{{ summary.tasks.filter(task => task.completed).length }} de {{ summary.tasks.length }} tarefas concluídas</span>
+                </div>
+                <button v-if="previewId !== null" type="button" class="dream-primary" @click="select(summary.id)">Ver mais detalhes</button>
+                <small v-else>Clique ou pressione Enter para explorar</small>
+            </div>
             <div class="dream-map-caption" aria-hidden="true"><span class="dream-live-dot" />{{ visible.length }} {{ visible.length === 1 ? 'estrela' : 'estrelas' }} neste universo</div>
             <div class="dream-map-controls" role="group" aria-label="Navegação do mapa"><button type="button" class="dream-map-button" aria-label="Diminuir zoom" @click="zoomAt(0.8)">−</button><span>{{ Math.round(camera.zoom * 100) }}%</span><button type="button" class="dream-map-button" aria-label="Aumentar zoom" @click="zoomAt(1.25)">+</button><button type="button" class="dream-map-button dream-fit" @click="fit">Centralizar</button></div>
             <p class="dream-map-help">Arraste para explorar <span>·</span> Use dois dedos para ampliar</p>

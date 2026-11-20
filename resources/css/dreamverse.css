@@ -78,8 +78,10 @@
 .dream-tooltip { position: absolute; right: 1rem; top: 1rem; z-index: 2; width: min(18rem, calc(100% - 2rem)); pointer-events: none; border: 1px solid rgb(156 152 255 / 0.3); border-radius: 0.8rem; background: #0b1229f5; padding: 1rem; color: #f8faff; box-shadow: 0 3px 14px rgb(0 0 0 / 0.12); }
 .dream-tooltip h3 { margin: 0.35rem 0 0.65rem; font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
 .dream-tooltip p { color: #c3bfff; font-size: 0.75rem; }
-.dream-tooltip > span:last-of-type, .dream-tooltip small { display: block; margin-top: 0.4rem; color: #94a3b8; font-size: 0.7rem; }
+.dream-tooltip-progress, .dream-tooltip small { display: block; margin-top: 0.4rem; color: #94a3b8; font-size: 0.7rem; }
 .dream-tooltip small { padding-top: 0.6rem; border-top: 1px solid rgb(148 163 184 / 0.15); }
+.dream-tooltip-interactive { pointer-events: auto; }
+.dream-tooltip-interactive .dream-primary { min-height: 2.75rem; margin-top: 0.75rem; padding: 0.4rem 0.8rem; font-size: 0.75rem; }
 .dreamverse-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1.2rem 0 0.25rem; color: var(--dream-muted); font-size: 0.65rem; }
 .dreamverse-footer > span { display: flex; align-items: center; gap: 0.4rem; }
 .dreamverse-footer > p { margin-left: auto; color: var(--dream-muted); font-size: 0.65rem; }

@@ -19,12 +19,12 @@
                 <p class="mt-1 text-sm text-slate-400">Suas tarefas do dia, e como está o seu progresso.</p>
             </div>
 
-            <div class="flex max-w-full flex-wrap items-center gap-2">
-                <div class="inline-flex max-w-full flex-wrap items-center justify-center gap-1 rounded-2xl border border-white/10 bg-slate-900/70 p-1 shadow-xl shadow-black/30 backdrop-blur sm:rounded-full">
+            <div class="flex w-full max-w-full flex-wrap items-center gap-2 sm:w-auto">
+                <nav aria-label="Visualizações de tarefas" class="grid w-full min-w-0 grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-slate-900/70 p-1.5 sm:inline-grid sm:w-auto sm:grid-cols-4">
                     @foreach (['week' => 'Semana', 'calendar' => 'Minimalista', 'month' => 'Calendário amplo', 'dashboard' => 'Dashboard'] as $key => $label)
-                        <a href="{{ route('tarefas', ['date' => $selected->toDateString(), 'view' => $key], absolute: false) }}" data-view-tab="{{ $key }}" aria-current="{{ $view === $key ? 'page' : 'false' }}" aria-selected="{{ $view === $key ? 'true' : 'false' }}" class="max-w-full rounded-full px-3 py-2 text-center text-xs font-semibold transition sm:px-4 sm:text-sm {{ $view === $key ? 'bg-indigo-500/25 text-indigo-100' : 'text-slate-300 hover:text-white' }}">{{ $label }}</a>
+                        <a href="{{ route('tarefas', ['date' => $selected->toDateString(), 'view' => $key], absolute: false) }}" data-view-tab="{{ $key }}" aria-current="{{ $view === $key ? 'page' : 'false' }}" aria-selected="{{ $view === $key ? 'true' : 'false' }}" class="flex min-h-10 min-w-0 items-center justify-center rounded-xl px-2 py-2 text-center text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-indigo-400 sm:px-3 sm:text-sm {{ $view === $key ? 'bg-indigo-500/25 text-indigo-100 ring-1 ring-inset ring-indigo-400/30' : 'text-slate-300 hover:bg-white/5 hover:text-white' }}">{{ $label }}</a>
                     @endforeach
-                </div>
+                </nav>
 
                 <a
                     id="jump-to-today"
