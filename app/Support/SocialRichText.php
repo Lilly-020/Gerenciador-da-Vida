@@ -8,6 +8,10 @@ use DOMNode;
 
 class SocialRichText
 {
+    private const UNDERLINE_COLORS = ['indigo', 'sky', 'emerald', 'amber', 'rose', 'white'];
+
+    private const MARKER_COLORS = ['amber', 'sky', 'emerald', 'rose', 'indigo', 'orange'];
+
     /** @return array{content: string, content_html: string} */
     public function sanitize(string $html): array
     {
@@ -17,7 +21,7 @@ class SocialRichText
         foreach ($document->getElementsByTagName('body')->item(0)?->childNodes ?? [] as $node) {
             $clean .= $this->render($node, 0);
         }
-        $text = html_entity_decode(strip_tags(str_replace(['<br>', '</p>', '</div>', '</li>', '</h2>', '</h3>', '</blockquote>'], "\n", $clean)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = html_entity_decode(strip_tags(preg_replace('/<br>|<\/(?:p|div|li|h[1-6]|blockquote)>/', "\n", $clean)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = trim(str_replace("\u{00A0}", ' ', $text));
 
         return ['content' => $text, 'content_html' => $clean];
@@ -50,8 +54,14 @@ class SocialRichText
         if ($tag === 'span' && preg_match('/(?:^|;)\s*background-color\s*:\s*(?:#fef08a|rgb\(254,\s*240,\s*138\))\s*(?:;|$)/i', $node->getAttribute('style'))) {
             $tag = 'mark';
         }
+        if ($tag === 'u' && in_array($color = $node->getAttribute('data-underline-color'), self::UNDERLINE_COLORS, true)) {
+            return '<u data-underline-color="'.$color.'">'.$children.'</u>';
+        }
+        if ($tag === 'mark' && in_array($color = $node->getAttribute('data-marker-color'), self::MARKER_COLORS, true)) {
+            return '<mark data-marker-color="'.$color.'">'.$children.'</mark>';
+        }
 
-        return in_array($tag, ['p', 'div', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'mark', 'ul', 'ol', 'li', 'blockquote', 'h2', 'h3'], true)
+        return in_array($tag, ['p', 'div', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'mark', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'], true)
             ? '<'.$tag.'>'.$children.'</'.$tag.'>'
             : $children;
     }

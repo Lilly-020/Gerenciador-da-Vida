@@ -313,16 +313,25 @@ class SocialTest extends TestCase
         $author = User::factory()->create();
         $this->actingAs($author);
         $postId = $this->postJson('/social/posts', [
-            'content_html' => '<p><strong onclick="bad()">Destaque</strong> <u>sublinhado</u> <span style="background-color: rgb(254, 240, 138); position: fixed">marcado</span> 😊</p><script>alert(1)</script><img src="https://example.test/pixel">',
+            'content_html' => '<p><strong onclick="bad()">Destaque</strong> <u data-underline-color="rose" onclick="bad()">sublinhado</u> <span style="background-color: rgb(254, 240, 138); position: fixed">marcado</span> 😊</p><script>alert(1)</script><img src="https://example.test/pixel">',
         ])->assertCreated()->json('id');
         $this->getJson('/social/feed?post='.$postId)->assertOk()
             ->assertJsonPath('items.0.content', 'Destaque sublinhado marcado 😊')
-            ->assertJsonPath('items.0.content_html', '<p><strong>Destaque</strong> <u>sublinhado</u> <mark>marcado</mark> 😊</p>');
+            ->assertJsonPath('items.0.content_html', '<p><strong>Destaque</strong> <u data-underline-color="rose">sublinhado</u> <mark>marcado</mark> 😊</p>');
 
         $this->patchJson('/social/posts/'.$postId, [
             'content' => 'Editado',
-            'content_html' => '<ul><li><em>Editado</em></li></ul>',
-        ])->assertOk()->assertJsonPath('content_html', '<ul><li><em>Editado</em></li></ul>');
+            'content_html' => '<ul><li><mark data-marker-color="sky" onclick="bad()"><em>Editado</em></mark></li></ul>',
+        ])->assertOk()->assertJsonPath('content_html', '<ul><li><mark data-marker-color="sky"><em>Editado</em></mark></li></ul>');
+        $this->patchJson('/social/posts/'.$postId, [
+            'content' => 'Sem cor inválida',
+            'content_html' => '<u data-underline-color="url(bad)">Sem cor inválida</u>',
+        ])->assertOk()->assertJsonPath('content_html', '<u>Sem cor inválida</u>');
+        $this->patchJson('/social/posts/'.$postId, [
+            'content' => 'Título Texto normal Subtítulo',
+            'content_html' => '<h1>Título</h1><p>Texto normal</p><h6>Subtítulo</h6>',
+        ])->assertOk()->assertJsonPath('content_html', '<h1>Título</h1><p>Texto normal</p><h6>Subtítulo</h6>')
+            ->assertJsonPath('content', "Título\nTexto normal\nSubtítulo");
         $this->postJson('/social/posts', ['content_html' => '<script>alert(1)</script><div><br></div>'])
             ->assertUnprocessable()->assertJsonValidationErrors('content');
     }
